@@ -364,7 +364,7 @@ namespace ZstdSharp
             {
                 case 3:
                 {
-                    uint lhc = (uint)(hType + ((singleStream == 0 << 2) ? 1 : 0)) + ((uint)(litSize) << 4) + ((uint)(cLitSize) << 14);
+                    uint lhc = (uint)(hType + ((singleStream == 0 ? 1 : 0) << 2)) + ((uint)(litSize) << 4) + ((uint)(cLitSize) << 14);
 
                     MEM_writeLE24((void*)ostart, lhc);
                     break;

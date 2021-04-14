@@ -1,10 +1,12 @@
 ﻿using System;
 using System.IO;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
 using Zstd.Extern;
 
 namespace ZstdSharp.Benchmark
 {
+    [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
     public unsafe class Benchmark
     {
         private byte[] src;
@@ -42,28 +44,7 @@ namespace ZstdSharp.Benchmark
             }
         }
 
-        [Benchmark]
-        public void CompressSharp()
-        {
-            fixed (byte* dstPtr = dest)
-            fixed (byte* srcPtr = src)
-            {
-                Methods.ZSTD_compressCCtx(cCtx, dstPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length, level);
-            }
-        }
-
-        [Benchmark]
-        public void DecompressSharp()
-        {
-            fixed (byte* dstPtr = dest)
-            fixed (byte* uncompressedPtr = uncompressed)
-            {
-                Methods.ZSTD_decompressDCtx(dCtx, uncompressedPtr, (nuint) uncompressed.Length, dstPtr,
-                    compressedLength);
-            }
-        }
-
-        [Benchmark]
+        [BenchmarkCategory("Compress"), Benchmark(Baseline = true)]
         public void CompressNative()
         {
             fixed (byte* dstPtr = dest)
@@ -74,7 +55,17 @@ namespace ZstdSharp.Benchmark
             }
         }
 
-        [Benchmark]
+        [BenchmarkCategory("Compress"), Benchmark]
+        public void CompressSharp()
+        {
+            fixed (byte* dstPtr = dest)
+            fixed (byte* srcPtr = src)
+            {
+                Methods.ZSTD_compressCCtx(cCtx, dstPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length, level);
+            }
+        }
+
+        [BenchmarkCategory("Decompress"), Benchmark(Baseline = true)]
         public void DecompressNative()
         {
             fixed (byte* dstPtr = dest)
@@ -82,6 +73,17 @@ namespace ZstdSharp.Benchmark
             {
                 ExternMethods.ZSTD_decompressDCtx(dCtxNative, (IntPtr) uncompressedPtr, (nuint) uncompressed.Length,
                     (IntPtr) dstPtr, compressedLength);
+            }
+        }
+
+        [BenchmarkCategory("Decompress"), Benchmark]
+        public void DecompressSharp()
+        {
+            fixed (byte* dstPtr = dest)
+            fixed (byte* uncompressedPtr = uncompressed)
+            {
+                Methods.ZSTD_decompressDCtx(dCtx, uncompressedPtr, (nuint) uncompressed.Length, dstPtr,
+                    compressedLength);
             }
         }
     }

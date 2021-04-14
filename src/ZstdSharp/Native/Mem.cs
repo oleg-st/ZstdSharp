@@ -9,11 +9,17 @@ namespace ZstdSharp
 {
     public static unsafe partial class Methods
     {
+    	/*-**************************************************************
+        *  Memory I/O API
+        *****************************************************************/
+        /*=== Static platform detection ===*/
         public static bool MEM_32bits => sizeof(nint) == 4;
 
         public static bool MEM_64bits => sizeof(nint) == 8;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /* default method, safe and standard.
+           can sometimes prove slower */
         [InlineMethod.Inline]
         private static ushort MEM_read16(void* memPtr) => Unsafe.ReadUnaligned<ushort>(memPtr);
 
@@ -33,6 +39,7 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         private static void MEM_write64(void* memPtr, ulong value) => Unsafe.WriteUnaligned(memPtr, value);
 
+        /*=== Little endian r/w ===*/
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
         private static ushort MEM_readLE16(void* memPtr)

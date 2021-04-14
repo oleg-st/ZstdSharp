@@ -27,6 +27,9 @@ namespace Sandbox
             {
                 var compressedLength = ZstdSharp.Methods.ZSTD_compressCCtx(cctx, compressedPtr, (nuint)compressed.Length, srcPtr, (nuint)src.Length,
                     level);
+
+                using var fs = new FileStream("dickens.zst", FileMode.Create);
+                fs.Write(compressed, 0, (int)compressedLength);
             }
             ZstdSharp.Methods.ZSTD_freeCCtx(cctx);
         }
@@ -75,7 +78,7 @@ namespace Sandbox
             var cctx = ExternMethods.ZSTD_createCCtx();
             var dctx = ExternMethods.ZSTD_createDCtx();
 
-            var src = File.ReadAllBytes(@"D:\.ocr\dickens");
+            var src = File.ReadAllBytes("dickens");
             var dest = new byte[ExternMethods.ZSTD_compressBound((nuint)src.Length)];
             var uncompressed = new byte[src.Length];
             fixed (byte* dstPtr = dest)
