@@ -54,9 +54,10 @@ Intel Core i7-2600K CPU 3.40GHz (Sandy Bridge), 1 CPU, 8 logical and 4 physical 
   DefaultJob : .NET Core 3.1.13 (CoreCLR 4.700.21.11102, CoreFX 4.700.21.11602), X64 RyuJIT
 ```
 
-|           Method |     Mean |    Error |   StdDev |
-|----------------- |---------:|---------:|---------:|
-|    CompressSharp | 80.57 ms | 0.671 ms | 0.560 ms |
-|  DecompressSharp | 22.72 ms | 0.422 ms | 0.415 ms |
-|   CompressNative | 50.52 ms | 0.438 ms | 0.388 ms |
-| DecompressNative | 16.27 ms | 0.292 ms | 0.273 ms |
+|           Method |     Mean |    Error |   StdDev | Ratio |
+|----------------- |---------:|---------:|---------:|------:|
+|   CompressNative | 48.99 ms | 0.056 ms | 0.047 ms |  1.00 |
+|    CompressSharp | 78.29 ms | 0.318 ms | 0.298 ms |  1.60 |
+|                  |          |          |          |       |
+| DecompressNative | 16.54 ms | 0.098 ms | 0.087 ms |  1.00 |
+|  DecompressSharp | 21.91 ms | 0.110 ms | 0.103 ms |  1.32 |
