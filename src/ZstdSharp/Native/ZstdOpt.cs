@@ -591,7 +591,7 @@ namespace ZstdSharp
                     assert(curr >= dictLimit);
                     if (repOffset - 1 < curr - dictLimit)
                     {
-                        if ((((repIndex >= windowLow) ? 1 : 0) & ((ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)(ip - repOffset), minMatch)) ? 1 : 0)) != 0)
+                        if (((repIndex >= windowLow) && (ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)(ip - repOffset), minMatch))))
                         {
                             repLen = (uint)(ZSTD_count(ip + minMatch, ip + minMatch - repOffset, iLimit)) + minMatch;
                         }
@@ -601,12 +601,12 @@ namespace ZstdSharp
                         byte* repMatch = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? dmsBase + repIndex - dmsIndexDelta : dictBase + repIndex;
 
                         assert(curr >= windowLow);
-                        if (dictMode == ZSTD_dictMode_e.ZSTD_extDict && ((((repOffset - 1) < curr - windowLow) ? 1 : 0) & ((((uint)((dictLimit - 1) - repIndex) >= 3)) ? 1 : 0)) != 0 && (ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)repMatch, minMatch)))
+                        if (dictMode == ZSTD_dictMode_e.ZSTD_extDict && ((((repOffset - 1) < curr - windowLow) && (((uint)((dictLimit - 1) - repIndex) >= 3)))) && (ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)repMatch, minMatch)))
                         {
                             repLen = (uint)(ZSTD_count_2segments(ip + minMatch, repMatch + minMatch, iLimit, dictEnd, prefixStart)) + minMatch;
                         }
 
-                        if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && ((((repOffset - 1) < curr - (dmsLowLimit + dmsIndexDelta)) ? 1 : 0) & (((uint)((dictLimit - 1) - repIndex) >= 3) ? 1 : 0)) != 0 && (ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)repMatch, minMatch)))
+                        if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && ((((repOffset - 1) < curr - (dmsLowLimit + dmsIndexDelta)) && ((uint)((dictLimit - 1) - repIndex) >= 3))) && (ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)repMatch, minMatch)))
                         {
                             repLen = (uint)(ZSTD_count_2segments(ip + minMatch, repMatch + minMatch, iLimit, dmsEnd, prefixStart)) + minMatch;
                         }
@@ -618,7 +618,7 @@ namespace ZstdSharp
                         matches[mnum].off = repCode - ll0;
                         matches[mnum].len = (uint)(repLen);
                         mnum++;
-                        if ((((repLen > sufficient_len) ? 1 : 0) | ((ip + repLen == iLimit) ? 1 : 0)) != 0)
+                        if (((repLen > sufficient_len) || (ip + repLen == iLimit)))
                         {
                             return mnum;
                         }
@@ -630,7 +630,7 @@ namespace ZstdSharp
             {
                 uint matchIndex3 = ZSTD_insertAndFindFirstIndexHash3(ms, nextToUpdate3, ip);
 
-                if ((((matchIndex3 >= matchLow) ? 1 : 0) & ((curr - matchIndex3 < (uint)((1 << 18))) ? 1 : 0)) != 0)
+                if (((matchIndex3 >= matchLow) && (curr - matchIndex3 < (uint)((1 << 18)))))
                 {
                     nuint mlen;
 
@@ -655,7 +655,7 @@ namespace ZstdSharp
                         matches[0].off = (curr - matchIndex3) + (uint)((3 - 1));
                         matches[0].len = (uint)(mlen);
                         mnum = 1;
-                        if ((((mlen > sufficient_len) ? 1 : 0) | ((ip + mlen == iLimit) ? 1 : 0)) != 0)
+                        if (((mlen > sufficient_len) || (ip + mlen == iLimit)))
                         {
                             ms->nextToUpdate = curr + 1;
                             return 1;
@@ -706,7 +706,7 @@ namespace ZstdSharp
                     matches[mnum].off = (curr - matchIndex) + (uint)((3 - 1));
                     matches[mnum].len = (uint)(matchLength);
                     mnum++;
-                    if ((((matchLength > (uint)((1 << 12))) ? 1 : 0) | ((ip + matchLength == iLimit) ? 1 : 0)) != 0)
+                    if (((matchLength > (uint)((1 << 12))) || (ip + matchLength == iLimit)))
                     {
                         if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState)
                         {
@@ -777,7 +777,7 @@ namespace ZstdSharp
                         matches[mnum].off = (curr - matchIndex) + (uint)((3 - 1));
                         matches[mnum].len = (uint)(matchLength);
                         mnum++;
-                        if ((((matchLength > (uint)((1 << 12))) ? 1 : 0) | ((ip + matchLength == iLimit) ? 1 : 0)) != 0)
+                        if (((matchLength > (uint)((1 << 12))) || (ip + matchLength == iLimit)))
                         {
                             break;
                         }

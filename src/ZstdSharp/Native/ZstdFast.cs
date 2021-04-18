@@ -104,7 +104,7 @@ namespace ZstdSharp
                 hashTable[h0] = current0;
                 hashTable[h1] = current1;
                 assert(ip0 + 1 == ip1);
-                if ((((offset_1 > 0) ? 1 : 0) & ((MEM_read32((void*)repMatch) == MEM_read32((void*)ip2)) ? 1 : 0)) != 0)
+                if (((offset_1 > 0) && (MEM_read32((void*)repMatch) == MEM_read32((void*)ip2))))
                 {
                     mLength = (nuint)((ip2[-1] == repMatch[-1]) ? 1 : 0);
                     ip0 = ip2 - mLength;
@@ -141,7 +141,7 @@ namespace ZstdSharp
                 offset_1 = (uint)(ip0 - match0);
                 offcode = offset_1 + (uint)((3 - 1));
                 mLength = 4;
-                while ((((ip0 > anchor) ? 1 : 0) & ((match0 > prefixStart) ? 1 : 0)) != 0 && (ip0[-1] == match0[-1]))
+                while ((((ip0 > anchor) && (match0 > prefixStart))) && (ip0[-1] == match0[-1]))
                 {
                     ip0--;
                     match0--;
@@ -290,7 +290,7 @@ namespace ZstdSharp
                         uint offset = (uint)(curr - dictMatchIndex - dictIndexDelta);
 
                         mLength = ZSTD_count_2segments(ip + 4, dictMatch + 4, iend, dictEnd, prefixStart) + 4;
-                        while ((((ip > anchor) ? 1 : 0) & ((dictMatch > dictStart) ? 1 : 0)) != 0 && (ip[-1] == dictMatch[-1]))
+                        while ((((ip > anchor) && (dictMatch > dictStart))) && (ip[-1] == dictMatch[-1]))
                         {
                             ip--;
                             dictMatch--;
@@ -313,7 +313,7 @@ namespace ZstdSharp
                     uint offset = (uint)(ip - match);
 
                     mLength = ZSTD_count(ip + 4, match + 4, iend) + 4;
-                    while ((((ip > anchor) ? 1 : 0) & ((match > prefixStart) ? 1 : 0)) != 0 && (ip[-1] == match[-1]))
+                    while ((((ip > anchor) && (match > prefixStart))) && (ip[-1] == match[-1]))
                     {
                         ip--;
                         match--;
@@ -434,7 +434,7 @@ namespace ZstdSharp
 
                 hashTable[h] = curr;
                 assert(offset_1 <= curr + 1);
-                if (((((uint)((prefixStartIndex - 1) - repIndex) >= 3) ? 1 : 0) & ((repIndex > dictStartIndex) ? 1 : 0)) != 0 && (MEM_read32((void*)repMatch) == MEM_read32((void*)(ip + 1))))
+                if (((((uint)((prefixStartIndex - 1) - repIndex) >= 3) && (repIndex > dictStartIndex))) && (MEM_read32((void*)repMatch) == MEM_read32((void*)(ip + 1))))
                 {
                     byte* repMatchEnd = repIndex < prefixStartIndex ? dictEnd : iend;
                     nuint rLength = ZSTD_count_2segments(ip + 1 + 4, repMatch + 4, iend, repMatchEnd, prefixStart) + 4;
@@ -460,7 +460,7 @@ namespace ZstdSharp
                         uint offset = curr - matchIndex;
                         nuint mLength = ZSTD_count_2segments(ip + 4, match + 4, iend, matchEnd, prefixStart) + 4;
 
-                        while ((((ip > anchor) ? 1 : 0) & ((match > lowMatchPtr) ? 1 : 0)) != 0 && (ip[-1] == match[-1]))
+                        while ((((ip > anchor) && (match > lowMatchPtr))) && (ip[-1] == match[-1]))
                         {
                             ip--;
                             match--;
@@ -485,7 +485,7 @@ namespace ZstdSharp
                         uint repIndex2 = current2 - offset_2;
                         byte* repMatch2 = repIndex2 < prefixStartIndex ? dictBase + repIndex2 : @base + repIndex2;
 
-                        if (((((uint)((prefixStartIndex - 1) - repIndex2) >= 3) ? 1 : 0) & ((repIndex2 > dictStartIndex) ? 1 : 0)) != 0 && (MEM_read32((void*)repMatch2) == MEM_read32((void*)ip)))
+                        if (((((uint)((prefixStartIndex - 1) - repIndex2) >= 3) && (repIndex2 > dictStartIndex))) && (MEM_read32((void*)repMatch2) == MEM_read32((void*)ip)))
                         {
                             byte* repEnd2 = repIndex2 < prefixStartIndex ? dictEnd : iend;
                             nuint repLength2 = ZSTD_count_2segments(ip + 4, repMatch2 + 4, iend, repEnd2, prefixStart) + 4;

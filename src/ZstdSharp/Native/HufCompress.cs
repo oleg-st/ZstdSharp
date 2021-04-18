@@ -134,7 +134,7 @@ namespace ZstdSharp
                     return hSize;
                 }
 
-                if ((((hSize > 1) ? 1 : 0) & ((hSize < maxSymbolValue / 2) ? 1 : 0)) != 0)
+                if (((hSize > 1) && (hSize < maxSymbolValue / 2)))
                 {
                     op[0] = (byte)(hSize);
                     return hSize + 1;
@@ -641,7 +641,7 @@ namespace ZstdSharp
 
             for (s = 0; s <= (int)(maxSymbolValue); ++s)
             {
-                bad |= ((count[s] != 0) ? 1 : 0) & ((CTable[s].nbBits == 0) ? 1 : 0);
+                bad |= ((((count[s] != 0) && (CTable[s].nbBits == 0))) ? 1 : 0);
             }
 
             return (bad == 0 ? 1 : 0);

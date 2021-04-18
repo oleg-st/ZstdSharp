@@ -641,7 +641,7 @@ namespace ZstdSharp
             }
 
             matchIndex = ZSTD_insertAndFindFirstIndex_internal(ms, cParams, ip, mls);
-            for (; (((matchIndex >= lowLimit) ? 1 : 0) & ((nbAttempts > 0) ? 1 : 0)) != 0; nbAttempts--)
+            for (; ((matchIndex >= lowLimit) && (nbAttempts > 0)); nbAttempts--)
             {
                 nuint currentMl = 0;
 
@@ -791,7 +791,7 @@ namespace ZstdSharp
                 uint dmsMinChain = dmsSize > dmsChainSize ? dmsSize - dmsChainSize : 0;
 
                 matchIndex = dms->hashTable[ZSTD_hashPtr((void*)ip, dms->cParams.hashLog, mls)];
-                for (; (((matchIndex >= dmsLowestIndex) ? 1 : 0) & ((nbAttempts > 0) ? 1 : 0)) != 0; nbAttempts--)
+                for (; ((matchIndex >= dmsLowestIndex) && (nbAttempts > 0)); nbAttempts--)
                 {
                     nuint currentMl = 0;
                     byte* match = dmsBase + matchIndex;
@@ -992,7 +992,7 @@ namespace ZstdSharp
                     }
                 }
 
-                if (dictMode == ZSTD_dictMode_e.ZSTD_noDict && (((offset_1 > 0) ? 1 : 0) & ((MEM_read32((void*)(ip + 1 - offset_1)) == MEM_read32((void*)(ip + 1))) ? 1 : 0)) != 0)
+                if (dictMode == ZSTD_dictMode_e.ZSTD_noDict && (((offset_1 > 0) && (MEM_read32((void*)(ip + 1 - offset_1)) == MEM_read32((void*)(ip + 1))))))
                 {
                     matchLength = ZSTD_count(ip + 1 + 4, ip + 1 + 4 - offset_1, iend) + 4;
                     if (depth == 0)
@@ -1023,7 +1023,7 @@ namespace ZstdSharp
                     while (ip < ilimit)
                     {
                         ip++;
-                        if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) && (offset) != 0 && (((offset_1 > 0) ? 1 : 0) & ((MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_1))) ? 1 : 0)) != 0)
+                        if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) && (offset) != 0 && (((offset_1 > 0) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_1))))))
                         {
                             nuint mlRep = ZSTD_count(ip + 4, ip + 4 - offset_1, iend) + 4;
                             int gain2 = (int)(mlRep * 3);
@@ -1071,7 +1071,7 @@ namespace ZstdSharp
                         if ((depth == 2) && (ip < ilimit))
                         {
                             ip++;
-                            if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) && (offset) != 0 && (((offset_1 > 0) ? 1 : 0) & ((MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_1))) ? 1 : 0)) != 0)
+                            if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) && (offset) != 0 && (((offset_1 > 0) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_1))))))
                             {
                                 nuint mlRep = ZSTD_count(ip + 4, ip + 4 - offset_1, iend) + 4;
                                 int gain2 = (int)(mlRep * 4);
@@ -1125,7 +1125,7 @@ namespace ZstdSharp
                 {
                     if (dictMode == ZSTD_dictMode_e.ZSTD_noDict)
                     {
-                        while ((((start > anchor) ? 1 : 0) & ((start - (offset - (uint)((3 - 1))) > prefixLowest) ? 1 : 0)) != 0 && (start[-1] == (start - (offset - (uint)((3 - 1))))[-1]))
+                        while ((((start > anchor) && (start - (offset - (uint)((3 - 1))) > prefixLowest))) && (start[-1] == (start - (offset - (uint)((3 - 1))))[-1]))
                         {
                             start--;
                             matchLength++;
@@ -1186,7 +1186,7 @@ namespace ZstdSharp
 
                 if (dictMode == ZSTD_dictMode_e.ZSTD_noDict)
                 {
-                    while ((((ip <= ilimit) ? 1 : 0) & ((offset_2 > 0) ? 1 : 0)) != 0 && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_2))))
+                    while ((((ip <= ilimit) && (offset_2 > 0))) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_2))))
                     {
                         matchLength = ZSTD_count(ip + 4, ip + 4 - offset_2, iend) + 4;
                         offset = offset_2;
@@ -1295,7 +1295,7 @@ namespace ZstdSharp
                     byte* repBase = repIndex < dictLimit ? dictBase : @base;
                     byte* repMatch = repBase + repIndex;
 
-                    if (((((uint)((dictLimit - 1) - repIndex) >= 3) ? 1 : 0) & ((repIndex > windowLow) ? 1 : 0)) != 0)
+                    if ((((uint)((dictLimit - 1) - repIndex) >= 3) && (repIndex > windowLow)))
                     {
                         if (MEM_read32((void*)(ip + 1)) == MEM_read32((void*)repMatch))
                         {
@@ -1340,7 +1340,7 @@ namespace ZstdSharp
                             byte* repBase = repIndex < dictLimit ? dictBase : @base;
                             byte* repMatch = repBase + repIndex;
 
-                            if (((((uint)((dictLimit - 1) - repIndex) >= 3) ? 1 : 0) & ((repIndex > windowLow) ? 1 : 0)) != 0)
+                            if ((((uint)((dictLimit - 1) - repIndex) >= 3) && (repIndex > windowLow)))
                             {
                                 if (MEM_read32((void*)ip) == MEM_read32((void*)repMatch))
                                 {
@@ -1382,7 +1382,7 @@ namespace ZstdSharp
                                 byte* repBase = repIndex < dictLimit ? dictBase : @base;
                                 byte* repMatch = repBase + repIndex;
 
-                                if (((((uint)((dictLimit - 1) - repIndex) >= 3) ? 1 : 0) & ((repIndex > windowLow) ? 1 : 0)) != 0)
+                                if ((((uint)((dictLimit - 1) - repIndex) >= 3) && (repIndex > windowLow)))
                                 {
                                     if (MEM_read32((void*)ip) == MEM_read32((void*)repMatch))
                                     {
@@ -1451,7 +1451,7 @@ namespace ZstdSharp
                     byte* repBase = repIndex < dictLimit ? dictBase : @base;
                     byte* repMatch = repBase + repIndex;
 
-                    if (((((uint)((dictLimit - 1) - repIndex) >= 3) ? 1 : 0) & ((repIndex > windowLow) ? 1 : 0)) != 0)
+                    if ((((uint)((dictLimit - 1) - repIndex) >= 3) && (repIndex > windowLow)))
                     {
                         if (MEM_read32((void*)ip) == MEM_read32((void*)repMatch))
                         {

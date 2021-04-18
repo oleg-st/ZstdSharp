@@ -3055,7 +3055,7 @@ namespace ZstdSharp
                 return 0;
             }
 
-            if ((((cSize == (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)))) ? 1 : 0) & ((srcSize <= dstCapacity) ? 1 : 0)) != 0)
+            if (((cSize == (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)))) && (srcSize <= dstCapacity)))
             {
                 return 0;
             }

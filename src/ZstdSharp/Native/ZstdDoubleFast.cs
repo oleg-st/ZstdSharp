@@ -136,7 +136,7 @@ namespace ZstdSharp
                     goto _match_stored;
                 }
 
-                if (dictMode == ZSTD_dictMode_e.ZSTD_noDict && (((offset_1 > 0) ? 1 : 0) & ((MEM_read32((void*)(ip + 1 - offset_1)) == MEM_read32((void*)(ip + 1))) ? 1 : 0)) != 0)
+                if (dictMode == ZSTD_dictMode_e.ZSTD_noDict && (((offset_1 > 0) && (MEM_read32((void*)(ip + 1 - offset_1)) == MEM_read32((void*)(ip + 1))))))
                 {
                     mLength = ZSTD_count(ip + 1 + 4, ip + 1 + 4 - offset_1, iend) + 4;
                     ip++;
@@ -150,7 +150,7 @@ namespace ZstdSharp
                     {
                         mLength = ZSTD_count(ip + 8, matchLong + 8, iend) + 8;
                         offset = (uint)(ip - matchLong);
-                        while ((((ip > anchor) ? 1 : 0) & ((matchLong > prefixLowest) ? 1 : 0)) != 0 && (ip[-1] == matchLong[-1]))
+                        while ((((ip > anchor) && (matchLong > prefixLowest))) && (ip[-1] == matchLong[-1]))
                         {
                             ip--;
                             matchLong--;
@@ -170,7 +170,7 @@ namespace ZstdSharp
                     {
                         mLength = ZSTD_count_2segments(ip + 8, dictMatchL + 8, iend, dictEnd, prefixLowest) + 8;
                         offset = (uint)(curr - dictMatchIndexL - dictIndexDelta);
-                        while ((((ip > anchor) ? 1 : 0) & ((dictMatchL > dictStart) ? 1 : 0)) != 0 && (ip[-1] == dictMatchL[-1]))
+                        while ((((ip > anchor) && (dictMatchL > dictStart))) && (ip[-1] == dictMatchL[-1]))
                         {
                             ip--;
                             dictMatchL--;
@@ -217,7 +217,7 @@ namespace ZstdSharp
                             mLength = ZSTD_count(ip + 9, matchL3 + 8, iend) + 8;
                             ip++;
                             offset = (uint)(ip - matchL3);
-                            while ((((ip > anchor) ? 1 : 0) & ((matchL3 > prefixLowest) ? 1 : 0)) != 0 && (ip[-1] == matchL3[-1]))
+                            while ((((ip > anchor) && (matchL3 > prefixLowest))) && (ip[-1] == matchL3[-1]))
                             {
                                 ip--;
                                 matchL3--;
@@ -238,7 +238,7 @@ namespace ZstdSharp
                             mLength = ZSTD_count_2segments(ip + 1 + 8, dictMatchL3 + 8, iend, dictEnd, prefixLowest) + 8;
                             ip++;
                             offset = (uint)(curr + 1 - dictMatchIndexL3 - dictIndexDelta);
-                            while ((((ip > anchor) ? 1 : 0) & ((dictMatchL3 > dictStart) ? 1 : 0)) != 0 && (ip[-1] == dictMatchL3[-1]))
+                            while ((((ip > anchor) && (dictMatchL3 > dictStart))) && (ip[-1] == dictMatchL3[-1]))
                             {
                                 ip--;
                                 dictMatchL3--;
@@ -254,7 +254,7 @@ namespace ZstdSharp
                 {
                     mLength = ZSTD_count_2segments(ip + 4, match + 4, iend, dictEnd, prefixLowest) + 4;
                     offset = (uint)(curr - matchIndexS);
-                    while ((((ip > anchor) ? 1 : 0) & ((match > dictStart) ? 1 : 0)) != 0 && (ip[-1] == match[-1]))
+                    while ((((ip > anchor) && (match > dictStart))) && (ip[-1] == match[-1]))
                     {
                         ip--;
                         match--;
@@ -265,7 +265,7 @@ namespace ZstdSharp
                 {
                     mLength = ZSTD_count(ip + 4, match + 4, iend) + 4;
                     offset = (uint)(ip - match);
-                    while ((((ip > anchor) ? 1 : 0) & ((match > prefixLowest) ? 1 : 0)) != 0 && (ip[-1] == match[-1]))
+                    while ((((ip > anchor) && (match > prefixLowest))) && (ip[-1] == match[-1]))
                     {
                         ip--;
                         match--;
@@ -322,7 +322,7 @@ namespace ZstdSharp
 
                     if (dictMode == ZSTD_dictMode_e.ZSTD_noDict)
                     {
-                        while ((ip <= ilimit) && (((offset_2 > 0) ? 1 : 0) & ((MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_2))) ? 1 : 0)) != 0)
+                        while ((ip <= ilimit) && (((offset_2 > 0) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_2))))))
                         {
                             nuint rLength = ZSTD_count(ip + 4, ip + 4 - offset_2, iend) + 4;
                             uint tmpOff = offset_2;
@@ -449,7 +449,7 @@ namespace ZstdSharp
                 nuint mLength;
 
                 hashSmall[hSmall] = hashLong[hLong] = curr;
-                if (((((uint)((prefixStartIndex - 1) - repIndex) >= 3) ? 1 : 0) & ((repIndex > dictStartIndex) ? 1 : 0)) != 0 && (MEM_read32((void*)repMatch) == MEM_read32((void*)(ip + 1))))
+                if (((((uint)((prefixStartIndex - 1) - repIndex) >= 3) && (repIndex > dictStartIndex))) && (MEM_read32((void*)repMatch) == MEM_read32((void*)(ip + 1))))
                 {
                     byte* repMatchEnd = repIndex < prefixStartIndex ? dictEnd : iend;
 
@@ -467,7 +467,7 @@ namespace ZstdSharp
 
                         mLength = ZSTD_count_2segments(ip + 8, matchLong + 8, iend, matchEnd, prefixStart) + 8;
                         offset = curr - matchLongIndex;
-                        while ((((ip > anchor) ? 1 : 0) & ((matchLong > lowMatchPtr) ? 1 : 0)) != 0 && (ip[-1] == matchLong[-1]))
+                        while ((((ip > anchor) && (matchLong > lowMatchPtr))) && (ip[-1] == matchLong[-1]))
                         {
                             ip--;
                             matchLong--;
@@ -495,7 +495,7 @@ namespace ZstdSharp
                             mLength = ZSTD_count_2segments(ip + 9, match3 + 8, iend, matchEnd, prefixStart) + 8;
                             ip++;
                             offset = curr + 1 - matchIndex3;
-                            while ((((ip > anchor) ? 1 : 0) & ((match3 > lowMatchPtr) ? 1 : 0)) != 0 && (ip[-1] == match3[-1]))
+                            while ((((ip > anchor) && (match3 > lowMatchPtr))) && (ip[-1] == match3[-1]))
                             {
                                 ip--;
                                 match3--;
@@ -509,7 +509,7 @@ namespace ZstdSharp
 
                             mLength = ZSTD_count_2segments(ip + 4, match + 4, iend, matchEnd, prefixStart) + 4;
                             offset = curr - matchIndex;
-                            while ((((ip > anchor) ? 1 : 0) & ((match > lowMatchPtr) ? 1 : 0)) != 0 && (ip[-1] == match[-1]))
+                            while ((((ip > anchor) && (match > lowMatchPtr))) && (ip[-1] == match[-1]))
                             {
                                 ip--;
                                 match--;
@@ -548,7 +548,7 @@ namespace ZstdSharp
                         uint repIndex2 = current2 - offset_2;
                         byte* repMatch2 = repIndex2 < prefixStartIndex ? dictBase + repIndex2 : @base + repIndex2;
 
-                        if (((((uint)((prefixStartIndex - 1) - repIndex2) >= 3) ? 1 : 0) & ((repIndex2 > dictStartIndex) ? 1 : 0)) != 0 && (MEM_read32((void*)repMatch2) == MEM_read32((void*)ip)))
+                        if (((((uint)((prefixStartIndex - 1) - repIndex2) >= 3) && (repIndex2 > dictStartIndex))) && (MEM_read32((void*)repMatch2) == MEM_read32((void*)ip)))
                         {
                             byte* repEnd2 = repIndex2 < prefixStartIndex ? dictEnd : iend;
                             nuint repLength2 = ZSTD_count_2segments(ip + 4, repMatch2 + 4, iend, repEnd2, prefixStart) + 4;

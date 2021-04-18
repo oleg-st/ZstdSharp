@@ -757,7 +757,7 @@ namespace ZstdSharp
             }
 
             window->nextSrc = ip + srcSize;
-            if ((((ip + srcSize > window->dictBase + window->lowLimit) ? 1 : 0) & ((ip < window->dictBase + window->dictLimit) ? 1 : 0)) != 0)
+            if (((ip + srcSize > window->dictBase + window->lowLimit) && (ip < window->dictBase + window->dictLimit)))
             {
                 nint highInputIdx = (nint)((ip + srcSize) - window->dictBase);
                 uint lowLimitMax = (highInputIdx > (nint)(window->dictLimit)) ? window->dictLimit : (uint)(highInputIdx);

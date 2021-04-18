@@ -227,7 +227,7 @@ namespace ZstdSharp
         {
             byte* pStart = p;
 
-            while ((((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) ? 1 : 0) & ((p < pEnd - 3) ? 1 : 0)) != 0)
+            while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p < pEnd - 3)))
             {
                 if (MEM_64bits)
                 {
@@ -249,7 +249,7 @@ namespace ZstdSharp
 
             if (MEM_32bits)
             {
-                while ((((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) ? 1 : 0) & ((p < pEnd) ? 1 : 0)) != 0)
+                while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p < pEnd)))
                 {
                     *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
                 }
@@ -863,7 +863,7 @@ namespace ZstdSharp
         {
             byte* pStart = p;
 
-            while ((((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) ? 1 : 0) & ((p < pEnd - ((nuint)(sizeof(nuint)) - 1)) ? 1 : 0)) != 0)
+            while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p < pEnd - ((nuint)(sizeof(nuint)) - 1))))
             {
                 if (MEM_64bits)
                 {
@@ -883,7 +883,7 @@ namespace ZstdSharp
                 p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
             }
 
-            while ((((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) ? 1 : 0) & ((p <= pEnd - 2) ? 1 : 0)) != 0)
+            while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p <= pEnd - 2)))
             {
                 p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
             }
