@@ -86,40 +86,43 @@ namespace ZstdSharp
 
             while (ip1 < ilimit)
             {
-                nuint mLength;
-                byte* ip2 = ip0 + 2;
-                nuint h0 = ZSTD_hashPtr((void*)ip0, hlog, mls);
-                uint val0 = MEM_read32((void*)ip0);
-                nuint h1 = ZSTD_hashPtr((void*)ip1, hlog, mls);
-                uint val1 = MEM_read32((void*)ip1);
-                uint current0 = (uint)(ip0 - @base);
-                uint current1 = (uint)(ip1 - @base);
-                uint matchIndex0 = hashTable[h0];
-                uint matchIndex1 = hashTable[h1];
-                byte* repMatch = ip2 - offset_1;
-                byte* match0 = @base + matchIndex0;
-                byte* match1 = @base + matchIndex1;
-                uint offcode;
-
-                hashTable[h0] = current0;
-                hashTable[h1] = current1;
-                assert(ip0 + 1 == ip1);
-                if (((offset_1 > 0) && (MEM_read32((void*)repMatch) == MEM_read32((void*)ip2))))
+                byte* match0;
+                byte* match1;
+                uint current0;
                 {
-                    mLength = (nuint)((ip2[-1] == repMatch[-1]) ? 1 : 0);
-                    ip0 = ip2 - mLength;
-                    match0 = repMatch - mLength;
-                    mLength += 4;
-                    offcode = 0;
-                    goto _match;
+                    nuint h0 = ZSTD_hashPtr((void*)ip0, hlog, mls);
+                    nuint h1 = ZSTD_hashPtr((void*)ip1, hlog, mls);
+                    match0 = @base + hashTable[h0];
+                    match1 = @base + hashTable[h1];
+                    current0 = (uint)(ip0 - @base);
+                    hashTable[h0] = current0;
+                    hashTable[h1] = (uint)(ip1 - @base);
                 }
 
-                if ((matchIndex0 > prefixStartIndex) && MEM_read32((void*)match0) == val0)
+                uint offcode;
+                nuint mLength;
+
+                assert(ip0 + 1 == ip1);
+                {
+                    byte* ip2 = ip0 + 2;
+                    byte* repMatch = ip2 - offset_1;
+                    if (((offset_1 > 0) && (MEM_read32((void*) repMatch) == MEM_read32((void*) ip2))))
+                    {
+                        mLength = (nuint) ((ip2[-1] == repMatch[-1]) ? 1 : 0);
+                        ip0 = ip2 - mLength;
+                        match0 = repMatch - mLength;
+                        mLength += 4;
+                        offcode = 0;
+                        goto _match;
+                    }
+                }
+
+                if ((match0 > prefixStart) && MEM_read32((void*)match0) == MEM_read32((void*)ip0))
                 {
                     goto _offset;
                 }
 
-                if ((matchIndex1 > prefixStartIndex) && MEM_read32((void*)match1) == val1)
+                if ((match1 > prefixStart) && MEM_read32((void*)match1) == MEM_read32((void*)ip1))
                 {
                     ip0 = ip1;
                     match0 = match1;
