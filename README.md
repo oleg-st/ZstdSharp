@@ -56,8 +56,8 @@ Intel Core i7-2600K CPU 3.40GHz (Sandy Bridge), 1 CPU, 8 logical and 4 physical 
 
 |           Method |     Mean |    Error |   StdDev | Ratio |
 |----------------- |---------:|---------:|---------:|------:|
-|   CompressNative | 48.99 ms | 0.056 ms | 0.047 ms |  1.00 |
-|    CompressSharp | 78.29 ms | 0.318 ms | 0.298 ms |  1.60 |
+|   CompressNative | 49.21 ms | 0.218 ms | 0.193 ms |  1.00 |
+|    CompressSharp | 71.41 ms | 0.571 ms | 0.506 ms |  1.45 |
 |                  |          |          |          |       |
-| DecompressNative | 16.54 ms | 0.098 ms | 0.087 ms |  1.00 |
-|  DecompressSharp | 21.91 ms | 0.110 ms | 0.103 ms |  1.32 |
+| DecompressNative | 15.48 ms | 0.051 ms | 0.048 ms |  1.00 |
+|  DecompressSharp | 21.98 ms | 0.188 ms | 0.167 ms |  1.42 |
