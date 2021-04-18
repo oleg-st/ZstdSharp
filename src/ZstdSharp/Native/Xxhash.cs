@@ -18,17 +18,13 @@ namespace ZstdSharp
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static uint XXH_readLE32(void* ptr)
-        {
-            return BitConverter.IsLittleEndian ? Unsafe.ReadUnaligned<uint>(ptr) : BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<uint>(ptr));
-        }
+        private static uint XXH_readLE32(void* ptr) => 
+            BitConverter.IsLittleEndian ? *(uint*) ptr : BinaryPrimitives.ReverseEndianness(*(uint*) ptr);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static ulong XXH_readLE64(void* ptr)
-        {
-            return BitConverter.IsLittleEndian ? Unsafe.ReadUnaligned<ulong>(ptr) : BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<ulong>(ptr));
-        }
+        private static ulong XXH_readLE64(void* ptr) => 
+            BitConverter.IsLittleEndian ? *(ulong*) ptr : BinaryPrimitives.ReverseEndianness(*(ulong*) ptr);
 
         public const ulong PRIME64_1 = 11400714785074694791UL;
 
