@@ -163,7 +163,11 @@ namespace ZstdSharp
             Buffer.MemoryCopy(source, destination, size, size);
         }
 
+#if NET
         public static bool IsBmi2Supported => System.Runtime.Intrinsics.X86.Bmi2.IsSupported;
+#else
+        public static bool IsBmi2Supported => false;
+#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
