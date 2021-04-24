@@ -8,11 +8,12 @@
     <Authors>Oleg Stepanischev</Authors>
     <Copyright>Copyright $(Authors) $([System.DateTime]::UtcNow.ToString(yyyy))</Copyright>
     <Description>Port of zstd compression library to c#</Description>
-    <PackageId>ZstdSharp</PackageId>
+    <PackageId>ZstdSharp.Port</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageOutputPath>$(SolutionDir)/../nugets</PackageOutputPath>
     <PackageProjectUrl>https://github.com/oleg-st/ZstdSharp</PackageProjectUrl>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageTags>zstd zstandard port compression</PackageTags>
     <Version>0.1</Version>
   </PropertyGroup>
 
