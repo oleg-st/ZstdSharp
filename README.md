@@ -1,6 +1,9 @@
 # ZstdSharp
+
+[![NuGet package](https://img.shields.io/nuget/v/ZstdSharp.Port.svg?logo=NuGet)](https://www.nuget.org/packages/ZstdSharp.Port)
+
 ZstdSharp is a port of [zstd compression library](https://github.com/facebook/zstd) to С#  
-Supports .NET Core 3.1 and .NET 5
+Supports .NET Core 3.1, .NET 5, .NET Standard 2.1
 
 # Usage  
 
