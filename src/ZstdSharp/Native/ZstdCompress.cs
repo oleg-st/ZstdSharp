@@ -531,7 +531,7 @@ namespace ZstdSharp
                 return bounds;
                 case ZSTD_cParameter.ZSTD_c_experimentalParam2:
                 {
-                    ;
+
                 }
 
                 bounds.lowerBound = (int)ZSTD_format_e.ZSTD_f_zstd1;
@@ -539,7 +539,7 @@ namespace ZstdSharp
                 return bounds;
                 case ZSTD_cParameter.ZSTD_c_experimentalParam4:
                 {
-                    ;
+
                 }
 
                 bounds.lowerBound = (int)ZSTD_dictAttachPref_e.ZSTD_dictDefaultAttach;
@@ -547,7 +547,7 @@ namespace ZstdSharp
                 return bounds;
                 case ZSTD_cParameter.ZSTD_c_experimentalParam5:
                 {
-                    ;
+
                 }
 
                 bounds.lowerBound = (int)ZSTD_literalCompressionMode_e.ZSTD_lcm_auto;

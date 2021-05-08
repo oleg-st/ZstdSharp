@@ -1,10 +1,11 @@
 ﻿using System;
 using System.IO;
 using Zstd.Extern;
+using ZstdSharp;
 
 namespace Sandbox
 {
-    unsafe class Program
+    class Program
     {
         private static readonly int level = 1;
 
@@ -19,36 +20,18 @@ namespace Sandbox
 
         static void Compress()
         {
-            var cctx = ZstdSharp.Methods.ZSTD_createCCtx();
             var src = File.ReadAllBytes("dickens");
-            var compressed = new byte[ZstdSharp.Methods.ZSTD_compressBound((nuint)src.Length)];
-            fixed (byte* srcPtr = src)
-            fixed (byte* compressedPtr = compressed)
-            {
-                var compressedLength = ZstdSharp.Methods.ZSTD_compressCCtx(cctx, compressedPtr, (nuint)compressed.Length, srcPtr, (nuint)src.Length,
-                    level);
-
-                using var fs = new FileStream("dickens.zst", FileMode.Create);
-                fs.Write(compressed, 0, (int)compressedLength);
-            }
-            ZstdSharp.Methods.ZSTD_freeCCtx(cctx);
+            var compressor = new Compressor(level);
+            var compressed = compressor.Wrap(src);
+            using var fs = new FileStream("dickens.zst", FileMode.Create);
+            fs.Write(compressed);
         }
 
         static void Decompress()
         {
-            var dctx = ZstdSharp.Methods.ZSTD_createDCtx();
             var src = File.ReadAllBytes("dickens.zst");
-            fixed (byte* srcPtr = src)
-            {
-                var uncompressed = new byte[ZstdSharp.Methods.ZSTD_decompressBound(srcPtr, (nuint) src.Length)];
-                fixed (byte* uncompressedPtr = uncompressed)
-                {
-                    var decompressedLength = ZstdSharp.Methods.ZSTD_decompressDCtx(dctx, uncompressedPtr,
-                        (nuint) uncompressed.Length, srcPtr, (nuint) src.Length);
-                }
-            }
-
-            ZstdSharp.Methods.ZSTD_freeDCtx(dctx);
+            var decompressor = new Decompressor();
+            var uncompressed = decompressor.Unwrap(src);
         }
 
         static unsafe void Test1()

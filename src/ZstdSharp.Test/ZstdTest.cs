@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Text;
 using Xunit;
 using Zstd.Extern;
 
@@ -8,81 +11,80 @@ namespace ZstdSharp.Test
 {
     public unsafe class ZstdTest
     {
-        private readonly byte[] srcBuffer;
-        private readonly byte[] destBuffer;
-        private readonly byte[] decompressedBuffer;
-
-        private readonly ZSTD_CCtx_s* cCtx;
-        private readonly ZSTD_DCtx_s* dCtx;
-
-        private readonly IntPtr cCtxNative;
-        private readonly IntPtr dCtxNative;
-
-        public ZstdTest()
+        private Span<byte> CompressNative(byte[] srcBuffer, int compressBound, int level)
         {
-            cCtx = Methods.ZSTD_createCCtx();
-            dCtx = Methods.ZSTD_createDCtx();
+            var buffer = new byte[compressBound];
+            fixed (byte* bufferPtr = buffer)
+            fixed (byte* srcPtr = srcBuffer)
+            {
+                var cctx = ExternMethods.ZSTD_createCCtx();
+                try
+                {
+                    var length = ExternMethods.ZSTD_compressCCtx(cctx,
+                        (IntPtr) bufferPtr, (nuint) buffer.Length,
+                        (IntPtr) srcPtr, (nuint) srcBuffer.Length,
+                        level);
+                    return new Span<byte>(buffer, 0, (int) length);
+                }
+                finally
+                {
 
-            cCtxNative = ExternMethods.ZSTD_createCCtx();
-            dCtxNative = ExternMethods.ZSTD_createDCtx();
-
-            srcBuffer = File.ReadAllBytes("dickens");
-            destBuffer = new byte[Methods.ZSTD_compressBound((nuint)srcBuffer.Length)];
-            decompressedBuffer = new byte[srcBuffer.Length];
+                    ExternMethods.ZSTD_freeCCtx(cctx);
+                }
+            }
         }
 
-        [Theory]
-        [InlineData(-5)]
-        [InlineData(-4)]
-        [InlineData(-3)]
-        [InlineData(-2)]
-        [InlineData(-1)]
-        [InlineData(0)]
-        [InlineData(1)]
-        [InlineData(2)]
-        [InlineData(3)]
-        [InlineData(4)]
-        [InlineData(5)]
-        [InlineData(6)]
-        [InlineData(7)]
-        [InlineData(8)]
-        [InlineData(9)]
-        [InlineData(10)]
-        [InlineData(11)]
-        [InlineData(12)]
-        [InlineData(13)]
-        [InlineData(14)]
-        [InlineData(15)]
-        [InlineData(16)]
-        [InlineData(17)]
-        [InlineData(18)]
-        [InlineData(19)]
-        [InlineData(20)]
-        [InlineData(21)]
-        [InlineData(22)]
-
-        public void TestCompressDecompress(int level)
+        private Span<byte> DecompressNative(ReadOnlySpan<byte> src, int decompressBound)
         {
-            fixed (byte* dstPtr = destBuffer)
-            fixed (byte* srcPtr = srcBuffer)
-            fixed (byte* uncompressedPtr = decompressedBuffer)
+            fixed (byte* srcPtr = src)
             {
-                Assert.Equal(ExternMethods.ZSTD_compressBound((nuint) srcBuffer.Length),
-                    Methods.ZSTD_compressBound((nuint) srcBuffer.Length));
+                var buffer = new byte[decompressBound];
+                fixed (byte* decompressedBufferNativePtr = buffer)
+                {
+                    var dctx = ExternMethods.ZSTD_createDCtx();
+                    try
+                    {
+                        var length = ExternMethods.ZSTD_decompressDCtx(dctx,
+                            (IntPtr) decompressedBufferNativePtr,
+                            (nuint) buffer.Length,
+                            (IntPtr) srcPtr, (nuint) src.Length);
+                        return new Span<byte>(buffer, 0, (int) length);
+                    }
+                    finally
+                    {
 
-                var compressed = Methods.ZSTD_compressCCtx(cCtx, dstPtr, (nuint)destBuffer.Length, srcPtr, (nuint)srcBuffer.Length, level);
-                var compressedNative = ExternMethods.ZSTD_compressCCtx(cCtxNative, (IntPtr)dstPtr, (nuint)destBuffer.Length, (IntPtr)srcPtr,
-                    (nuint)srcBuffer.Length, level);
-
-                Assert.Equal(compressedNative, compressed);
-
-                var decompressed = Methods.ZSTD_decompressDCtx(dCtx, uncompressedPtr, (nuint) decompressedBuffer.Length, dstPtr, compressed);
-
-                var decompressedNative = ExternMethods.ZSTD_decompressDCtx(dCtxNative, (IntPtr) uncompressedPtr, (nuint) decompressedBuffer.Length,
-                    (IntPtr) dstPtr, compressed);
-
-                Assert.Equal(decompressedNative, decompressed);
+                        ExternMethods.ZSTD_freeDCtx(dctx);
+                    }
+                }
             }
+        }
+
+        public static IEnumerable<object[]> LevelsData =>
+            Enumerable.Range(-5, 5)
+                .Concat(Enumerable.Range(1, Compressor.MaxCompressionLevel))
+                .Select(level => new object[] {level});
+
+        [Theory]
+        [MemberData(nameof(LevelsData))]
+        public void CompressAndDecompressWithNative(int level)
+        {
+            var srcBuffer = File.ReadAllBytes("dickens");
+
+            var compressBound = Compressor.GetCompressBound(srcBuffer.Length);
+            Assert.Equal((int) ExternMethods.ZSTD_compressBound((nuint) srcBuffer.Length), compressBound);
+
+            var compressor = new Compressor(level);
+            var compressedSharp = compressor.Wrap(srcBuffer);
+            var compressedNative = CompressNative(srcBuffer, compressBound, level);
+            Assert.True(compressedNative.SequenceEqual(compressedSharp));
+
+            var decompressBound = (int) Decompressor.GetDecompressedSize(compressedSharp);
+            Assert.Equal(decompressBound, srcBuffer.Length);
+
+            var decompressor = new Decompressor();
+            var decompressedSharp = decompressor.Unwrap(compressedSharp);
+            var decompressedNative = DecompressNative(compressedNative, decompressBound);
+            Assert.True(decompressedSharp.SequenceEqual(decompressedNative));
         }
 
         [Fact]
