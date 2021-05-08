@@ -8,41 +8,20 @@ Supports .NET Core 3.1, .NET 5, .NET Standard 2.1
 # Usage  
 
 ZstdSharp has an unsafe API much the same as zstd.  
-There are no safe wrappers yet.
+There are also safe wrappers.
 
 Compress:
-
 ```c#
-var cctx = ZstdSharp.Methods.ZSTD_createCCtx();
-
 var src = File.ReadAllBytes("dickens");
-var compressed = new byte[ZstdSharp.Methods.ZSTD_compressBound((nuint)src.Length)];
-fixed (byte* srcPtr = src)
-fixed (byte* compressedPtr = compressed)
-{
-    var compressedLength = ZstdSharp.Methods.ZSTD_compressCCtx(cctx, compressedPtr, (nuint)compressed.Length,
-        srcPtr, (nuint)src.Length, level);
-}
-
-ZstdSharp.Methods.ZSTD_freeCCtx(cctx);
+var compressor = new Compressor(level);
+var compressed = compressor.Wrap(src);
 ```
 
 Decompress:
 ```c#
-var dctx = ZstdSharp.Methods.ZSTD_createDCtx();
-
 var src = File.ReadAllBytes("dickens.zst");
-fixed (byte* srcPtr = src)
-{
-    var uncompressed = new byte[ZstdSharp.Methods.ZSTD_decompressBound(srcPtr, (nuint) src.Length)];
-    fixed (byte* uncompressedPtr = uncompressed)
-    {
-        var decompressedLength = ZstdSharp.Methods.ZSTD_decompressDCtx(dctx, uncompressedPtr, (nuint) uncompressed.Length,
-            srcPtr, (nuint) src.Length);
-    }
-}
-
-ZstdSharp.Methods.ZSTD_freeDCtx(dctx);
+var decompressor = new Decompressor();
+var decompressed = decompressor.Unwrap(src);
 ```
 
 # Benchmark
