@@ -1,4 +1,4 @@
-﻿using System;
+﻿using ZstdSharp.Unsafe;
 
 namespace ZstdSharp
 {

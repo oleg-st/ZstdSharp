@@ -2,6 +2,7 @@
 using System.IO;
 using Zstd.Extern;
 using ZstdSharp;
+using ZstdSharp.Unsafe;
 
 namespace Sandbox
 {
@@ -36,24 +37,24 @@ namespace Sandbox
 
         static unsafe void Test1()
         {
-            var cctx = ZstdSharp.Methods.ZSTD_createCCtx();
-            var dctx = ZstdSharp.Methods.ZSTD_createDCtx();
+            var cctx = Methods.ZSTD_createCCtx();
+            var dctx = Methods.ZSTD_createDCtx();
 
             var src = File.ReadAllBytes("dickens");
-            var dest = new byte[ZstdSharp.Methods.ZSTD_compressBound((nuint) src.Length)];
+            var dest = new byte[Methods.ZSTD_compressBound((nuint) src.Length)];
             var uncompressed = new byte[src.Length];
             fixed (byte* dstPtr = dest)
             fixed (byte* srcPtr = src)
             fixed (byte* uncompressedPtr = uncompressed)
             {
-                var compressedLength = ZstdSharp.Methods.ZSTD_compressCCtx(cctx, dstPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length,
+                var compressedLength = Methods.ZSTD_compressCCtx(cctx, dstPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length,
                     level);
 
-                var decompressedLength = ZstdSharp.Methods.ZSTD_decompressDCtx(dctx, uncompressedPtr, (nuint) uncompressed.Length, dstPtr, compressedLength);
+                var decompressedLength = Methods.ZSTD_decompressDCtx(dctx, uncompressedPtr, (nuint) uncompressed.Length, dstPtr, compressedLength);
                 Console.WriteLine($"{compressedLength} {decompressedLength} {src.Length}");
             }
-            ZstdSharp.Methods.ZSTD_freeCCtx(cctx);
-            ZstdSharp.Methods.ZSTD_freeDCtx(dctx);
+            Methods.ZSTD_freeCCtx(cctx);
+            Methods.ZSTD_freeDCtx(dctx);
         }
 
         static unsafe void Test2()

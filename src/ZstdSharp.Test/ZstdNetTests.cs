@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Xunit;
+using ZstdSharp.Unsafe;
 
 namespace ZstdSharp.Test
 {

@@ -3,6 +3,7 @@ using System.IO;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Zstd.Extern;
+using ZstdSharp.Unsafe;
 
 namespace ZstdSharp.Benchmark
 {
