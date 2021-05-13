@@ -11,14 +11,26 @@ namespace ZstdSharp
         {
             dctx = Methods.ZSTD_createDCtx();
             if (dctx == null)
-            {
                 throw new ZstdException(ZSTD_ErrorCode.ZSTD_error_GENERIC, "Failed to create dctx");
-            }
         }
 
         ~Decompressor()
         {
             ReleaseUnmanagedResources();
+        }
+
+        public void SetParameter(ZSTD_dParameter parameter, int value)
+        {
+            EnsureNotDisposed();
+            Methods.ZSTD_DCtx_setParameter(dctx, parameter, value).EnsureZstdSuccess();
+        }
+
+        public int GetParameter(ZSTD_dParameter parameter)
+        {
+            EnsureNotDisposed();
+            int value;
+            Methods.ZSTD_DCtx_getParameter(dctx, parameter, &value).EnsureZstdSuccess();
+            return value;
         }
 
         public void LoadDictionary(byte[] dict)
@@ -30,20 +42,15 @@ namespace ZstdSharp
             }
             else
             {
-
                 fixed (byte* dictPtr = dict)
-                {
                     Methods.ZSTD_DCtx_loadDictionary(dctx, dictPtr, (nuint) dict.Length).EnsureZstdSuccess();
-                }
             }
         }
 
         public static ulong GetDecompressedSize(ReadOnlySpan<byte> src)
         {
             fixed (byte* srcPtr = src)
-            {
                 return Methods.ZSTD_decompressBound(srcPtr, (nuint) src.Length).EnsureContentSizeOk();
-            }
         }
 
         public static ulong GetDecompressedSize(ArraySegment<byte> src)
@@ -75,10 +82,9 @@ namespace ZstdSharp
             EnsureNotDisposed();
             fixed (byte* srcPtr = src)
             fixed (byte* destPtr = dest)
-            {
-                return (int) Methods.ZSTD_decompressDCtx(dctx, destPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length)
+                return (int) Methods
+                    .ZSTD_decompressDCtx(dctx, destPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length)
                     .EnsureZstdSuccess();
-            }
         }
 
         public int Unwrap(byte[] src, int srcOffset, int srcLength, byte[] dst, int dstOffset, int dstLength)
@@ -101,8 +107,15 @@ namespace ZstdSharp
         private void EnsureNotDisposed()
         {
             if (dctx == null)
-            {
                 throw new ObjectDisposedException(nameof(Decompressor));
+        }
+
+        internal nuint DecompressStream(ref ZSTD_inBuffer_s input, ref ZSTD_outBuffer_s output)
+        {
+            fixed (ZSTD_inBuffer_s* inputPtr = &input)
+            fixed (ZSTD_outBuffer_s* outputPtr = &output)
+            {
+                return Methods.ZSTD_decompressStream(dctx, outputPtr, inputPtr).EnsureZstdSuccess();
             }
         }
     }

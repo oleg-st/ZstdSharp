@@ -51,9 +51,7 @@ namespace ZstdSharp
             {
 
                 fixed (byte* dictPtr = dict)
-                {
                     Methods.ZSTD_CCtx_loadDictionary(cctx, dictPtr, (nuint) dict.Length).EnsureZstdSuccess();
-                }
             }
         }
 
@@ -61,9 +59,7 @@ namespace ZstdSharp
         {
             cctx = Methods.ZSTD_createCCtx();
             if (cctx == null)
-            {
                 throw new ZstdException(ZSTD_ErrorCode.ZSTD_error_GENERIC, "Failed to create cctx");
-            }
 
             Level = level;
         }
@@ -94,10 +90,9 @@ namespace ZstdSharp
             EnsureNotDisposed();
             fixed (byte* srcPtr = src)
             fixed (byte* destPtr = dest)
-            {
-                return (int) Methods.ZSTD_compress2(cctx, destPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length)
+                return (int) Methods
+                    .ZSTD_compress2(cctx, destPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length)
                     .EnsureZstdSuccess();
-            }
         }
 
         public int Wrap(ArraySegment<byte> src, ArraySegment<byte> dest) 
@@ -124,8 +119,15 @@ namespace ZstdSharp
         private void EnsureNotDisposed()
         {
             if (cctx == null)
-            {
                 throw new ObjectDisposedException(nameof(Compressor));
+        }
+
+        internal nuint CompressStream(ref ZSTD_inBuffer_s input, ref ZSTD_outBuffer_s output, ZSTD_EndDirective directive)
+        {
+            fixed (ZSTD_inBuffer_s* inputPtr = &input)
+            fixed (ZSTD_outBuffer_s* outputPtr = &output)
+            {
+                return Methods.ZSTD_compressStream2(cctx, outputPtr, inputPtr, directive).EnsureZstdSuccess();
             }
         }
     }
