@@ -3,7 +3,7 @@
 [![NuGet package](https://img.shields.io/nuget/v/ZstdSharp.Port.svg?logo=NuGet)](https://www.nuget.org/packages/ZstdSharp.Port)
 
 ZstdSharp is a port of [zstd compression library](https://github.com/facebook/zstd) to С#  
-Based on Zstandard v1.4.9  
+Based on Zstandard v1.5.0  
 Supports .NET Core 3.1, .NET 5, .NET Standard 2.1
 
 # Usage  
@@ -27,20 +27,30 @@ var decompressed = decompressor.Unwrap(src);
 
 # Benchmark
 
-Comparision `zstd` (native) and `ZstdSharp`, compression level = 1.
-
+Comparision `zstd` (native) and `ZstdSharp`  
 ```
-BenchmarkDotNet=v0.12.1, OS=Windows 10.0.19041.867 (2004/?/20H1)
+BenchmarkDotNet=v0.12.1, OS=Windows 10.0.19041.1052 (2004/?/20H1)
 Intel Core i7-2600K CPU 3.40GHz (Sandy Bridge), 1 CPU, 8 logical and 4 physical cores
-.NET Core SDK=5.0.201
-  [Host]     : .NET Core 3.1.13 (CoreCLR 4.700.21.11102, CoreFX 4.700.21.11602), X64 RyuJIT
-  DefaultJob : .NET Core 3.1.13 (CoreCLR 4.700.21.11102, CoreFX 4.700.21.11602), X64 RyuJIT
+.NET Core SDK=5.0.204
+  [Host]     : .NET Core 5.0.7 (CoreCLR 5.0.721.25508, CoreFX 5.0.721.25508), X64 RyuJIT
+  DefaultJob : .NET Core 5.0.7 (CoreCLR 5.0.721.25508, CoreFX 5.0.721.25508), X64 RyuJIT
 ```
 
-|           Method |     Mean |    Error |   StdDev | Ratio |
-|----------------- |---------:|---------:|---------:|------:|
-|   CompressNative | 49.21 ms | 0.218 ms | 0.193 ms |  1.00 |
-|    CompressSharp | 71.41 ms | 0.571 ms | 0.506 ms |  1.45 |
-|                  |          |          |          |       |
-| DecompressNative | 15.48 ms | 0.051 ms | 0.048 ms |  1.00 |
-|  DecompressSharp | 21.98 ms | 0.188 ms | 0.167 ms |  1.42 |
+Compression level 1
+|           Method |     Mean |    Error |   StdDev | Ratio | RatioSD |
+|----------------- |---------:|---------:|---------:|------:|--------:|
+|   CompressNative | 51.20 ms | 1.022 ms | 1.621 ms |  1.00 |    0.00 |
+|    CompressSharp | 68.76 ms | 1.287 ms | 1.074 ms |  1.34 |    0.05 |
+|                  |          |          |          |       |         |
+| DecompressNative | 15.64 ms | 0.253 ms | 0.224 ms |  1.00 |    0.00 |
+|  DecompressSharp | 20.98 ms | 0.253 ms | 0.224 ms |  1.34 |    0.02 |
+
+
+Compression level 5
+|           Method |      Mean |    Error |   StdDev | Ratio | RatioSD |
+|----------------- |----------:|---------:|---------:|------:|--------:|
+|   CompressNative | 205.69 ms | 3.887 ms | 4.159 ms |  1.00 |    0.00 |
+|    CompressSharp | 212.88 ms | 2.141 ms | 1.898 ms |  1.04 |    0.02 |
+|                  |           |          |          |       |         |
+| DecompressNative |  21.91 ms | 0.430 ms | 0.528 ms |  1.00 |    0.00 |
+|  DecompressSharp |  27.77 ms | 0.528 ms | 0.519 ms |  1.26 |    0.03 |
