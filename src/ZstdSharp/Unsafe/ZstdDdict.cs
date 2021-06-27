@@ -235,7 +235,8 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! ZSTD_freeDDict() :
-         *  Function frees memory allocated with ZSTD_createDDict() */
+         *  Function frees memory allocated with ZSTD_createDDict()
+         *  If a NULL pointer is passed, no operation is performed. */
         public static nuint ZSTD_freeDDict(ZSTD_DDict_s* ddict)
         {
             if (ddict == null)

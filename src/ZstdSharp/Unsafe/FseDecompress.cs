@@ -335,35 +335,44 @@ namespace ZstdSharp.Unsafe
         {
             byte* istart = (byte*)(cSrc);
             byte* ip = istart;
-            short* counting = stackalloc short[256];
             uint tableLog;
             uint maxSymbolValue = 255;
-            uint* dtable = (uint*)(workSpace);
-            nuint NCountLength = FSE_readNCount_bmi2((short*)counting, &maxSymbolValue, &tableLog, (void*)istart, cSrcSize, bmi2);
+            FSE_DecompressWksp* wksp = (FSE_DecompressWksp*)(workSpace);
 
-            if ((ERR_isError(NCountLength)) != 0)
+            if (wkspSize < (nuint)(sizeof(FSE_DecompressWksp)))
             {
-                return NCountLength;
+                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
             }
 
-            if (tableLog > maxLog)
+
+            {
+                nuint NCountLength = FSE_readNCount_bmi2((short*)wksp->ncount, &maxSymbolValue, &tableLog, (void*)istart, cSrcSize, bmi2);
+
+                if ((ERR_isError(NCountLength)) != 0)
+                {
+                    return NCountLength;
+                }
+
+                if (tableLog > maxLog)
+                {
+                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
+                }
+
+                assert(NCountLength <= cSrcSize);
+                ip += NCountLength;
+                cSrcSize -= NCountLength;
+            }
+
+            if ((((uint)((1 + (1 << (int)(tableLog)))) + ((((nuint)(sizeof(short)) * (maxSymbolValue + 1) + (1UL << (int)tableLog) + 8) + (nuint)(sizeof(uint)) - 1) / (nuint)(sizeof(uint))) + (uint)((255 + 1) / 2) + 1) * (nuint)(sizeof(uint))) > wkspSize)
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
             }
 
-            assert(NCountLength <= cSrcSize);
-            ip += NCountLength;
-            cSrcSize -= NCountLength;
-            if ((((uint)((1 + (1 << (int)(tableLog)))) + ((((nuint)(sizeof(short)) * (maxSymbolValue + 1) + (1UL << (int)tableLog) + 8) + (nuint)(sizeof(uint)) - 1) / (nuint)(sizeof(uint)))) * (nuint)(sizeof(uint))) > wkspSize)
-            {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
-            }
-
-            workSpace = dtable + (1 + (1 << (int)(tableLog)));
-            wkspSize -= ((uint)((1 + (1 << (int)(tableLog)))) * (nuint)(sizeof(uint)));
+            workSpace = wksp->dtable + (1 + (1 << (int)(tableLog)));
+            wkspSize -= (nuint)(sizeof(FSE_DecompressWksp)) + ((uint)((1 + (1 << (int)(tableLog)))) * (nuint)(sizeof(uint)));
 
             {
-                nuint _var_err__ = FSE_buildDTable_internal(dtable, (short*)counting, maxSymbolValue, tableLog, workSpace, wkspSize);
+                nuint _var_err__ = FSE_buildDTable_internal((uint*)wksp->dtable, (short*)wksp->ncount, maxSymbolValue, tableLog, workSpace, wkspSize);
 
                 if ((ERR_isError(_var_err__)) != 0)
                 {
@@ -373,16 +382,16 @@ namespace ZstdSharp.Unsafe
 
 
             {
-                void* ptr = (void*)dtable;
+                void* ptr = (void*)wksp->dtable;
                 FSE_DTableHeader* DTableH = (FSE_DTableHeader*)(ptr);
                 uint fastMode = DTableH->fastMode;
 
                 if (fastMode != 0)
                 {
-                    return FSE_decompress_usingDTable_generic(dst, dstCapacity, (void*)ip, cSrcSize, dtable, 1);
+                    return FSE_decompress_usingDTable_generic(dst, dstCapacity, (void*)ip, cSrcSize, (uint*)wksp->dtable, 1);
                 }
 
-                return FSE_decompress_usingDTable_generic(dst, dstCapacity, (void*)ip, cSrcSize, dtable, 0);
+                return FSE_decompress_usingDTable_generic(dst, dstCapacity, (void*)ip, cSrcSize, (uint*)wksp->dtable, 0);
             }
         }
 
@@ -429,9 +438,9 @@ namespace ZstdSharp.Unsafe
         */
         public static nuint FSE_decompress(void* dst, nuint dstCapacity, void* cSrc, nuint cSrcSize)
         {
-            uint* wksp = stackalloc uint[5251];
+            uint* wksp = stackalloc uint[5380];
 
-            return FSE_decompress_wksp(dst, dstCapacity, cSrc, cSrcSize, (uint)((14 - 2)), (void*)wksp, (nuint)(sizeof(uint) * 5251));
+            return FSE_decompress_wksp(dst, dstCapacity, cSrc, cSrcSize, (uint)((14 - 2)), (void*)wksp, (nuint)(sizeof(uint) * 5380));
         }
     }
 }

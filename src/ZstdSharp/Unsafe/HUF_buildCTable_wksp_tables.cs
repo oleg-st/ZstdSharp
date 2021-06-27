@@ -1,6 +1,8 @@
+using InlineIL;
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using static InlineIL.IL.Emit;
 
 namespace ZstdSharp.Unsafe
 {
@@ -529,48 +531,45 @@ namespace ZstdSharp.Unsafe
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get
-                {
-                    return ref AsSpan()[index];
-                }
+                get => ref *(this + (uint)index);
             }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public Span<nodeElt_s> AsSpan() => MemoryMarshal.CreateSpan(ref e0, 512);
 
             public ref nodeElt_s this[uint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref AsSpan()[(int) index];
+                get => ref *(this + index);
             }
 
             public ref nodeElt_s this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref AsSpan()[(int) index];
+                get => ref *(this + (uint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
             public static implicit operator nodeElt_s*(in _huffNodeTbl_e__FixedBuffer t)
             {
-                fixed (nodeElt_s *pThis = &t.e0)
-                {
-                    return pThis;
-                }
+                Ldarg_0();
+                Ldflda(new FieldRef(typeof(_huffNodeTbl_e__FixedBuffer), nameof(e0)));
+                return IL.ReturnPointer<nodeElt_s>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
             public static nodeElt_s* operator +(in _huffNodeTbl_e__FixedBuffer t, uint index)
             {
-                fixed (nodeElt_s *pThis = &t.e0)
-                {
-                    return pThis + index;
-                }
+                Ldarg_0();
+                Ldflda(new FieldRef(typeof(_huffNodeTbl_e__FixedBuffer), nameof(e0)));
+                Ldarg_1();
+                Conv_I();
+                Sizeof<nodeElt_s>();
+                Conv_I();
+                Mul();
+                Add();
+                return IL.ReturnPointer<nodeElt_s>();
             }
         }
 
@@ -613,48 +612,45 @@ namespace ZstdSharp.Unsafe
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get
-                {
-                    return ref AsSpan()[index];
-                }
+                get => ref *(this + (uint)index);
             }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public Span<rankPos> AsSpan() => MemoryMarshal.CreateSpan(ref e0, 32);
 
             public ref rankPos this[uint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref AsSpan()[(int) index];
+                get => ref *(this + index);
             }
 
             public ref rankPos this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref AsSpan()[(int) index];
+                get => ref *(this + (uint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
             public static implicit operator rankPos*(in _rankPosition_e__FixedBuffer t)
             {
-                fixed (rankPos *pThis = &t.e0)
-                {
-                    return pThis;
-                }
+                Ldarg_0();
+                Ldflda(new FieldRef(typeof(_rankPosition_e__FixedBuffer), nameof(e0)));
+                return IL.ReturnPointer<rankPos>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
             public static rankPos* operator +(in _rankPosition_e__FixedBuffer t, uint index)
             {
-                fixed (rankPos *pThis = &t.e0)
-                {
-                    return pThis + index;
-                }
+                Ldarg_0();
+                Ldflda(new FieldRef(typeof(_rankPosition_e__FixedBuffer), nameof(e0)));
+                Ldarg_1();
+                Conv_I();
+                Sizeof<rankPos>();
+                Conv_I();
+                Mul();
+                Add();
+                return IL.ReturnPointer<rankPos>();
             }
         }
     }

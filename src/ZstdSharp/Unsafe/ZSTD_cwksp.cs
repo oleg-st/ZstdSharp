@@ -65,10 +65,11 @@ namespace ZstdSharp.Unsafe
      * - Tables: these are any of several different datastructures (hash tables,
      *   chain tables, binary trees) that all respect a common format: they are
      *   uint32_t arrays, all of whose values are between 0 and (nextSrc - base).
-     *   Their sizes depend on the cparams.
+     *   Their sizes depend on the cparams. These tables are 64-byte aligned.
      *
      * - Aligned: these buffers are used for various purposes that require 4 byte
-     *   alignment, but don't require any initialization before they're used.
+     *   alignment, but don't require any initialization before they're used. These
+     *   buffers are each aligned to 64 bytes.
      *
      * - Buffers: these buffers are used for various purposes that don't require
      *   any alignment or initialization before they're used. This means they can
@@ -81,8 +82,7 @@ namespace ZstdSharp.Unsafe
      *
      * 1. Objects
      * 2. Buffers
-     * 3. Aligned
-     * 4. Tables
+     * 3. Aligned/Tables
      *
      * Attempts to reserve objects of different types out of order will fail.
      */

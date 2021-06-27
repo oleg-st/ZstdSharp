@@ -55,7 +55,7 @@ namespace ZstdSharp.Unsafe
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
             }
 
-            iSize = HUF_readStats_wksp((byte*)wksp->huffWeight, (nuint)(255 + 1), (uint*)wksp->rankVal, &nbSymbols, &tableLog, src, srcSize, (void*)wksp->statsWksp, (nuint)(sizeof(uint) * 89), bmi2);
+            iSize = HUF_readStats_wksp((byte*)wksp->huffWeight, (nuint)(255 + 1), (uint*)wksp->rankVal, &nbSymbols, &tableLog, src, srcSize, (void*)wksp->statsWksp, (nuint)(sizeof(uint) * 218), bmi2);
             if ((ERR_isError(iSize)) != 0)
             {
                 return iSize;
@@ -212,7 +212,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static byte HUF_decodeSymbolX1(BIT_DStream_t* Dstream, HUF_DEltX1* dt, uint dtLog)
         {
             nuint val = BIT_lookBitsFast(Dstream, dtLog);
@@ -594,12 +593,14 @@ namespace ZstdSharp.Unsafe
 
         /* HUF_fillDTableX2Level2() :
          * `rankValOrigin` must be a table of at least (HUF_TABLELOG_MAX + 1) U32 */
-        private static void HUF_fillDTableX2Level2(HUF_DEltX2* DTable, uint sizeLog, uint consumed, uint* rankValOrigin, int minWeight, sortedSymbol_t* sortedSymbols, uint sortedListSize, uint nbBitsBaseline, ushort baseSeq)
+        [InlineMethod.Inline]
+        private static void HUF_fillDTableX2Level2(HUF_DEltX2* DTable, uint sizeLog, uint consumed, uint* rankValOrigin, int minWeight, sortedSymbol_t* sortedSymbols, uint sortedListSize, uint nbBitsBaseline, ushort baseSeq, uint* wksp, nuint wkspSize)
         {
             HUF_DEltX2 DElt;
-            uint* rankVal = stackalloc uint[13];
+            uint* rankVal = wksp;
 
-            memcpy((void*)(rankVal), (void*)(rankValOrigin), ((nuint)(sizeof(uint) * 13)));
+            assert(wkspSize >= (uint)(12 + 1));
+            memcpy((void*)(rankVal), (void*)(rankValOrigin), ((nuint)(sizeof(uint)) * (uint)((12 + 1))));
             if (minWeight > 1)
             {
                 uint i, skipSize = rankVal[minWeight];
@@ -641,14 +642,17 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static void HUF_fillDTableX2(HUF_DEltX2* DTable, uint targetLog, sortedSymbol_t* sortedList, uint sortedListSize, uint* rankStart, rankValCol_t* rankValOrigin, uint maxWeight, uint nbBitsBaseline)
+        private static void HUF_fillDTableX2(HUF_DEltX2* DTable, uint targetLog, sortedSymbol_t* sortedList, uint sortedListSize, uint* rankStart, rankValCol_t* rankValOrigin, uint maxWeight, uint nbBitsBaseline, uint* wksp, nuint wkspSize)
         {
-            uint* rankVal = stackalloc uint[13];
+            uint* rankVal = wksp;
             int scaleLog = (int)(nbBitsBaseline - targetLog);
             uint minBits = nbBitsBaseline - maxWeight;
             uint s;
 
-            memcpy((void*)(rankVal), (void*)(rankValOrigin), ((nuint)(sizeof(uint) * 13)));
+            assert(wkspSize >= (uint)(12 + 1));
+            wksp += 12 + 1;
+            wkspSize -= (nuint)(12 + 1);
+            memcpy((void*)(rankVal), (void*)(rankValOrigin), ((nuint)(sizeof(uint)) * (uint)((12 + 1))));
             for (s = 0; s < sortedListSize; s++)
             {
                 ushort symbol = sortedList[s].symbol;
@@ -668,7 +672,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                     sortedRank = rankStart[minWeight];
-                    HUF_fillDTableX2Level2(DTable + start, targetLog - nbBits, nbBits, (uint*)(rankValOrigin[nbBits]), minWeight, sortedList + sortedRank, sortedListSize - sortedRank, nbBitsBaseline, symbol);
+                    HUF_fillDTableX2Level2(DTable + start, targetLog - nbBits, nbBits, (uint*)(rankValOrigin[nbBits]), minWeight, sortedList + sortedRank, sortedListSize - sortedRank, nbBitsBaseline, symbol, wksp, wkspSize);
                 }
                 else
                 {
@@ -702,36 +706,22 @@ namespace ZstdSharp.Unsafe
             void* dtPtr = (void*)(DTable + 1);
             HUF_DEltX2* dt = (HUF_DEltX2*)(dtPtr);
             uint* rankStart;
-            rankValCol_t* rankVal;
-            uint* rankStats;
-            uint* rankStart0;
-            sortedSymbol_t* sortedSymbol;
-            byte* weightList;
-            nuint spaceUsed32 = 0;
+            HUF_ReadDTableX2_Workspace* wksp = (HUF_ReadDTableX2_Workspace*)(workSpace);
 
-            rankVal = (rankValCol_t*)((uint*)(workSpace) + spaceUsed32);
-            spaceUsed32 += ((nuint)(sizeof(uint) * 13) * 12) >> 2;
-            rankStats = (uint*)(workSpace) + spaceUsed32;
-            spaceUsed32 += (nuint)(12 + 1);
-            rankStart0 = (uint*)(workSpace) + spaceUsed32;
-            spaceUsed32 += (nuint)(12 + 2);
-            sortedSymbol = (sortedSymbol_t*)(workSpace) + (spaceUsed32 * (nuint)(sizeof(uint))) / (nuint)(sizeof(sortedSymbol_t));
-            spaceUsed32 += (nuint)((((((nuint)(sizeof(sortedSymbol_t)) * (uint)((255 + 1)))) + (((nuint)(sizeof(uint))) - 1)) & ~(((nuint)(sizeof(uint))) - 1)) >> 2);
-            weightList = (byte*)((uint*)(workSpace) + spaceUsed32);
-            spaceUsed32 += (nuint)((((uint)(((255 + 1))) + (((nuint)(sizeof(uint))) - 1)) & ~(((nuint)(sizeof(uint))) - 1)) >> 2);
-            if ((spaceUsed32 << 2) > wkspSize)
+            if ((nuint)(sizeof(HUF_ReadDTableX2_Workspace)) > wkspSize)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
+                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
             }
 
-            rankStart = rankStart0 + 1;
-            memset((void*)(rankStats), (0), ((nuint)(sizeof(uint)) * (uint)((2 * 12 + 2 + 1))));
+            rankStart = wksp->rankStart0 + 1;
+            memset((void*)(wksp->rankStats), (0), ((nuint)(sizeof(uint) * 13)));
+            memset((void*)(wksp->rankStart0), (0), ((nuint)(sizeof(uint) * 14)));
             if (maxTableLog > 12)
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
             }
 
-            iSize = HUF_readStats(weightList, (nuint)(255 + 1), rankStats, &nbSymbols, &tableLog, src, srcSize);
+            iSize = HUF_readStats_wksp((byte*)wksp->weightList, (nuint)(255 + 1), (uint*)wksp->rankStats, &nbSymbols, &tableLog, src, srcSize, (void*)wksp->calleeWksp, (nuint)(sizeof(uint) * 218), 0);
             if ((ERR_isError(iSize)) != 0)
             {
                 return iSize;
@@ -742,7 +732,7 @@ namespace ZstdSharp.Unsafe
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
             }
 
-            for (maxW = tableLog; rankStats[maxW] == 0; maxW--)
+            for (maxW = tableLog; wksp->rankStats[maxW] == 0; maxW--)
             {
             }
 
@@ -754,7 +744,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint curr = nextRankStart;
 
-                    nextRankStart += rankStats[w];
+                    nextRankStart += wksp->rankStats[w];
                     rankStart[w] = curr;
                 }
 
@@ -768,11 +758,11 @@ namespace ZstdSharp.Unsafe
 
                 for (s = 0; s < nbSymbols; s++)
                 {
-                    uint w = weightList[s];
+                    uint w = wksp->weightList[s];
                     uint r = rankStart[w]++;
 
-                    sortedSymbol[r].symbol = (byte)(s);
-                    sortedSymbol[r].weight = (byte)(w);
+                    wksp->sortedSymbol[r].symbol = (byte)(s);
+                    wksp->sortedSymbol[r].weight = (byte)(w);
                 }
 
                 rankStart[0] = 0;
@@ -780,7 +770,7 @@ namespace ZstdSharp.Unsafe
 
 
             {
-                uint* rankVal0 = (uint*)(rankVal[0]);
+                uint* rankVal0 = (uint*)(wksp->rankVal[0]);
 
 
                 {
@@ -792,7 +782,7 @@ namespace ZstdSharp.Unsafe
                     {
                         uint curr = nextRankVal;
 
-                        nextRankVal += rankStats[w] << (int)(w + (uint)rescale);
+                        nextRankVal += wksp->rankStats[w] << (int)(w + (uint)rescale);
                         rankVal0[w] = curr;
                     }
                 }
@@ -804,7 +794,7 @@ namespace ZstdSharp.Unsafe
 
                     for (consumed = minBits; consumed < maxTableLog - minBits + 1; consumed++)
                     {
-                        uint* rankValPtr = (uint*)(rankVal[consumed]);
+                        uint* rankValPtr = (uint*)(wksp->rankVal[consumed]);
                         uint w;
 
                         for (w = 1; w < maxW + 1; w++)
@@ -815,7 +805,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            HUF_fillDTableX2(dt, maxTableLog, sortedSymbol, sizeOfSort, rankStart0, rankVal, maxW, tableLog + 1);
+            HUF_fillDTableX2(dt, maxTableLog, (sortedSymbol_t*)wksp->sortedSymbol, sizeOfSort, (uint*)wksp->rankStart0, wksp->rankVal, maxW, tableLog + 1, (uint*)wksp->calleeWksp, (nuint)(sizeof(uint) * 218) / (nuint)(sizeof(uint)));
             dtd.tableLog = (byte)(maxTableLog);
             dtd.tableType = 1;
             memcpy((void*)(DTable), (void*)(&dtd), ((nuint)(sizeof(DTableDesc))));
@@ -823,7 +813,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static uint HUF_decodeSymbolX2(void* op, BIT_DStream_t* DStream, HUF_DEltX2* dt, uint dtLog)
         {
             nuint val = BIT_lookBitsFast(DStream, dtLog);
@@ -1675,16 +1664,16 @@ namespace ZstdSharp.Unsafe
 
         public static nuint HUF_readDTableX1(uint* DTable, void* src, nuint srcSize)
         {
-            uint* workSpace = stackalloc uint[512];
+            uint* workSpace = stackalloc uint[640];
 
-            return HUF_readDTableX1_wksp(DTable, src, srcSize, (void*)workSpace, (nuint)(sizeof(uint) * 512));
+            return HUF_readDTableX1_wksp(DTable, src, srcSize, (void*)workSpace, (nuint)(sizeof(uint) * 640));
         }
 
         public static nuint HUF_decompress1X1_DCtx(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
         {
-            uint* workSpace = stackalloc uint[512];
+            uint* workSpace = stackalloc uint[640];
 
-            return HUF_decompress1X1_DCtx_wksp(DCtx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 512));
+            return HUF_decompress1X1_DCtx_wksp(DCtx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 640));
         }
 
         public static nuint HUF_decompress1X1(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
@@ -1698,16 +1687,16 @@ namespace ZstdSharp.Unsafe
 
         public static nuint HUF_readDTableX2(uint* DTable, void* src, nuint srcSize)
         {
-            uint* workSpace = stackalloc uint[512];
+            uint* workSpace = stackalloc uint[640];
 
-            return HUF_readDTableX2_wksp(DTable, src, srcSize, (void*)workSpace, (nuint)(sizeof(uint) * 512));
+            return HUF_readDTableX2_wksp(DTable, src, srcSize, (void*)workSpace, (nuint)(sizeof(uint) * 640));
         }
 
         public static nuint HUF_decompress1X2_DCtx(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
         {
-            uint* workSpace = stackalloc uint[512];
+            uint* workSpace = stackalloc uint[640];
 
-            return HUF_decompress1X2_DCtx_wksp(DCtx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 512));
+            return HUF_decompress1X2_DCtx_wksp(DCtx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 640));
         }
 
         public static nuint HUF_decompress1X2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
@@ -1721,9 +1710,9 @@ namespace ZstdSharp.Unsafe
 
         public static nuint HUF_decompress4X1_DCtx(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
         {
-            uint* workSpace = stackalloc uint[512];
+            uint* workSpace = stackalloc uint[640];
 
-            return HUF_decompress4X1_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 512));
+            return HUF_decompress4X1_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 640));
         }
 
         /* ****************************************
@@ -1740,9 +1729,9 @@ namespace ZstdSharp.Unsafe
 
         public static nuint HUF_decompress4X2_DCtx(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
         {
-            uint* workSpace = stackalloc uint[512];
+            uint* workSpace = stackalloc uint[640];
 
-            return HUF_decompress4X2_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 512));
+            return HUF_decompress4X2_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 640));
         }
 
         public static nuint HUF_decompress4X2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
@@ -1832,16 +1821,16 @@ namespace ZstdSharp.Unsafe
 
         public static nuint HUF_decompress4X_hufOnly(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
         {
-            uint* workSpace = stackalloc uint[512];
+            uint* workSpace = stackalloc uint[640];
 
-            return HUF_decompress4X_hufOnly_wksp(dctx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 512));
+            return HUF_decompress4X_hufOnly_wksp(dctx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 640));
         }
 
         public static nuint HUF_decompress1X_DCtx(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
         {
-            uint* workSpace = stackalloc uint[512];
+            uint* workSpace = stackalloc uint[640];
 
-            return HUF_decompress1X_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 512));
+            return HUF_decompress1X_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, (void*)workSpace, (nuint)(sizeof(uint) * 640));
         }
     }
 }

@@ -61,7 +61,6 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         public static void* memcpy(void* destination, void* source, ulong size)
         {
-            //Unsafe.CopyBlockUnaligned(destination, source, (uint)size);
             Ldarg(nameof(destination));
             Ldarg(nameof(source));
             Ldarg(nameof(size));
@@ -74,7 +73,6 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         public static void* memcpy(void* destination, void* source, uint size)
         {
-            //Unsafe.CopyBlockUnaligned(destination, source, size);
             Ldarg(nameof(destination));
             Ldarg(nameof(source));
             Ldarg(nameof(size));
@@ -88,7 +86,6 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         public static void* memcpy(void* destination, void* source, int size)
         {
-            //Unsafe.CopyBlockUnaligned(destination, source, (uint)size);
             Ldarg(nameof(destination));
             Ldarg(nameof(source));
             Ldarg(nameof(size));
@@ -101,7 +98,6 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         public static void memset(void* memPtr, int val, uint size)
         {
-            //Unsafe.InitBlockUnaligned(memPtr, (byte)val, size);
             Ldarg(nameof(memPtr));
             Ldarg(nameof(val));
             Ldarg(nameof(size));
@@ -113,7 +109,6 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         public static void memset(void* memPtr, int val, int size)
         {
-            //Unsafe.InitBlockUnaligned(memPtr, (byte)val, (uint)size);
             Ldarg(nameof(memPtr));
             Ldarg(nameof(val));
             Ldarg(nameof(size));
@@ -157,7 +152,6 @@ namespace ZstdSharp
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static void memmove(void* destination, void* source, ulong size)
         {
             Buffer.MemoryCopy(source, destination, size, size);
@@ -173,14 +167,24 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         public static void Prefetch0(void* p)
         {
-            //Sse.Prefetch0(p);
+#if NETCOREAPP3_0_OR_GREATER
+            if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
+            {
+                System.Runtime.Intrinsics.X86.Sse.Prefetch0(p);
+            }
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
         public static void Prefetch1(void* p)
         {
-            //Sse.Prefetch1(p);
+#if NETCOREAPP3_0_OR_GREATER
+            if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
+            {
+                System.Runtime.Intrinsics.X86.Sse.Prefetch1(p);
+            }
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

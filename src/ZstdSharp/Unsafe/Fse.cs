@@ -38,7 +38,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void FSE_encodeSymbol(BIT_CStream_t* bitC, FSE_CState_t* statePtr, uint symbol)
         {
             FSE_symbolCompressionTransform symbolTT = ((FSE_symbolCompressionTransform*)(statePtr->symbolTT))[symbol];
@@ -139,7 +138,6 @@ namespace ZstdSharp.Unsafe
         /*! FSE_decodeSymbolFast() :
             unsafe, only works if no symbol has a probability > 50% */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static byte FSE_decodeSymbolFast(FSE_DState_t* DStatePtr, BIT_DStream_t* bitD)
         {
             FSE_decode_t DInfo = ((FSE_decode_t*)(DStatePtr->table))[DStatePtr->state];

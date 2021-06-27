@@ -20,10 +20,12 @@ namespace ZstdSharp.Test
                 var cctx = ExternMethods.ZSTD_createCCtx();
                 try
                 {
-                    var length = ExternMethods.ZSTD_compressCCtx(cctx,
-                        (IntPtr) bufferPtr, (nuint) buffer.Length,
-                        (IntPtr) srcPtr, (nuint) srcBuffer.Length,
+                    ExternMethods.ZSTD_CCtx_setParameter(cctx, ExternMethods.ZSTD_cParameter.ZSTD_c_compressionLevel,
                         level);
+
+                    var length = ExternMethods.ZSTD_compress2(cctx,
+                        (IntPtr) bufferPtr, (nuint) buffer.Length,
+                        (IntPtr) srcPtr, (nuint) srcBuffer.Length);
                     return new Span<byte>(buffer, 0, (int) length);
                 }
                 finally

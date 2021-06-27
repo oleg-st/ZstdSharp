@@ -8,7 +8,7 @@ namespace ZstdSharp.Unsafe
 
         public fixed uint rankStart[16];
 
-        public fixed uint statsWksp[89];
+        public fixed uint statsWksp[218];
 
         public fixed byte symbols[256];
 

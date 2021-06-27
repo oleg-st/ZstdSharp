@@ -1,5 +1,4 @@
 using System;
-using System.Numerics;
 using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
@@ -17,53 +16,6 @@ namespace ZstdSharp.Unsafe
         public static sbyte* ZDICT_getErrorName(nuint errorCode)
         {
             return ERR_getErrorName(errorCode);
-        }
-
-        /*======   Helper functions   ======*/
-        public static uint ZDICT_getDictID(void* dictBuffer, nuint dictSize)
-        {
-            if (dictSize < 8)
-            {
-                return 0;
-            }
-
-            if (MEM_readLE32(dictBuffer) != 0xEC30A437)
-            {
-                return 0;
-            }
-
-            return MEM_readLE32((void*)((sbyte*)(dictBuffer) + 4));
-        }
-
-        public static nuint ZDICT_getDictHeaderSize(void* dictBuffer, nuint dictSize)
-        {
-            nuint headerSize;
-
-            if (dictSize <= 8 || MEM_readLE32(dictBuffer) != 0xEC30A437)
-            {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted)));
-            }
-
-
-            {
-                ZSTD_compressedBlockState_t* bs = (ZSTD_compressedBlockState_t*)(malloc((nuint)(4592)));
-                uint* wksp = (uint*)(malloc((nuint)(((6 << 10) + 256))));
-
-                if (bs == null || wksp == null)
-                {
-                    headerSize = (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
-                }
-                else
-                {
-                    ZSTD_reset_compressedBlockState(bs);
-                    headerSize = ZSTD_loadCEntropy(bs, (void*)wksp, dictBuffer, dictSize);
-                }
-
-                free((void*)bs);
-                free((void*)wksp);
-            }
-
-            return headerSize;
         }
 
         private static void ZDICT_countEStats(EStats_ress_t esr, ZSTD_parameters* @params, uint* countLit, uint* offsetcodeCount, uint* matchlengthCount, uint* litlengthCount, uint* repOffsets, void* src, nuint srcSize, uint notificationLevel)

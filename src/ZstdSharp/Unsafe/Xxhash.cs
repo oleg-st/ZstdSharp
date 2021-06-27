@@ -10,19 +10,16 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        [InlineMethod.Inline]
         private static void XXH_memcpy(void* dest, void* src, ulong size)
         {
             memcpy((dest), (src), (size));
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static uint XXH_readLE32(void* ptr) => 
             BitConverter.IsLittleEndian ? *(uint*) ptr : BinaryPrimitives.ReverseEndianness(*(uint*) ptr);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static ulong XXH_readLE64(void* ptr) => 
             BitConverter.IsLittleEndian ? *(ulong*) ptr : BinaryPrimitives.ReverseEndianness(*(ulong*) ptr);
 
@@ -41,7 +38,6 @@ namespace ZstdSharp.Unsafe
             return 0 * 100 * 100 + 6 * 100 + 2;
         }
 
-        [InlineMethod.Inline]
         private static ulong XXH64_round(ulong acc, ulong input)
         {
             acc += input * PRIME64_2;
@@ -50,7 +46,6 @@ namespace ZstdSharp.Unsafe
             return acc;
         }
 
-        [InlineMethod.Inline]
         private static ulong XXH64_mergeRound(ulong acc, ulong val)
         {
             val = XXH64_round(0, val);

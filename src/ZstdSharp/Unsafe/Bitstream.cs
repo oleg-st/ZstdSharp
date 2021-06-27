@@ -84,7 +84,6 @@ namespace ZstdSharp.Unsafe
          *  can add up to 31 bits into `bitC`.
          *  Note : does not check for register overflow ! */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void BIT_addBits(BIT_CStream_t* bitC, nuint value, uint nbBits)
         {
             assert(nbBits < ((nuint)(sizeof(uint) * 32) / (nuint)(sizeof(uint))));
@@ -97,7 +96,6 @@ namespace ZstdSharp.Unsafe
          *  works only if `value` is _clean_,
          *  meaning all high bits above nbBits are 0 */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void BIT_addBitsFast(BIT_CStream_t* bitC, nuint value, uint nbBits)
         {
             assert((value >> (int)nbBits) == 0);
@@ -110,7 +108,6 @@ namespace ZstdSharp.Unsafe
          *  assumption : bitContainer has not overflowed
          *  unsafe version; does not check buffer overflow */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void BIT_flushBitsFast(BIT_CStream_t* bitC)
         {
             nuint nbBytes = bitC->bitPos >> 3;
@@ -129,7 +126,6 @@ namespace ZstdSharp.Unsafe
          *  note : does not signal buffer overflow.
          *  overflow will be revealed later on using BIT_closeCStream() */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void BIT_flushBits(BIT_CStream_t* bitC)
         {
             nuint nbBytes = bitC->bitPos >> 3;
@@ -276,7 +272,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint BIT_getMiddleBits(nuint bitContainer, uint start, uint nbBits)
         {
             uint regMask = (uint)((nuint)(sizeof(nuint)) * 8 - 1);
@@ -299,7 +294,6 @@ namespace ZstdSharp.Unsafe
          *  On 64-bits, maxNbBits==56.
          * @return : value extracted */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint BIT_lookBits(BIT_DStream_t* bitD, uint nbBits)
         {
             return BIT_getMiddleBits(bitD->bitContainer, (uint)(((nuint)(sizeof(nuint)) * 8) - bitD->bitsConsumed - nbBits), nbBits);
@@ -308,7 +302,6 @@ namespace ZstdSharp.Unsafe
         /*! BIT_lookBitsFast() :
          *  unsafe version; only works if nbBits >= 1 */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint BIT_lookBitsFast(BIT_DStream_t* bitD, uint nbBits)
         {
             uint regMask = (uint)((nuint)(sizeof(nuint)) * 8 - 1);
@@ -318,7 +311,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void BIT_skipBits(BIT_DStream_t* bitD, uint nbBits)
         {
             bitD->bitsConsumed += nbBits;
@@ -329,7 +321,6 @@ namespace ZstdSharp.Unsafe
          *  Pay attention to not read more than nbBits contained into local register.
          * @return : extracted value. */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint BIT_readBits(BIT_DStream_t* bitD, uint nbBits)
         {
             nuint value = BIT_lookBits(bitD, nbBits);
@@ -341,7 +332,6 @@ namespace ZstdSharp.Unsafe
         /*! BIT_readBitsFast() :
          *  unsafe version; only works only if nbBits >= 1 */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint BIT_readBitsFast(BIT_DStream_t* bitD, uint nbBits)
         {
             nuint value = BIT_lookBitsFast(bitD, nbBits);
@@ -358,7 +348,6 @@ namespace ZstdSharp.Unsafe
          *     point you must use BIT_reloadDStream() to reload.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static BIT_DStream_status BIT_reloadDStreamFast(BIT_DStream_t* bitD)
         {
             if ((bitD->ptr < bitD->limitPtr))
@@ -379,7 +368,6 @@ namespace ZstdSharp.Unsafe
          * @return : status of `BIT_DStream_t` internal register.
          *           when status == BIT_DStream_unfinished, internal register is filled with at least 25 or 57 bits */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static BIT_DStream_status BIT_reloadDStream(BIT_DStream_t* bitD)
         {
             if (bitD->bitsConsumed > ((nuint)(sizeof(nuint)) * 8))

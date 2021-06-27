@@ -16,6 +16,9 @@ namespace ZstdSharp.Unsafe
 
         public ZSTD_CCtx_params_s appliedParams;
 
+        /* Param storage used by the simple API - not sticky. Must only be used in top-level simple API functions for storage. */
+        public ZSTD_CCtx_params_s simpleApiParams;
+
         public uint dictID;
 
         public nuint dictContentSize;

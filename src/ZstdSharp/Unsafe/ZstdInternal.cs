@@ -282,13 +282,11 @@ namespace ZstdSharp.Unsafe
         /*-*******************************************
         *  Shared functions to include for inlining
         *********************************************/
-        [InlineMethod.Inline]
         private static void ZSTD_copy8(void* dst, void* src)
         {
             memcpy((dst), (src), (8));
         }
 
-        [InlineMethod.Inline]
         private static void ZSTD_copy16(void* dst, void* src)
         {
             memcpy((dst), (src), (16));
@@ -302,7 +300,6 @@ namespace ZstdSharp.Unsafe
          *           The src buffer must be before the dst buffer.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void ZSTD_wildcopy(void* dst, void* src, nint length, ZSTD_overlap_e ovtype)
         {
             nint diff = (nint)((byte*)(dst) - (byte*)(src));
@@ -373,7 +370,7 @@ namespace ZstdSharp.Unsafe
 
         /**
          * Returns the ZSTD_sequenceLength for the given sequences. It handles the decoding of long sequences
-         * indicated by longLengthPos and longLengthID, and adds MINMATCH back to matchLength.
+         * indicated by longLengthPos and longLengthType, and adds MINMATCH back to matchLength.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ZSTD_sequenceLength ZSTD_getSequenceLength(seqStore_t* seqStore, seqDef_s* seq)
@@ -384,12 +381,12 @@ namespace ZstdSharp.Unsafe
             seqLen.matchLength = (uint)(seq->matchLength + 3);
             if (seqStore->longLengthPos == (uint)(seq - seqStore->sequencesStart))
             {
-                if (seqStore->longLengthID == 1)
+                if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_literalLength)
                 {
                     seqLen.litLength += 0xFFFF;
                 }
 
-                if (seqStore->longLengthID == 2)
+                if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_matchLength)
                 {
                     seqLen.matchLength += 0xFFFF;
                 }

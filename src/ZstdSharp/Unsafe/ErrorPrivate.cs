@@ -7,7 +7,6 @@ namespace ZstdSharp.Unsafe
     public static unsafe partial class Methods
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static uint ERR_isError(nuint code)
         {
             return (((code > (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_maxCode))))) ? 1U : 0U);

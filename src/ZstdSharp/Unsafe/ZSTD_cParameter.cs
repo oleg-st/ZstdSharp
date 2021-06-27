@@ -35,5 +35,8 @@ namespace ZstdSharp.Unsafe
         ZSTD_c_experimentalParam10 = 1007,
         ZSTD_c_experimentalParam11 = 1008,
         ZSTD_c_experimentalParam12 = 1009,
+        ZSTD_c_experimentalParam13 = 1010,
+        ZSTD_c_experimentalParam14 = 1011,
+        ZSTD_c_experimentalParam15 = 1012,
     }
 }

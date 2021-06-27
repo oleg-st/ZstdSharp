@@ -129,7 +129,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            if (((uint)(((((cLitSize == 0) || (cLitSize >= srcSize - minGain))) ? 1 : 0)) | ERR_isError(cLitSize)) != 0)
+            if ((cLitSize == 0) || (cLitSize >= srcSize - minGain) || (ERR_isError(cLitSize)) != 0)
             {
                 memcpy((void*)(nextHuf), (void*)(prevHuf), ((nuint)(sizeof(ZSTD_hufCTables_t))));
                 return ZSTD_noCompressLiterals(dst, dstCapacity, src, srcSize);

@@ -9,7 +9,6 @@ namespace ZstdSharp.Unsafe
         /*_*******************************************************
         *  Memory operations
         **********************************************************/
-        [InlineMethod.Inline]
         private static void ZSTD_copy4(void* dst, void* src)
         {
             memcpy((dst), (src), (4));
@@ -160,11 +159,11 @@ namespace ZstdSharp.Unsafe
                         {
                             if (singleStream != 0)
                             {
-                                hufSuccess = HUF_decompress1X1_DCtx_wksp_bmi2((uint*)dctx->entropy.hufTable, (void*)dctx->litBuffer, litSize, (void*)(istart + lhSize), litCSize, (void*)dctx->workspace, (nuint)(sizeof(uint) * 512), dctx->bmi2);
+                                hufSuccess = HUF_decompress1X1_DCtx_wksp_bmi2((uint*)dctx->entropy.hufTable, (void*)dctx->litBuffer, litSize, (void*)(istart + lhSize), litCSize, (void*)dctx->workspace, (nuint)(sizeof(uint) * 640), dctx->bmi2);
                             }
                             else
                             {
-                                hufSuccess = HUF_decompress4X_hufOnly_wksp_bmi2((uint*)dctx->entropy.hufTable, (void*)dctx->litBuffer, litSize, (void*)(istart + lhSize), litCSize, (void*)dctx->workspace, (nuint)(sizeof(uint) * 512), dctx->bmi2);
+                                hufSuccess = HUF_decompress4X_hufOnly_wksp_bmi2((uint*)dctx->entropy.hufTable, (void*)dctx->litBuffer, litSize, (void*)(istart + lhSize), litCSize, (void*)dctx->workspace, (nuint)(sizeof(uint) * 640), dctx->bmi2);
                             }
                         }
 
@@ -1805,7 +1804,7 @@ namespace ZstdSharp.Unsafe
                 ip++;
 
                 {
-                    nuint llhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.LLTable, &dctx->LLTptr, LLtype, 35, 9, (void*)ip, (nuint)(iend - ip), (uint*)LL_base, (uint*)LL_bits, (ZSTD_seqSymbol*)LL_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, (uint*)dctx->workspace, (nuint)(2048), dctx->bmi2);
+                    nuint llhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.LLTable, &dctx->LLTptr, LLtype, 35, 9, (void*)ip, (nuint)(iend - ip), (uint*)LL_base, (uint*)LL_bits, (ZSTD_seqSymbol*)LL_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, (uint*)dctx->workspace, (nuint)(2560), dctx->bmi2);
 
                     if ((ERR_isError(llhSize)) != 0)
                     {
@@ -1817,7 +1816,7 @@ namespace ZstdSharp.Unsafe
 
 
                 {
-                    nuint ofhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.OFTable, &dctx->OFTptr, OFtype, 31, 8, (void*)ip, (nuint)(iend - ip), (uint*)OF_base, (uint*)OF_bits, (ZSTD_seqSymbol*)OF_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, (uint*)dctx->workspace, (nuint)(2048), dctx->bmi2);
+                    nuint ofhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.OFTable, &dctx->OFTptr, OFtype, 31, 8, (void*)ip, (nuint)(iend - ip), (uint*)OF_base, (uint*)OF_bits, (ZSTD_seqSymbol*)OF_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, (uint*)dctx->workspace, (nuint)(2560), dctx->bmi2);
 
                     if ((ERR_isError(ofhSize)) != 0)
                     {
@@ -1829,7 +1828,7 @@ namespace ZstdSharp.Unsafe
 
 
                 {
-                    nuint mlhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.MLTable, &dctx->MLTptr, MLtype, 52, 9, (void*)ip, (nuint)(iend - ip), (uint*)ML_base, (uint*)ML_bits, (ZSTD_seqSymbol*)ML_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, (uint*)dctx->workspace, (nuint)(2048), dctx->bmi2);
+                    nuint mlhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.MLTable, &dctx->MLTptr, MLtype, 52, 9, (void*)ip, (nuint)(iend - ip), (uint*)ML_base, (uint*)ML_bits, (ZSTD_seqSymbol*)ML_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, (uint*)dctx->workspace, (nuint)(2560), dctx->bmi2);
 
                     if ((ERR_isError(mlhSize)) != 0)
                     {
@@ -1851,7 +1850,6 @@ namespace ZstdSharp.Unsafe
          *  Postcondition: *op - *op >= 8
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void ZSTD_overlapCopy8(byte** op, byte** ip, nuint offset)
         {
             assert(*ip <= *op);
@@ -1995,7 +1993,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint ZSTD_execSequence(byte* op, byte* oend, seq_t sequence, byte** litPtr, byte* litLimit, byte* prefixStart, byte* virtualStart, byte* dictEnd)
         {
             byte* oLitEnd = op + sequence.litLength;
@@ -2084,7 +2081,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void ZSTD_updateFseState(ZSTD_fseState* DStatePtr, BIT_DStream_t* bitD)
         {
             ZSTD_seqSymbol DInfo = DStatePtr->table[DStatePtr->state];
@@ -2095,7 +2091,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void ZSTD_updateFseStateWithDInfo(ZSTD_fseState* DStatePtr, BIT_DStream_t* bitD, ZSTD_seqSymbol DInfo)
         {
             uint nbBits = DInfo.nbBits;
@@ -2106,7 +2101,7 @@ namespace ZstdSharp.Unsafe
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static seq_t ZSTD_decodeSequence(seqState_t* seqState, ZSTD_longOffset_e longOffsets, ZSTD_prefetch_e prefetch)
+        private static seq_t ZSTD_decodeSequence(seqState_t* seqState, ZSTD_longOffset_e longOffsets)
         {
             seq_t seq;
             var _ = &seq;
@@ -2220,15 +2215,6 @@ namespace ZstdSharp.Unsafe
                 BIT_reloadDStream(&seqState->DStream);
             }
 
-            if (prefetch == ZSTD_prefetch_e.ZSTD_p_prefetch)
-            {
-                nuint pos = seqState->pos + seq.litLength;
-                byte* matchBase = (seq.offset > pos) ? seqState->dictEnd : seqState->prefixStart;
-
-                seq.match = matchBase + pos - seq.offset;
-                seqState->pos = pos + seq.matchLength;
-            }
-
 
             {
                 int kUseUpdateFseState = 0;
@@ -2277,8 +2263,7 @@ namespace ZstdSharp.Unsafe
             if (nbSeq != 0)
             {
                 seqState_t seqState;
-                var _ = &seqState;
-                nuint error = 0;
+				var _ = &seqState;
 
                 dctx->fseEntropy = 1;
 
@@ -2302,26 +2287,21 @@ namespace ZstdSharp.Unsafe
                 assert(dst != null);
                 for (;;)
                 {
-                    seq_t sequence = ZSTD_decodeSequence(&seqState, isLongOffset, ZSTD_prefetch_e.ZSTD_p_noPrefetch);
+                    seq_t sequence = ZSTD_decodeSequence(&seqState, isLongOffset);
                     nuint oneSeqSize = ZSTD_execSequence(op, oend, sequence, &litPtr, litEnd, prefixStart, vBase, dictEnd);
 
-                    BIT_reloadDStream(&(seqState.DStream));
-                    op += oneSeqSize;
                     if ((ERR_isError(oneSeqSize)) != 0)
                     {
-                        error = oneSeqSize;
-                        break;
+                        return oneSeqSize;
                     }
 
+                    op += oneSeqSize;
                     if (--nbSeq == 0)
                     {
                         break;
                     }
-                }
 
-                if ((ERR_isError(error)) != 0)
-                {
-                    return error;
+                    BIT_reloadDStream(&(seqState.DStream));
                 }
 
                 if (nbSeq != 0)
@@ -2370,6 +2350,26 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_prefetchMatch(nuint prefetchPos, seq_t sequence, byte* prefixStart, byte* dictEnd)
+        {
+            prefetchPos += sequence.litLength;
+
+            {
+                byte* matchBase = (sequence.offset > prefetchPos) ? dictEnd : prefixStart;
+                byte* match = matchBase + prefetchPos - sequence.offset;
+
+                Prefetch0((void*)match);
+                Prefetch0((void*)(match + 64));
+            }
+
+            return prefetchPos + sequence.matchLength;
+        }
+
+        /* This decoding function employs prefetching
+         * to reduce latency impact of cache misses.
+         * It's generally employed when block contains a significant portion of long-distance matches
+         * or when coupled with a "cold" dictionary */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_decompressSequencesLong_body(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset, int frame)
         {
             byte* ip = (byte*)(seqStart);
@@ -2385,11 +2385,12 @@ namespace ZstdSharp.Unsafe
 
             if (nbSeq != 0)
             {
-                seq_t* sequences = stackalloc seq_t[4];
-                int seqAdvance = ((nbSeq) < (4) ? (nbSeq) : (4));
+                seq_t* sequences = stackalloc seq_t[8];
+                int seqAdvance = ((nbSeq) < (8) ? (nbSeq) : (8));
                 seqState_t seqState;
                 var _ = &seqState;
                 int seqNb;
+                nuint prefetchPos = (nuint)(op - prefixStart);
 
                 dctx->fseEntropy = 1;
 
@@ -2402,9 +2403,6 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                seqState.prefixStart = prefixStart;
-                seqState.pos = (nuint)(op - prefixStart);
-                seqState.dictEnd = dictEnd;
                 assert(dst != null);
                 assert(iend >= ip);
                 if ((ERR_isError(BIT_initDStream(&seqState.DStream, (void*)ip, (nuint)(iend - ip)))) != 0)
@@ -2417,9 +2415,10 @@ namespace ZstdSharp.Unsafe
                 ZSTD_initFseState(&seqState.stateML, &seqState.DStream, dctx->MLTptr);
                 for (seqNb = 0; (BIT_reloadDStream(&seqState.DStream) <= BIT_DStream_status.BIT_DStream_completed) && (seqNb < seqAdvance); seqNb++)
                 {
-                    sequences[seqNb] = ZSTD_decodeSequence(&seqState, isLongOffset, ZSTD_prefetch_e.ZSTD_p_prefetch);
-                    Prefetch0((void*)(sequences[seqNb].match));
-                    Prefetch0((void*)(sequences[seqNb].match + sequences[seqNb].matchLength - 1));
+                    seq_t sequence = ZSTD_decodeSequence(&seqState, isLongOffset);
+
+                    prefetchPos = ZSTD_prefetchMatch(prefetchPos, sequence, prefixStart, dictEnd);
+                    sequences[seqNb] = sequence;
                 }
 
                 if (seqNb < seqAdvance)
@@ -2429,17 +2428,16 @@ namespace ZstdSharp.Unsafe
 
                 for (; (BIT_reloadDStream(&(seqState.DStream)) <= BIT_DStream_status.BIT_DStream_completed) && (seqNb < nbSeq); seqNb++)
                 {
-                    seq_t sequence = ZSTD_decodeSequence(&seqState, isLongOffset, ZSTD_prefetch_e.ZSTD_p_prefetch);
-                    nuint oneSeqSize = ZSTD_execSequence(op, oend, sequences[(seqNb - 4) & (4 - 1)], &litPtr, litEnd, prefixStart, dictStart, dictEnd);
+                    seq_t sequence = ZSTD_decodeSequence(&seqState, isLongOffset);
+                    nuint oneSeqSize = ZSTD_execSequence(op, oend, sequences[(seqNb - 8) & (8 - 1)], &litPtr, litEnd, prefixStart, dictStart, dictEnd);
 
                     if ((ERR_isError(oneSeqSize)) != 0)
                     {
                         return oneSeqSize;
                     }
 
-                    Prefetch0((void*)sequence.match);
-                    Prefetch0((void*)(sequence.match + sequence.matchLength - 1));
-                    sequences[seqNb & (4 - 1)] = sequence;
+                    prefetchPos = ZSTD_prefetchMatch(prefetchPos, sequence, prefixStart, dictEnd);
+                    sequences[seqNb & (8 - 1)] = sequence;
                     op += oneSeqSize;
                 }
 
@@ -2451,7 +2449,7 @@ namespace ZstdSharp.Unsafe
                 seqNb -= seqAdvance;
                 for (; seqNb < nbSeq; seqNb++)
                 {
-                    nuint oneSeqSize = ZSTD_execSequence(op, oend, sequences[seqNb & (4 - 1)], &litPtr, litEnd, prefixStart, dictStart, dictEnd);
+                    nuint oneSeqSize = ZSTD_execSequence(op, oend, sequences[seqNb & (8 - 1)], &litPtr, litEnd, prefixStart, dictStart, dictEnd);
 
                     if ((ERR_isError(oneSeqSize)) != 0)
                     {
@@ -2604,7 +2602,7 @@ namespace ZstdSharp.Unsafe
                     return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
                 }
 
-                if (usePrefetchDecoder == 0 && (frame == 0 || (dctx->fParams.windowSize > (uint)((1 << 24)))) && (nbSeq > 4))
+                if (usePrefetchDecoder == 0 && (frame == 0 || (dctx->fParams.windowSize > (uint)((1 << 24)))) && (nbSeq > 8))
                 {
                     uint shareLongOffsets = ZSTD_getLongOffsetsShare(dctx->OFTptr);
                     uint minShare = (uint)(MEM_64bits ? 7 : 20);

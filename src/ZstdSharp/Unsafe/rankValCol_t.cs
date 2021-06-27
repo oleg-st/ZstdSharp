@@ -1,5 +1,7 @@
+using InlineIL;
 using System;
 using System.Runtime.CompilerServices;
+using static InlineIL.IL.Emit;
 
 namespace ZstdSharp.Unsafe
 {
@@ -11,10 +13,9 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         public static implicit operator uint*(in rankValCol_t t)
         {
-            fixed (uint* pThis = &t.Body[0])
-            {
-                return pThis;
-            }
+            Ldarg_0();
+            Ldflda(new FieldRef(typeof(rankValCol_t), nameof(Body)));
+            return IL.ReturnPointer<uint>();
         }
     }
 }

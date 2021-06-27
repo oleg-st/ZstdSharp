@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#if NETSTANDARD
+#if !NETCOREAPP3_0_OR_GREATER
 
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
@@ -16,9 +16,10 @@ namespace System.Numerics
     /// The methods use hardware intrinsics when available on the underlying platform,
     /// otherwise they use optimized software fallbacks.
     /// </summary>
-    public unsafe static class BitOperations
+    public static unsafe class BitOperations
     {
-        private static readonly byte* TrailingZeroCountDeBruijn = GetArrayPointer(new byte[]
+        // hack: should be public because of inline
+        public static readonly byte* TrailingZeroCountDeBruijn = GetArrayPointer(new byte[]
         {
             00, 01, 28, 02, 29, 14, 24, 03,
             30, 22, 20, 15, 25, 17, 04, 08,
@@ -26,7 +27,8 @@ namespace System.Numerics
             26, 12, 18, 06, 11, 05, 10, 09
         });
 
-        private static readonly byte* Log2DeBruijn = GetArrayPointer(new byte[]
+        // hack: should be public because of inline
+        public static readonly byte* Log2DeBruijn = GetArrayPointer(new byte[]
         {
             00, 09, 01, 10, 13, 21, 02, 29,
             11, 14, 16, 18, 22, 25, 03, 30,
@@ -40,7 +42,6 @@ namespace System.Numerics
         /// </summary>
         /// <param name="value">The value.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static int Log2(uint value)
         {
             // The 0->0 contract is fulfilled by setting the LSB to 1.
@@ -77,7 +78,6 @@ namespace System.Numerics
         /// </summary>
         /// <param name="value">The value.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static int Log2(ulong value)
         {
             value |= 1;
@@ -98,7 +98,6 @@ namespace System.Numerics
         /// </summary>
         /// <param name="value">The value.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static int TrailingZeroCount(int value)
             => TrailingZeroCount((uint)value);
 
@@ -108,7 +107,6 @@ namespace System.Numerics
         /// </summary>
         /// <param name="value">The value.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static int TrailingZeroCount(uint value)
         {
             // Unguarded fallback contract is 0->0, BSF contract is 0->undefined
@@ -129,7 +127,6 @@ namespace System.Numerics
         /// </summary>
         /// <param name="value">The value.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static int TrailingZeroCount(long value)
             => TrailingZeroCount((ulong)value);
 
@@ -139,7 +136,6 @@ namespace System.Numerics
         /// </summary>
         /// <param name="value">The value.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static int TrailingZeroCount(ulong value)
         {
             uint lo = (uint)value;
@@ -161,7 +157,6 @@ namespace System.Numerics
         /// Any value outside the range [0..31] is treated as congruent mod 32.</param>
         /// <returns>The rotated value.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static uint RotateLeft(uint value, int offset)
             => (value << offset) | (value >> (32 - offset));
 
@@ -174,7 +169,6 @@ namespace System.Numerics
         /// Any value outside the range [0..63] is treated as congruent mod 64.</param>
         /// <returns>The rotated value.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static ulong RotateLeft(ulong value, int offset)
             => (value << offset) | (value >> (64 - offset));
 
@@ -187,7 +181,6 @@ namespace System.Numerics
         /// Any value outside the range [0..31] is treated as congruent mod 32.</param>
         /// <returns>The rotated value.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static uint RotateRight(uint value, int offset)
             => (value >> offset) | (value << (32 - offset));
 
@@ -200,7 +193,6 @@ namespace System.Numerics
         /// Any value outside the range [0..63] is treated as congruent mod 64.</param>
         /// <returns>The rotated value.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         public static ulong RotateRight(ulong value, int offset)
             => (value >> offset) | (value << (64 - offset));
     }

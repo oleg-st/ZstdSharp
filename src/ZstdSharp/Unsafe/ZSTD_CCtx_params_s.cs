@@ -55,6 +55,15 @@ namespace ZstdSharp.Unsafe
 
         public int validateSequences;
 
+        /* Block splitting */
+        public int splitBlocks;
+
+        /* Param for deciding whether to use row-based matchfinder */
+        public ZSTD_useRowMatchFinderMode_e useRowMatchFinder;
+
+        /* Always load a dictionary in ext-dict mode (not prefix mode)? */
+        public int deterministicRefPrefix;
+
         /* Internal use, for createCCtxParams() and freeCCtxParams() only */
         public ZSTD_customMem customMem;
     }

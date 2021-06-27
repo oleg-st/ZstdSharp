@@ -18,5 +18,11 @@ namespace ZstdSharp.Unsafe
 
         /* below that point, no more valid data */
         public uint lowLimit;
+
+        /* Number of times overflow correction has run since
+                                        * ZSTD_window_init(). Useful for debugging coredumps
+                                        * and for ZSTD_WINDOW_OVERFLOW_CORRECT_FREQUENTLY.
+                                        */
+        public uint nbOverflowCorrections;
     }
 }

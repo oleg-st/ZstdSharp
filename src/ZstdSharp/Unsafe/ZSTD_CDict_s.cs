@@ -29,5 +29,11 @@ namespace ZstdSharp.Unsafe
 
         /* 0 indicates that advanced API was used to select CDict params */
         public int compressionLevel;
+
+        /* Indicates whether the CDict was created with params that would use
+                                                             * row-based matchfinder. Unless the cdict is reloaded, we will use
+                                                             * the same greedy/lazy matchfinder at compression time.
+                                                             */
+        public ZSTD_useRowMatchFinderMode_e useRowMatchFinder;
     }
 }

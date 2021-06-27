@@ -9,7 +9,7 @@ namespace ZstdSharp.Unsafe
     {
         public static readonly rawSeqStore_t kNullRawSeqStore = new rawSeqStore_t
         {
-            seq = null,
+            seq = (rawSeq*)null,
             pos = 0,
             posInSequence = 0,
             size = 0,
@@ -17,7 +17,6 @@ namespace ZstdSharp.Unsafe
         };
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static uint ZSTD_LLcode(uint litLength)
         {
 
@@ -30,7 +29,6 @@ namespace ZstdSharp.Unsafe
          * note : mlBase = matchLength - MINMATCH;
          *        because it's the format it's stored in seqStore->sequences */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static uint ZSTD_MLcode(uint mlBase)
         {
 
@@ -228,8 +226,8 @@ namespace ZstdSharp.Unsafe
             seqStorePtr->lit += litLength;
             if (litLength > 0xFFFF)
             {
-                assert(seqStorePtr->longLengthID == 0);
-                seqStorePtr->longLengthID = 1;
+                assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
+                seqStorePtr->longLengthType = ZSTD_longLengthType_e.ZSTD_llt_literalLength;
                 seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
             }
 
@@ -237,8 +235,8 @@ namespace ZstdSharp.Unsafe
             seqStorePtr->sequences[0].offset = offCode + 1;
             if (mlBase > 0xFFFF)
             {
-                assert(seqStorePtr->longLengthID == 0);
-                seqStorePtr->longLengthID = 2;
+                assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
+                seqStorePtr->longLengthType = ZSTD_longLengthType_e.ZSTD_llt_matchLength;
                 seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
             }
 
@@ -252,6 +250,11 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static uint ZSTD_NbCommonBytes(nuint val)
         {
+            if (val == 0)
+            {
+                return 0;
+            }
+
             if (BitConverter.IsLittleEndian)
             {
                 return (uint)(BitOperations.TrailingZeroCount(val) >> 3);
@@ -537,6 +540,12 @@ namespace ZstdSharp.Unsafe
             window->dictLimit = end;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint ZSTD_window_isEmpty(ZSTD_window_t window)
+        {
+            return ((window.dictLimit == 1 && window.lowLimit == 1 && (window.nextSrc - window.@base) == 1) ? 1U : 0U);
+        }
+
         /**
          * ZSTD_window_hasExtDict():
          * Returns non-zero if the window has a non-empty extDict.
@@ -559,15 +568,35 @@ namespace ZstdSharp.Unsafe
         }
 
         /**
+         * ZSTD_window_canOverflowCorrect():
+         * Returns non-zero if the indices are large enough for overflow correction
+         * to work correctly without impacting compression ratio.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint ZSTD_window_canOverflowCorrect(ZSTD_window_t window, uint cycleLog, uint maxDist, uint loadedDictEnd, void* src)
+        {
+            uint cycleSize = 1U << (int)cycleLog;
+            uint curr = (uint)((byte*)(src) - window.@base);
+            uint minIndexToOverflowCorrect = cycleSize + ((maxDist) > (cycleSize) ? (maxDist) : (cycleSize));
+            uint adjustment = window.nbOverflowCorrections + 1;
+            uint adjustedIndex = ((minIndexToOverflowCorrect * adjustment) > (minIndexToOverflowCorrect) ? (minIndexToOverflowCorrect * adjustment) : (minIndexToOverflowCorrect));
+            uint indexLargeEnough = ((curr > adjustedIndex) ? 1U : 0U);
+            uint dictionaryInvalidated = ((curr > maxDist + loadedDictEnd) ? 1U : 0U);
+
+            return ((indexLargeEnough != 0 && dictionaryInvalidated != 0) ? 1U : 0U);
+        }
+
+        /**
          * ZSTD_window_needOverflowCorrection():
          * Returns non-zero if the indices are getting too large and need overflow
          * protection.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_window_needOverflowCorrection(ZSTD_window_t window, void* srcEnd)
+        private static uint ZSTD_window_needOverflowCorrection(ZSTD_window_t window, uint cycleLog, uint maxDist, uint loadedDictEnd, void* src, void* srcEnd)
         {
             uint curr = (uint)((byte*)(srcEnd) - window.@base);
 
+            ;
             return ((curr > ((3U << 29) + (1U << ((int)((nuint)(sizeof(nuint)) == 4 ? 30 : 31))))) ? 1U : 0U);
         }
 
@@ -579,21 +608,26 @@ namespace ZstdSharp.Unsafe
          *
          * The least significant cycleLog bits of the indices must remain the same,
          * which may be 0. Every index up to maxDist in the past must be valid.
-         * NOTE: (maxDist & cycleMask) must be zero.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_window_correctOverflow(ZSTD_window_t* window, uint cycleLog, uint maxDist, void* src)
         {
-            uint cycleMask = (1U << (int)cycleLog) - 1;
+            uint cycleSize = 1U << (int)cycleLog;
+            uint cycleMask = cycleSize - 1;
             uint curr = (uint)((byte*)(src) - window->@base);
             uint currentCycle0 = curr & cycleMask;
-            uint currentCycle1 = currentCycle0 == 0 ? (1U << (int)cycleLog) : currentCycle0;
-            uint newCurrent = currentCycle1 + maxDist;
+            uint currentCycle1 = currentCycle0 == 0 ? cycleSize : currentCycle0;
+            uint newCurrent = currentCycle1 + ((maxDist) > (cycleSize) ? (maxDist) : (cycleSize));
             uint correction = curr - newCurrent;
 
-            assert((maxDist & cycleMask) == 0);
+            assert((maxDist & (maxDist - 1)) == 0);
+            assert((curr & cycleMask) == (newCurrent & cycleMask));
             assert(curr > newCurrent);
-            assert(correction > (uint)(1 << 28));
+            if (0 == 0)
+            {
+                assert(correction > (uint)(1 << 28));
+            }
+
             window->@base += correction;
             window->dictBase += correction;
             if (window->lowLimit <= correction)
@@ -618,6 +652,7 @@ namespace ZstdSharp.Unsafe
             assert(newCurrent - maxDist >= 1);
             assert(window->lowLimit <= newCurrent);
             assert(window->dictLimit <= newCurrent);
+            ++window->nbOverflowCorrections;
             return correction;
         }
 
@@ -717,6 +752,7 @@ namespace ZstdSharp.Unsafe
             window->dictLimit = 1;
             window->lowLimit = 1;
             window->nextSrc = window->@base + 1;
+            window->nbOverflowCorrections = 0;
         }
 
         /**
@@ -727,7 +763,7 @@ namespace ZstdSharp.Unsafe
          * Returns non-zero if the segment is contiguous.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_window_update(ZSTD_window_t* window, void* src, nuint srcSize)
+        private static uint ZSTD_window_update(ZSTD_window_t* window, void* src, nuint srcSize, int forceNonContiguous)
         {
             byte* ip = (byte*)(src);
             uint contiguous = 1;
@@ -739,7 +775,7 @@ namespace ZstdSharp.Unsafe
 
             assert(window->@base != null);
             assert(window->dictBase != null);
-            if (src != window->nextSrc)
+            if (src != window->nextSrc || forceNonContiguous != 0)
             {
                 nuint distanceFromBase = (nuint)(window->nextSrc - window->@base);
 
@@ -772,6 +808,7 @@ namespace ZstdSharp.Unsafe
          * Returns the lowest allowed match index. It may either be in the ext-dict or the prefix.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static uint ZSTD_getLowestMatchIndex(ZSTD_matchState_t* ms, uint curr, uint windowLog)
         {
             uint maxDistance = 1U << (int)windowLog;
@@ -787,7 +824,6 @@ namespace ZstdSharp.Unsafe
          * Returns the lowest allowed match index in the prefix.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static uint ZSTD_getLowestPrefixIndex(ZSTD_matchState_t* ms, uint curr, uint windowLog)
         {
             uint maxDistance = 1U << (int)windowLog;

@@ -213,6 +213,13 @@ namespace ZstdSharp.Unsafe
             42,
             42,
         });
+        static ulong* srcSizeTiers = GetArrayPointer(new ulong[4] 
+        {
+            16 * (1 << 10),
+            128 * (1 << 10),
+            256 * (1 << 10),
+            (unchecked(0UL - 1)),
+        });
         static ZSTD_blockCompressor[][] blockCompressor = new ZSTD_blockCompressor[4][] 
         {
             new ZSTD_blockCompressor[10]
@@ -268,28 +275,65 @@ namespace ZstdSharp.Unsafe
                 null,
             },
         };
+        static ZSTD_blockCompressor[][] rowBasedBlockCompressors = new ZSTD_blockCompressor[4][] 
+        {
+            new ZSTD_blockCompressor[3]
+            {
+                ZSTD_compressBlock_greedy_row,
+                ZSTD_compressBlock_lazy_row,
+                ZSTD_compressBlock_lazy2_row,
+            },
+            new ZSTD_blockCompressor[3]
+            {
+                ZSTD_compressBlock_greedy_extDict_row,
+                ZSTD_compressBlock_lazy_extDict_row,
+                ZSTD_compressBlock_lazy2_extDict_row,
+            },
+            new ZSTD_blockCompressor[3]
+            {
+                ZSTD_compressBlock_greedy_dictMatchState_row,
+                ZSTD_compressBlock_lazy_dictMatchState_row,
+                ZSTD_compressBlock_lazy2_dictMatchState_row,
+            },
+            new ZSTD_blockCompressor[3]
+            {
+                ZSTD_compressBlock_greedy_dedicatedDictSearch_row,
+                ZSTD_compressBlock_lazy_dedicatedDictSearch_row,
+                ZSTD_compressBlock_lazy2_dedicatedDictSearch_row,
+            },
+        };
         static searchMax_f[][] searchFuncs = new searchMax_f[4][] 
         {
-            new searchMax_f[2]
+            new searchMax_f[3]
             {
                 ZSTD_HcFindBestMatch_selectMLS,
                 ZSTD_BtFindBestMatch_selectMLS,
+                ZSTD_RowFindBestMatch_selectRowLog,
             },
-            new searchMax_f[2]
+            new searchMax_f[3]
             {
                 null,
                 null,
+                null,
             },
-            new searchMax_f[2]
+            new searchMax_f[3]
             {
                 ZSTD_HcFindBestMatch_dictMatchState_selectMLS,
                 ZSTD_BtFindBestMatch_dictMatchState_selectMLS,
+                ZSTD_RowFindBestMatch_dictMatchState_selectRowLog,
             },
-            new searchMax_f[2]
+            new searchMax_f[3]
             {
                 ZSTD_HcFindBestMatch_dedicatedDictSearch_selectMLS,
                 null,
+                ZSTD_RowFindBestMatch_dedicatedDictSearch_selectRowLog,
             },
+        };
+        static searchMax_f[] searchFuncsExtGeneric = new searchMax_f[3] 
+        {
+            ZSTD_HcFindBestMatch_extDict_selectMLS,
+            ZSTD_BtFindBestMatch_extDict_selectMLS,
+            ZSTD_RowFindBestMatch_extDict_selectRowLog,
         };
         static decompressionAlgo[] decompress = new decompressionAlgo[2] 
         {

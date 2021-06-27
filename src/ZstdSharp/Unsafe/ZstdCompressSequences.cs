@@ -316,6 +316,7 @@ namespace ZstdSharp.Unsafe
             uint cost = 0;
             uint s;
 
+            assert(total > 0);
             for (s = 0; s <= max; ++s)
             {
                 uint norm = (uint)((256 * count[s]) / total);
@@ -516,7 +517,7 @@ namespace ZstdSharp.Unsafe
                 return 0;
                 case symbolEncodingType_e.set_compressed:
                 {
-                    short* norm = stackalloc short[53];
+                    ZSTD_BuildCTableWksp* wksp = (ZSTD_BuildCTableWksp*)(entropyWorkspace);
                     nuint nbSeq_1 = nbSeq;
                     uint tableLog = FSE_optimalTableLog(FSELog, nbSeq, max);
 
@@ -527,10 +528,10 @@ namespace ZstdSharp.Unsafe
                     }
 
                     assert(nbSeq_1 > 1);
-                    assert(entropyWorkspaceSize >= ((nuint)(sizeof(uint)) * ((uint)(((35) > (52) ? (35) : (52)) + 2) + (1UL << (((((9) > (9) ? (9) : (9))) > (8) ? (((9) > (9) ? (9) : (9))) : (8)) - 2)))));
+                    assert(entropyWorkspaceSize >= (nuint)(sizeof(ZSTD_BuildCTableWksp)));
 
                     {
-                        nuint err_code = (FSE_normalizeCount((short*)norm, tableLog, count, nbSeq_1, max, ZSTD_useLowProbCount(nbSeq_1)));
+                        nuint err_code = (FSE_normalizeCount((short*)wksp->norm, tableLog, count, nbSeq_1, max, ZSTD_useLowProbCount(nbSeq_1)));
 
                         if ((ERR_isError(err_code)) != 0)
                         {
@@ -540,7 +541,7 @@ namespace ZstdSharp.Unsafe
 
 
                     {
-                        nuint NCountSize = FSE_writeNCount((void*)op, (nuint)(oend - op), (short*)norm, max, tableLog);
+                        nuint NCountSize = FSE_writeNCount((void*)op, (nuint)(oend - op), (short*)wksp->norm, max, tableLog);
 
 
                         {
@@ -554,7 +555,7 @@ namespace ZstdSharp.Unsafe
 
 
                         {
-                            nuint err_code = (FSE_buildCTable_wksp(nextCTable, (short*)norm, max, tableLog, entropyWorkspace, entropyWorkspaceSize));
+                            nuint err_code = (FSE_buildCTable_wksp(nextCTable, (short*)wksp->norm, max, tableLog, (void*)wksp->wksp, (nuint)(728)));
 
                             if ((ERR_isError(err_code)) != 0)
                             {

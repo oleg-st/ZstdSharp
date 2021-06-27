@@ -2045,7 +2045,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_DCtx_loadDictionary_advanced(dctx, dict, dictSize, ZSTD_dictLoadMethod_e.ZSTD_dlm_byRef, ZSTD_dictContentType_e.ZSTD_dct_auto);
         }
 
-        /*! ZSTD_DCtx_loadDictionary() :
+        /*! ZSTD_DCtx_loadDictionary() : Requires v1.4.0+
          *  Create an internal DDict from dict buffer,
          *  to be used to decompress next frames.
          *  The dictionary remains valid for all future frames, until explicitly invalidated.
@@ -2084,7 +2084,7 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
-        /*! ZSTD_DCtx_refPrefix() :
+        /*! ZSTD_DCtx_refPrefix() : Requires v1.4.0+
          *  Reference a prefix (single-usage dictionary) to decompress next frame.
          *  This is the reverse operation of ZSTD_CCtx_refPrefix(),
          *  and must use the same prefix as the one used during compression.
@@ -2185,7 +2185,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_startingInputLength(dctx->format);
         }
 
-        /*! ZSTD_DCtx_refDDict() :
+        /*! ZSTD_DCtx_refDDict() : Requires v1.4.0+
          *  Reference a prepared dictionary, to be used to decompress next frames.
          *  The dictionary remains active for decompression of future frames using same DCtx.
          *
@@ -2274,6 +2274,7 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! ZSTD_DCtx_setFormat() :
+         *  This function is REDUNDANT. Prefer ZSTD_DCtx_setParameter().
          *  Instruct the decoder context about what kind of data to decode next.
          *  This instruction is mandatory to decode data without a fully-formed header,
          *  such ZSTD_f_zstd1_magicless for example.

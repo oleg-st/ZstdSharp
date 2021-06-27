@@ -1,6 +1,8 @@
+using InlineIL;
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using static InlineIL.IL.Emit;
 
 namespace ZstdSharp.Unsafe
 {
@@ -10,7 +12,7 @@ namespace ZstdSharp.Unsafe
 
         public _CTable_e__FixedBuffer CTable;
 
-        public HUF_buildCTable_wksp_tables buildCTable_wksp;
+        public _wksps_e__Union wksps;
 
         public unsafe partial struct _CTable_e__FixedBuffer
         {
@@ -275,48 +277,45 @@ namespace ZstdSharp.Unsafe
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get
-                {
-                    return ref AsSpan()[index];
-                }
+                get => ref *(this + (uint)index);
             }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public Span<HUF_CElt_s> AsSpan() => MemoryMarshal.CreateSpan(ref e0, 256);
 
             public ref HUF_CElt_s this[uint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref AsSpan()[(int) index];
+                get => ref *(this + index);
             }
 
             public ref HUF_CElt_s this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref AsSpan()[(int) index];
+                get => ref *(this + (uint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
             public static implicit operator HUF_CElt_s*(in _CTable_e__FixedBuffer t)
             {
-                fixed (HUF_CElt_s *pThis = &t.e0)
-                {
-                    return pThis;
-                }
+                Ldarg_0();
+                Ldflda(new FieldRef(typeof(_CTable_e__FixedBuffer), nameof(e0)));
+                return IL.ReturnPointer<HUF_CElt_s>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
             public static HUF_CElt_s* operator +(in _CTable_e__FixedBuffer t, uint index)
             {
-                fixed (HUF_CElt_s *pThis = &t.e0)
-                {
-                    return pThis + index;
-                }
+                Ldarg_0();
+                Ldflda(new FieldRef(typeof(_CTable_e__FixedBuffer), nameof(e0)));
+                Ldarg_1();
+                Conv_I();
+                Sizeof<HUF_CElt_s>();
+                Conv_I();
+                Mul();
+                Add();
+                return IL.ReturnPointer<HUF_CElt_s>();
             }
         }
     }

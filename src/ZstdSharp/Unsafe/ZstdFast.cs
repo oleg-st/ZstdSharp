@@ -436,8 +436,7 @@ namespace ZstdSharp.Unsafe
                 byte* repMatch = repBase + repIndex;
 
                 hashTable[h] = curr;
-                assert(offset_1 <= curr + 1);
-                if (((((uint)((prefixStartIndex - 1) - repIndex) >= 3) && (repIndex > dictStartIndex))) && (MEM_read32((void*)repMatch) == MEM_read32((void*)(ip + 1))))
+                if (((((uint)((prefixStartIndex - 1) - repIndex) >= 3) && (offset_1 < curr + 1 - dictStartIndex))) && (MEM_read32((void*)repMatch) == MEM_read32((void*)(ip + 1))))
                 {
                     byte* repMatchEnd = repIndex < prefixStartIndex ? dictEnd : iend;
                     nuint rLength = ZSTD_count_2segments(ip + 1 + 4, repMatch + 4, iend, repMatchEnd, prefixStart) + 4;
@@ -488,7 +487,7 @@ namespace ZstdSharp.Unsafe
                         uint repIndex2 = current2 - offset_2;
                         byte* repMatch2 = repIndex2 < prefixStartIndex ? dictBase + repIndex2 : @base + repIndex2;
 
-                        if (((((uint)((prefixStartIndex - 1) - repIndex2) >= 3) && (repIndex2 > dictStartIndex))) && (MEM_read32((void*)repMatch2) == MEM_read32((void*)ip)))
+                        if (((((uint)((prefixStartIndex - 1) - repIndex2) >= 3) && (offset_2 < curr - dictStartIndex))) && (MEM_read32((void*)repMatch2) == MEM_read32((void*)ip)))
                         {
                             byte* repEnd2 = repIndex2 < prefixStartIndex ? dictEnd : iend;
                             nuint repLength2 = ZSTD_count_2segments(ip + 4, repMatch2 + 4, iend, repEnd2, prefixStart) + 4;

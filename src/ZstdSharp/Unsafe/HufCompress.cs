@@ -14,17 +14,19 @@ namespace ZstdSharp.Unsafe
             return FSE_optimalTableLog_internal(maxTableLog, srcSize, maxSymbolValue, 1);
         }
 
-        private static nuint HUF_compressWeights(void* dst, nuint dstSize, void* weightTable, nuint wtSize)
+        private static nuint HUF_compressWeights(void* dst, nuint dstSize, void* weightTable, nuint wtSize, void* workspace, nuint workspaceSize)
         {
             byte* ostart = (byte*)(dst);
             byte* op = ostart;
             byte* oend = ostart + dstSize;
             uint maxSymbolValue = 12;
             uint tableLog = 6;
-            uint* CTable = stackalloc uint[59];
-            uint* scratchBuffer = stackalloc uint[30];
-            uint* count = stackalloc uint[13];
-            short* norm = stackalloc short[13];
+            HUF_CompressWeightsWksp* wksp = (HUF_CompressWeightsWksp*)(workspace);
+
+            if (workspaceSize < (nuint)(sizeof(HUF_CompressWeightsWksp)))
+            {
+                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+            }
 
             if (wtSize <= 1)
             {
@@ -33,7 +35,7 @@ namespace ZstdSharp.Unsafe
 
 
             {
-                uint maxCount = HIST_count_simple((uint*)count, &maxSymbolValue, weightTable, wtSize);
+                uint maxCount = HIST_count_simple((uint*)wksp->count, &maxSymbolValue, weightTable, wtSize);
 
                 if (maxCount == wtSize)
                 {
@@ -49,7 +51,7 @@ namespace ZstdSharp.Unsafe
             tableLog = FSE_optimalTableLog(tableLog, wtSize, maxSymbolValue);
 
             {
-                nuint _var_err__ = FSE_normalizeCount((short*)norm, tableLog, (uint*)count, wtSize, maxSymbolValue, 0);
+                nuint _var_err__ = FSE_normalizeCount((short*)wksp->norm, tableLog, (uint*)wksp->count, wtSize, maxSymbolValue, 0);
 
                 if ((ERR_isError(_var_err__)) != 0)
                 {
@@ -59,7 +61,7 @@ namespace ZstdSharp.Unsafe
 
 
             {
-                nuint hSize = FSE_writeNCount((void*)op, (nuint)(oend - op), (short*)norm, maxSymbolValue, tableLog);
+                nuint hSize = FSE_writeNCount((void*)op, (nuint)(oend - op), (short*)wksp->norm, maxSymbolValue, tableLog);
 
                 if ((ERR_isError(hSize)) != 0)
                 {
@@ -71,7 +73,7 @@ namespace ZstdSharp.Unsafe
 
 
             {
-                nuint _var_err__ = FSE_buildCTable_wksp((uint*)CTable, (short*)norm, maxSymbolValue, tableLog, (void*)scratchBuffer, (nuint)(120));
+                nuint _var_err__ = FSE_buildCTable_wksp((uint*)wksp->CTable, (short*)wksp->norm, maxSymbolValue, tableLog, (void*)wksp->scratchBuffer, (nuint)(120));
 
                 if ((ERR_isError(_var_err__)) != 0)
                 {
@@ -81,7 +83,7 @@ namespace ZstdSharp.Unsafe
 
 
             {
-                nuint cSize = FSE_compress_usingCTable((void*)op, (nuint)(oend - op), weightTable, wtSize, (uint*)CTable);
+                nuint cSize = FSE_compress_usingCTable((void*)op, (nuint)(oend - op), weightTable, wtSize, (uint*)wksp->CTable);
 
                 if ((ERR_isError(cSize)) != 0)
                 {
@@ -99,35 +101,36 @@ namespace ZstdSharp.Unsafe
             return (nuint)(op - ostart);
         }
 
-        /*! HUF_writeCTable() :
-            `CTable` : Huffman tree to save, using huf representation.
-            @return : size of saved CTable */
-        public static nuint HUF_writeCTable(void* dst, nuint maxDstSize, HUF_CElt_s* CTable, uint maxSymbolValue, uint huffLog)
+        public static nuint HUF_writeCTable_wksp(void* dst, nuint maxDstSize, HUF_CElt_s* CTable, uint maxSymbolValue, uint huffLog, void* workspace, nuint workspaceSize)
         {
-            byte* bitsToWeight = stackalloc byte[13];
-            byte* huffWeight = stackalloc byte[255];
             byte* op = (byte*)(dst);
             uint n;
+            HUF_WriteCTableWksp* wksp = (HUF_WriteCTableWksp*)(workspace);
+
+            if (workspaceSize < (nuint)(sizeof(HUF_WriteCTableWksp)))
+            {
+                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+            }
 
             if (maxSymbolValue > 255)
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_maxSymbolValue_tooLarge)));
             }
 
-            bitsToWeight[0] = 0;
+            wksp->bitsToWeight[0] = 0;
             for (n = 1; n < huffLog + 1; n++)
             {
-                bitsToWeight[n] = (byte)(huffLog + 1 - n);
+                wksp->bitsToWeight[n] = (byte)(huffLog + 1 - n);
             }
 
             for (n = 0; n < maxSymbolValue; n++)
             {
-                huffWeight[n] = bitsToWeight[CTable[n].nbBits];
+                wksp->huffWeight[n] = wksp->bitsToWeight[CTable[n].nbBits];
             }
 
 
             {
-                nuint hSize = HUF_compressWeights((void*)(op + 1), maxDstSize - 1, (void*)huffWeight, maxSymbolValue);
+                nuint hSize = HUF_compressWeights((void*)(op + 1), maxDstSize - 1, (void*)wksp->huffWeight, maxSymbolValue, (void*)&wksp->wksp, (nuint)(436));
 
                 if ((ERR_isError(hSize)) != 0)
                 {
@@ -152,13 +155,23 @@ namespace ZstdSharp.Unsafe
             }
 
             op[0] = (byte)(128 + (maxSymbolValue - 1));
-            huffWeight[maxSymbolValue] = 0;
+            wksp->huffWeight[maxSymbolValue] = 0;
             for (n = 0; n < maxSymbolValue; n += 2)
             {
-                op[(n / 2) + 1] = (byte)((huffWeight[n] << 4) + huffWeight[n + 1]);
+                op[(n / 2) + 1] = (byte)((wksp->huffWeight[n] << 4) + wksp->huffWeight[n + 1]);
             }
 
             return ((maxSymbolValue + 1) / 2) + 1;
+        }
+
+        /*! HUF_writeCTable() :
+            `CTable` : Huffman tree to save, using huf representation.
+            @return : size of saved CTable */
+        public static nuint HUF_writeCTable(void* dst, nuint maxDstSize, HUF_CElt_s* CTable, uint maxSymbolValue, uint huffLog)
+        {
+            HUF_WriteCTableWksp wksp;
+
+            return HUF_writeCTable_wksp(dst, maxDstSize, CTable, maxSymbolValue, huffLog, (void*)&wksp, (nuint)(sizeof(HUF_WriteCTableWksp)));
         }
 
         /** HUF_readCTable() :
@@ -653,14 +666,12 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static void HUF_encodeSymbol(BIT_CStream_t* bitCPtr, uint symbol, HUF_CElt_s* CTable)
         {
             BIT_addBitsFast(bitCPtr, CTable[symbol].val, CTable[symbol].nbBits);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint HUF_compress1X_usingCTable_internal_body(void* dst, nuint dstSize, void* src, nuint srcSize, HUF_CElt_s* CTable)
         {
             byte* ip = (byte*)(src);
@@ -1003,7 +1014,7 @@ namespace ZstdSharp.Unsafe
             huffLog = HUF_optimalTableLog(huffLog, srcSize, maxSymbolValue);
 
             {
-                nuint maxBits = HUF_buildCTable_wksp((HUF_CElt_s*)table->CTable, (uint*)table->count, maxSymbolValue, huffLog, (void*)&table->buildCTable_wksp, (nuint)(4352));
+                nuint maxBits = HUF_buildCTable_wksp((HUF_CElt_s*)table->CTable, (uint*)table->count, maxSymbolValue, huffLog, (void*)&table->wksps.buildCTable_wksp, (nuint)(4352));
 
 
                 {
@@ -1021,7 +1032,7 @@ namespace ZstdSharp.Unsafe
 
 
             {
-                nuint hSize = HUF_writeCTable((void*)op, dstSize, (HUF_CElt_s*)table->CTable, maxSymbolValue, huffLog);
+                nuint hSize = HUF_writeCTable_wksp((void*)op, dstSize, (HUF_CElt_s*)table->CTable, maxSymbolValue, huffLog, (void*)&table->wksps.writeCTable_wksp, (nuint)(704));
 
                 if ((ERR_isError(hSize)) != 0)
                 {

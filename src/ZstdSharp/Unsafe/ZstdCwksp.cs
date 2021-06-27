@@ -38,6 +38,8 @@ namespace ZstdSharp.Unsafe
          * Since tables aren't currently redzoned, you don't need to call through this
          * to figure out how much space you need for the matchState tables. Everything
          * else is though.
+         *
+         * Do not use for sizing aligned buffers. Instead, use ZSTD_cwksp_aligned_alloc_size().
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_cwksp_alloc_size(nuint size)
@@ -50,54 +52,55 @@ namespace ZstdSharp.Unsafe
             return size;
         }
 
+        /**
+         * Returns an adjusted alloc size that is the nearest larger multiple of 64 bytes.
+         * Used to determine the number of bytes required for a given "aligned".
+         */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ZSTD_cwksp_internal_advance_phase(ZSTD_cwksp* ws, ZSTD_cwksp_alloc_phase_e phase)
+        private static nuint ZSTD_cwksp_aligned_alloc_size(nuint size)
         {
-            assert(phase >= ws->phase);
-            if (phase > ws->phase)
-            {
-                if (ws->phase < ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_buffers && phase >= ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_buffers)
-                {
-                    ws->tableValidEnd = ws->objectEnd;
-                }
-
-                if (ws->phase < ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_aligned && phase >= ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_aligned)
-                {
-                    ws->allocStart = (byte*)(ws->allocStart) - ((nuint)(ws->allocStart) & ((nuint)(sizeof(uint)) - 1));
-                    if (ws->allocStart < ws->tableValidEnd)
-                    {
-                        ws->tableValidEnd = ws->allocStart;
-                    }
-                }
-
-                ws->phase = phase;
-            }
+            return ZSTD_cwksp_alloc_size(ZSTD_cwksp_align(size, 64));
         }
 
         /**
-         * Returns whether this object/buffer/etc was allocated in this workspace.
+         * Returns the amount of additional space the cwksp must allocate
+         * for internal purposes (currently only alignment).
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int ZSTD_cwksp_owns_buffer(ZSTD_cwksp* ws, void* ptr)
+        private static nuint ZSTD_cwksp_slack_space_required()
         {
-            return (((ptr != null) && (ws->workspace <= ptr) && (ptr <= ws->workspaceEnd)) ? 1 : 0);
+            nuint slackSpace = 64;
+
+            return slackSpace;
+        }
+
+        /**
+         * Return the number of additional bytes required to align a pointer to the given number of bytes.
+         * alignBytes must be a power of two.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_cwksp_bytes_to_align_ptr(void* ptr, nuint alignBytes)
+        {
+            nuint alignBytesMask = alignBytes - 1;
+            nuint bytes = (alignBytes - ((nuint)(ptr) & (alignBytesMask))) & alignBytesMask;
+
+            assert((alignBytes & alignBytesMask) == 0);
+            assert(bytes != 64);
+            return bytes;
         }
 
         /**
          * Internal function. Do not use directly.
+         * Reserves the given number of bytes within the aligned/buffer segment of the wksp, which
+         * counts from the end of the wksp. (as opposed to the object/table segment)
+         *
+         * Returns a pointer to the beginning of that space.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void* ZSTD_cwksp_reserve_internal(ZSTD_cwksp* ws, nuint bytes, ZSTD_cwksp_alloc_phase_e phase)
+        private static void* ZSTD_cwksp_reserve_internal_buffer_space(ZSTD_cwksp* ws, nuint bytes)
         {
-            void* alloc;
+            void* alloc = (void*)((byte*)(ws->allocStart) - bytes);
             void* bottom = ws->tableEnd;
-
-            ZSTD_cwksp_internal_advance_phase(ws, phase);
-            alloc = (byte*)(ws->allocStart) - bytes;
-            if (bytes == 0)
-            {
-                return null;
-            }
 
             ZSTD_cwksp_assert_internal_consistency(ws);
             assert(alloc >= bottom);
@@ -117,6 +120,84 @@ namespace ZstdSharp.Unsafe
         }
 
         /**
+         * Moves the cwksp to the next phase, and does any necessary allocations.
+         * Returns a 0 on success, or zstd error
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_cwksp_internal_advance_phase(ZSTD_cwksp* ws, ZSTD_cwksp_alloc_phase_e phase)
+        {
+            assert(phase >= ws->phase);
+            if (phase > ws->phase)
+            {
+                if (ws->phase < ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_buffers && phase >= ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_buffers)
+                {
+                    ws->tableValidEnd = ws->objectEnd;
+                }
+
+                if (ws->phase < ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_aligned && phase >= ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_aligned)
+                {
+
+                    {
+                        nuint bytesToAlign = 64 - ZSTD_cwksp_bytes_to_align_ptr(ws->allocStart, 64);
+
+                        if ((ZSTD_cwksp_reserve_internal_buffer_space(ws, bytesToAlign)) == null)
+                        {
+                            return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
+                        }
+
+                    }
+
+
+                    {
+                        void* alloc = ws->objectEnd;
+                        nuint bytesToAlign = ZSTD_cwksp_bytes_to_align_ptr(alloc, 64);
+                        void* end = (void*)((byte*)(alloc) + bytesToAlign);
+
+                        if (end > ws->workspaceEnd)
+                        {
+                            return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
+                        }
+
+                        ws->objectEnd = end;
+                        ws->tableEnd = end;
+                        ws->tableValidEnd = end;
+                    }
+                }
+
+                ws->phase = phase;
+                ZSTD_cwksp_assert_internal_consistency(ws);
+            }
+
+            return 0;
+        }
+
+        /**
+         * Returns whether this object/buffer/etc was allocated in this workspace.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_cwksp_owns_buffer(ZSTD_cwksp* ws, void* ptr)
+        {
+            return (((ptr != null) && (ws->workspace <= ptr) && (ptr <= ws->workspaceEnd)) ? 1 : 0);
+        }
+
+        /**
+         * Internal function. Do not use directly.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* ZSTD_cwksp_reserve_internal(ZSTD_cwksp* ws, nuint bytes, ZSTD_cwksp_alloc_phase_e phase)
+        {
+            void* alloc;
+
+            if ((ERR_isError(ZSTD_cwksp_internal_advance_phase(ws, phase))) != 0 || bytes == 0)
+            {
+                return null;
+            }
+
+            alloc = ZSTD_cwksp_reserve_internal_buffer_space(ws, bytes);
+            return alloc;
+        }
+
+        /**
          * Reserves and returns unaligned memory.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -126,17 +207,19 @@ namespace ZstdSharp.Unsafe
         }
 
         /**
-         * Reserves and returns memory sized on and aligned on sizeof(unsigned).
+         * Reserves and returns memory sized on and aligned on ZSTD_CWKSP_ALIGNMENT_BYTES (64 bytes).
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* ZSTD_cwksp_reserve_aligned(ZSTD_cwksp* ws, nuint bytes)
         {
-            assert((bytes & ((nuint)(sizeof(uint)) - 1)) == 0);
-            return ZSTD_cwksp_reserve_internal(ws, ZSTD_cwksp_align(bytes, (nuint)(sizeof(uint))), ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_aligned);
+            void* ptr = ZSTD_cwksp_reserve_internal(ws, ZSTD_cwksp_align(bytes, 64), ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_aligned);
+
+            assert(((nuint)(ptr) & (uint)((64 - 1))) == 0);
+            return ptr;
         }
 
         /**
-         * Aligned on sizeof(unsigned). These buffers have the special property that
+         * Aligned on 64 bytes. These buffers have the special property that
          * their values remain constrained, allowing us to re-use them without
          * memset()-ing them.
          */
@@ -144,12 +227,19 @@ namespace ZstdSharp.Unsafe
         private static void* ZSTD_cwksp_reserve_table(ZSTD_cwksp* ws, nuint bytes)
         {
             ZSTD_cwksp_alloc_phase_e phase = ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_aligned;
-            void* alloc = ws->tableEnd;
-            void* end = (void*)((byte*)(alloc) + bytes);
-            void* top = ws->allocStart;
+            void* alloc;
+            void* end;
+            void* top;
 
+            if ((ERR_isError(ZSTD_cwksp_internal_advance_phase(ws, phase))) != 0)
+            {
+                return null;
+            }
+
+            alloc = ws->tableEnd;
+            end = (byte*)(alloc) + bytes;
+            top = ws->allocStart;
             assert((bytes & ((nuint)(sizeof(uint)) - 1)) == 0);
-            ZSTD_cwksp_internal_advance_phase(ws, phase);
             ZSTD_cwksp_assert_internal_consistency(ws);
             assert(end <= top);
             if (end > top)
@@ -159,6 +249,8 @@ namespace ZstdSharp.Unsafe
             }
 
             ws->tableEnd = end;
+            assert((bytes & (uint)((64 - 1))) == 0);
+            assert(((nuint)(alloc) & (uint)((64 - 1))) == 0);
             return alloc;
         }
 
@@ -326,8 +418,25 @@ namespace ZstdSharp.Unsafe
             return (int)ws->allocFailed;
         }
 
+        /* ZSTD_alignmentSpaceWithinBounds() :
+         * Returns if the estimated space needed for a wksp is within an acceptable limit of the
+         * actual amount of space used.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_cwksp_estimated_space_within_bounds(ZSTD_cwksp* ws, nuint estimatedSpace, int resizedWorkspace)
+        {
+            if (resizedWorkspace != 0)
+            {
+                return ((ZSTD_cwksp_used(ws) == estimatedSpace) ? 1 : 0);
+            }
+            else
+            {
+                return (((ZSTD_cwksp_used(ws) >= estimatedSpace - 63) && (ZSTD_cwksp_used(ws) <= estimatedSpace + 63)) ? 1 : 0);
+            }
+        }
+
         /*-*************************************
-        *  Functions Checking Free Space
+        *  Functions
         ***************************************/
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_cwksp_available_space(ZSTD_cwksp* ws)

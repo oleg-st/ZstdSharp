@@ -335,6 +335,7 @@ namespace ZstdSharp.Unsafe
         }
 
         /* provides the minimum logSize to safely represent a distribution */
+        [InlineMethod.Inline]
         private static uint FSE_minTableLog(nuint srcSize, uint maxSymbolValue)
         {
             uint minBitsSrc = BIT_highbit32((uint)(srcSize)) + 1;

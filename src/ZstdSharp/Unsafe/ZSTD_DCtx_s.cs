@@ -15,7 +15,7 @@ namespace ZstdSharp.Unsafe
         public ZSTD_entropyDTables_t entropy;
 
         /* space needed when building huffman tables */
-        public fixed uint workspace[512];
+        public fixed uint workspace[640];
 
         /* detect continuity */
         public void* previousDstEnd;

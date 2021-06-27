@@ -283,9 +283,9 @@ namespace ZstdSharp.Unsafe
         */
         public static nuint HUF_readStats(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize)
         {
-            uint* wksp = stackalloc uint[89];
+            uint* wksp = stackalloc uint[218];
 
-            return HUF_readStats_wksp(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, (void*)wksp, (nuint)(sizeof(uint) * 89), 0);
+            return HUF_readStats_wksp(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, (void*)wksp, (nuint)(sizeof(uint) * 218), 0);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
