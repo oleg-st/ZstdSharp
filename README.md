@@ -14,14 +14,14 @@ There are also safe wrappers.
 Compress:
 ```c#
 var src = File.ReadAllBytes("dickens");
-var compressor = new Compressor(level);
+using var compressor = new Compressor(level);
 var compressed = compressor.Wrap(src);
 ```
 
 Decompress:
 ```c#
 var src = File.ReadAllBytes("dickens.zst");
-var decompressor = new Decompressor();
+using var decompressor = new Decompressor();
 var decompressed = decompressor.Unwrap(src);
 ```
 
