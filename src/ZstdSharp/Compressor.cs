@@ -101,6 +101,36 @@ namespace ZstdSharp
         public int Wrap(byte[] src, int srcOffset, int srcLength, byte[] dst, int dstOffset, int dstLength) 
             => Wrap(new ReadOnlySpan<byte>(src, srcOffset, srcLength), new Span<byte>(dst, dstOffset, dstLength));
 
+        public bool TryWrap(byte[] src, byte[] dest, int offset, out int written)
+            => TryWrap(src, new Span<byte>(dest, offset, dest.Length - offset), out written);
+
+        public bool TryWrap(ReadOnlySpan<byte> src, Span<byte> dest, out int written)
+        {
+            EnsureNotDisposed();
+            fixed (byte* srcPtr = src)
+            fixed (byte* destPtr = dest)
+            {
+                var returnValue =
+                    Methods.ZSTD_compress2(cctx, destPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length);
+
+                if (returnValue == unchecked(0 - (nuint)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall))
+                {
+                    written = default;
+                    return false;
+                }
+
+                returnValue.EnsureZstdSuccess();
+                written = (int) returnValue;
+                return true;
+            }
+        }
+
+        public bool TryWrap(ArraySegment<byte> src, ArraySegment<byte> dest, out int written)
+            => TryWrap((ReadOnlySpan<byte>)src, dest, out written);
+
+        public bool TryWrap(byte[] src, int srcOffset, int srcLength, byte[] dst, int dstOffset, int dstLength, out int written)
+            => TryWrap(new ReadOnlySpan<byte>(src, srcOffset, srcLength), new Span<byte>(dst, dstOffset, dstLength), out written);
+
         private void ReleaseUnmanagedResources()
         {
             if (cctx != null)

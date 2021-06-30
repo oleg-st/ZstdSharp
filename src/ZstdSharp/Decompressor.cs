@@ -90,6 +90,33 @@ namespace ZstdSharp
         public int Unwrap(byte[] src, int srcOffset, int srcLength, byte[] dst, int dstOffset, int dstLength)
             => Unwrap(new ReadOnlySpan<byte>(src, srcOffset, srcLength), new Span<byte>(dst, dstOffset, dstLength));
 
+        public bool TryUnwrap(byte[] src, byte[] dest, int offset, out int written)
+            => TryUnwrap(src, new Span<byte>(dest, offset, dest.Length - offset), out written);
+
+        public bool TryUnwrap(ReadOnlySpan<byte> src, Span<byte> dest, out int written)
+        {
+            EnsureNotDisposed();
+            fixed (byte* srcPtr = src)
+            fixed (byte* destPtr = dest)
+            {
+                var returnValue =
+                    Methods.ZSTD_decompressDCtx(dctx, destPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length);
+
+                if (returnValue == unchecked(0 - (nuint)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall))
+                {
+                    written = default;
+                    return false;
+                }
+
+                returnValue.EnsureZstdSuccess();
+                written = (int) returnValue;
+                return true;
+            }
+        }
+
+        public bool TryUnwrap(byte[] src, int srcOffset, int srcLength, byte[] dst, int dstOffset, int dstLength, out int written)
+            => TryUnwrap(new ReadOnlySpan<byte>(src, srcOffset, srcLength), new Span<byte>(dst, dstOffset, dstLength), out written);
+
         private void ReleaseUnmanagedResources()
         {
             if (dctx != null)

@@ -237,6 +237,29 @@ namespace ZstdSharp.Test
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
+        public void Decompress_tryUnwrap_onTooBigData(bool useDictionary)
+        {
+            var data = GenerateSample();
+            var dict = useDictionary ? BuildDictionary() : null;
+
+            byte[] compressed;
+            using (var compressor = new Compressor())
+            {
+                compressor.LoadDictionary(dict);
+                compressed = compressor.Wrap(data).ToArray();
+            }
+
+            using (var decompressor = new Decompressor())
+            {
+                decompressor.LoadDictionary(dict);
+                var dest = new byte[20];
+                Assert.False(decompressor.TryUnwrap(compressed, dest, out _));
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
         public void Compress_canRead_fromArraySegment(bool useDictionary)
         {
             var data = GenerateSample();
@@ -387,6 +410,21 @@ namespace ZstdSharp.Test
             compressor.LoadDictionary(dict);
             var ex = Assert.Throws<ZstdException>(() => compressor.Wrap(data, compressed, offset));
             Assert.Equal(ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall, ex.Code);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Compress_tryWrap_whenDestinationBufferIsTooSmall(bool useDictionary)
+        {
+            var data = GenerateSample();
+            var dict = useDictionary ? BuildDictionary() : null;
+            var compressed = new byte[20];
+            const int offset = 4;
+
+            using var compressor = new Compressor();
+            compressor.LoadDictionary(dict);
+            Assert.False(compressor.TryWrap(data, compressed, offset, out _));
         }
 
         [Theory]
