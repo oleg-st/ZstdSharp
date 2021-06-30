@@ -88,12 +88,14 @@ namespace ZstdSharp.Unsafe
             {
                 byte* match0;
                 byte* match1;
-                uint current0;
+                uint current0, matchIndex0, matchIndex1;
                 {
                     nuint h0 = ZSTD_hashPtr((void*)ip0, hlog, mls);
                     nuint h1 = ZSTD_hashPtr((void*)ip1, hlog, mls);
-                    match0 = @base + hashTable[h0];
-                    match1 = @base + hashTable[h1];
+                    matchIndex0 = hashTable[h0];
+                    matchIndex1 = hashTable[h1];
+                    match0 = @base + matchIndex0;
+                    match1 = @base + matchIndex1;
                     current0 = (uint)(ip0 - @base);
                     hashTable[h0] = current0;
                     hashTable[h1] = (uint)(ip1 - @base);
@@ -117,12 +119,12 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                if ((match0 > prefixStart) && MEM_read32((void*)match0) == MEM_read32((void*)ip0))
+                if ((matchIndex0 > prefixStartIndex) && MEM_read32((void*)match0) == MEM_read32((void*)ip0))
                 {
                     goto _offset;
                 }
 
-                if ((match1 > prefixStart) && MEM_read32((void*)match1) == MEM_read32((void*)ip1))
+                if ((matchIndex1 > prefixStartIndex) && MEM_read32((void*)match1) == MEM_read32((void*)ip1))
                 {
                     ip0 = ip1;
                     match0 = match1;
