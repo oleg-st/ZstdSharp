@@ -4,7 +4,7 @@
 
 ZstdSharp is a port of [zstd compression library](https://github.com/facebook/zstd) to С#  
 Based on Zstandard v1.5.0  
-Supports .NET Core 3.1, .NET 5, .NET Standard 2.1
+Supports .NET Core 3.1, .NET 5, .NET Standard 2.0+, .NET Framework 4.6.1+
 
 # Usage  
 
