@@ -75,7 +75,7 @@ namespace ZstdSharp.Test
             var compressBound = Compressor.GetCompressBound(srcBuffer.Length);
             Assert.Equal((int) ExternMethods.ZSTD_compressBound((nuint) srcBuffer.Length), compressBound);
 
-            var compressor = new Compressor(level);
+            using var compressor = new Compressor(level);
             var compressedSharp = compressor.Wrap(srcBuffer);
             var compressedNative = CompressNative(srcBuffer, compressBound, level);
             Assert.True(compressedNative.SequenceEqual(compressedSharp));
@@ -83,7 +83,7 @@ namespace ZstdSharp.Test
             var decompressBound = (int) Decompressor.GetDecompressedSize(compressedSharp);
             Assert.Equal(decompressBound, srcBuffer.Length);
 
-            var decompressor = new Decompressor();
+            using var decompressor = new Decompressor();
             var decompressedSharp = decompressor.Unwrap(compressedSharp);
             var decompressedNative = DecompressNative(compressedNative, decompressBound);
             Assert.True(decompressedSharp.SequenceEqual(decompressedNative));
