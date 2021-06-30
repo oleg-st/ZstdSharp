@@ -747,8 +747,8 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_window_init(ZSTD_window_t* window)
         {
             memset((void*)(window), (0), ((nuint)(sizeof(ZSTD_window_t))));
-            window->@base = (byte*)(GetStringPointer(""));
-            window->dictBase = (byte*)(GetStringPointer(""));
+            window->@base = emptyString;
+            window->dictBase = emptyString;
             window->dictLimit = 1;
             window->lowLimit = 1;
             window->nextSrc = window->@base + 1;

@@ -139,10 +139,6 @@ namespace ZstdSharp
             return destination;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static sbyte* GetStringPointer(string str) => 
-            StringHelper.GetPointer(str);
-
         [Conditional("DEBUG")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void assert(bool condition, string message = null)
@@ -203,54 +199,6 @@ namespace ZstdSharp
                 size--;
             }
             return 0;
-        }
-
-        public static class StringHelper
-        {
-            public class PinnedBuffer : IDisposable
-            {
-                public GCHandle Handle { get; }
-                public byte[] Data { get; private set; }
-
-                public IntPtr Ptr => Handle.AddrOfPinnedObject();
-
-                public PinnedBuffer(byte[] bytes)
-                {
-                    Data = bytes;
-                    Handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
-                }
-
-                public void Dispose()
-                {
-                    Dispose(true);
-                    GC.SuppressFinalize(this);
-                }
-
-                protected virtual void Dispose(bool disposing)
-                {
-                    if (disposing)
-                    {
-                        Handle.Free();
-                        Data = null;
-                    }
-                }
-            }
-
-            private static readonly Dictionary<string, PinnedBuffer> PinnedBuffers = new();
-
-            public static sbyte* GetPointer(string str)
-            {
-                if (!PinnedBuffers.TryGetValue(str, out var pinnedBuffer))
-                {
-                    var byteLength = Encoding.UTF8.GetByteCount(str);
-                    var bytes = new byte[byteLength + 1];
-                    Encoding.UTF8.GetBytes(str, 0, str.Length, bytes, 0);
-                    pinnedBuffer = new PinnedBuffer(bytes);
-                    PinnedBuffers[str] = pinnedBuffer;
-                }
-
-                return (sbyte*) pinnedBuffer.Ptr;
-            }
         }
     }
 }

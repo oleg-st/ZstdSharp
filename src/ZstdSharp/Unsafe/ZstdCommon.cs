@@ -15,9 +15,9 @@ namespace ZstdSharp.Unsafe
 
         /*! ZSTD_versionString() :
          *  Return runtime library version, like "1.4.5". Requires v1.3.0+. */
-        public static sbyte* ZSTD_versionString()
+        public static string ZSTD_versionString()
         {
-            return GetStringPointer("1.5.0");
+            return "1.5.0";
         }
 
         /*! ZSTD_isError() :
@@ -30,7 +30,7 @@ namespace ZstdSharp.Unsafe
 
         /*! ZSTD_getErrorName() :
          *  provides error code string from function result (useful for debugging) */
-        public static sbyte* ZSTD_getErrorName(nuint code)
+        public static string ZSTD_getErrorName(nuint code)
         {
             return ERR_getErrorName(code);
         }
@@ -44,7 +44,7 @@ namespace ZstdSharp.Unsafe
 
         /*! ZSTD_getErrorString() :
          *  provides error code string from enum */
-        public static sbyte* ZSTD_getErrorString(ZSTD_ErrorCode code)
+        public static string ZSTD_getErrorString(ZSTD_ErrorCode code)
         {
             return ERR_getErrorString(code);
         }

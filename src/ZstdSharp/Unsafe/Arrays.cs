@@ -362,5 +362,7 @@ namespace ZstdSharp.Unsafe
             10,
             11,
         });
+
+        private static byte* emptyString = GetArrayPointer(new byte[] {0});
     }
 }

@@ -19,7 +19,7 @@ namespace ZstdSharp.Unsafe
             return ERR_isError(code);
         }
 
-        public static sbyte* FSE_getErrorName(nuint code)
+        public static string FSE_getErrorName(nuint code)
         {
             return ERR_getErrorName(code);
         }
@@ -30,7 +30,7 @@ namespace ZstdSharp.Unsafe
             return ERR_isError(code);
         }
 
-        public static sbyte* HUF_getErrorName(nuint code)
+        public static string HUF_getErrorName(nuint code)
         {
             return ERR_getErrorName(code);
         }

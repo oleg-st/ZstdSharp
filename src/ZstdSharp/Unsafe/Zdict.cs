@@ -13,7 +13,7 @@ namespace ZstdSharp.Unsafe
             return ERR_isError(errorCode);
         }
 
-        public static sbyte* ZDICT_getErrorName(nuint errorCode)
+        public static string ZDICT_getErrorName(nuint errorCode)
         {
             return ERR_getErrorName(errorCode);
         }
