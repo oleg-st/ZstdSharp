@@ -71,7 +71,11 @@ namespace ZstdSharp
         public override int Read(byte[] buffer, int offset, int count)
             => Read(new Span<byte>(buffer, offset, count));
 
+#if !NETSTANDARD2_0 && !NETFRAMEWORK
         public override int Read(Span<byte> buffer)
+#else
+        public int Read(Span<byte> buffer)
+#endif
         {
             EnsureNotDisposed();
 
@@ -97,8 +101,13 @@ namespace ZstdSharp
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
 
+#if !NETSTANDARD2_0 && !NETFRAMEWORK
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
             CancellationToken cancellationToken = default)
+#else
+        public async ValueTask<int> ReadAsync(Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+#endif
         {
             EnsureNotDisposed();
 
@@ -121,6 +130,7 @@ namespace ZstdSharp
 
             return (int) output.pos;
         }
+
         private unsafe nuint DecompressStream(ref ZSTD_outBuffer_s output, Span<byte> outputBuffer)
         {
             fixed (byte* inputBufferPtr = inputBuffer)
@@ -155,5 +165,20 @@ namespace ZstdSharp
             if (decompressor == null)
                 throw new ObjectDisposedException(nameof(DecompressionStream));
         }
+
+#if NETSTANDARD2_0 || NETFRAMEWORK
+        public virtual ValueTask DisposeAsync()
+        {
+            try
+            {
+                Dispose();
+                return default;
+            }
+            catch (Exception exc)
+            {
+                return new ValueTask(Task.FromException(exc));
+            }
+        }
+#endif
     }
 }

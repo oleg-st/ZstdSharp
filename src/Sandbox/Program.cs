@@ -25,7 +25,7 @@ namespace Sandbox
             var compressor = new Compressor(level);
             var compressed = compressor.Wrap(src);
             using var fs = new FileStream("dickens.zst", FileMode.Create);
-            fs.Write(compressed);
+            fs.Write(compressed.ToArray(), 0, compressed.Length);
         }
 
         static void Decompress()

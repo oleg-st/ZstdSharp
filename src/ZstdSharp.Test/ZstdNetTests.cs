@@ -512,7 +512,7 @@ namespace ZstdSharp.Test
         public void CompressAndDecompress_workCorrectly_2GB(bool useDictionary)
         {
             var data = new byte[MaxByteArrayLength];
-            Array.Fill<byte>(data, 0xff, 100, 10000000);
+            new Span<byte>(data, 100, 10000000).Fill(0xff);
 
             var dict = useDictionary ? BuildDictionary() : null;
 

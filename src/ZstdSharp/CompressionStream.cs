@@ -55,7 +55,11 @@ namespace ZstdSharp
 
         ~CompressionStream() => Dispose(false);
 
+#if !NETSTANDARD2_0 && !NETFRAMEWORK
         public override async ValueTask DisposeAsync()
+#else
+        public async ValueTask DisposeAsync()
+#endif
         {
             if (compressor == null)
                 return;
@@ -103,8 +107,13 @@ namespace ZstdSharp
         public override void Write(byte[] buffer, int offset, int count)
             => Write(new ReadOnlySpan<byte>(buffer, offset, count));
 
+#if !NETSTANDARD2_0 && !NETFRAMEWORK
         public override void Write(ReadOnlySpan<byte> buffer)
             => WriteInternal(buffer, false);
+#else
+        public void Write(ReadOnlySpan<byte> buffer)
+            => WriteInternal(buffer, false);
+#endif
 
         private void WriteInternal(ReadOnlySpan<byte> buffer, bool lastChunk)
         {
@@ -146,9 +155,15 @@ namespace ZstdSharp
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => WriteAsync(new ReadOnlyMemory<byte>(buffer, offset, count), cancellationToken).AsTask();
 
+#if !NETSTANDARD2_0 && !NETFRAMEWORK
         public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,
             CancellationToken cancellationToken = default)
             => await WriteInternalAsync(buffer, false, cancellationToken).ConfigureAwait(false);
+#else
+        public async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default)
+            => await WriteInternalAsync(buffer, false, cancellationToken).ConfigureAwait(false);
+#endif
 
         internal unsafe nuint CompressStream(ref ZSTD_inBuffer_s input, ReadOnlySpan<byte> inputBuffer,
             ZSTD_EndDirective directive)
