@@ -97,18 +97,21 @@ namespace ZstdSharp.Test
                                                               BindingFlags.Public | BindingFlags.Instance |
                                                               BindingFlags.Static))
             {
-                bool isValid;
-                try
-                {
-                    System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle);
-                    isValid = true;
-                }
-                catch (Exception)
-                {
-                    isValid = false;
-                }
+                var exception = Record.Exception(() => System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(method.MethodHandle));
+                Assert.True(exception == null, $"Method {method.Name} jit failed");
+            }
+        }
 
-                Assert.True(isValid, $"Method {method.Name}");
+        [Fact]
+        public void CheckAttributes()
+        {
+            foreach (var method in typeof(Methods).Module.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.DeclaredOnly |
+                BindingFlags.NonPublic |
+                BindingFlags.Public | BindingFlags.Instance |
+                BindingFlags.Static)))
+            {
+                var exception = Record.Exception(() => method.GetCustomAttributes(true));
+                Assert.True(exception == null, $"Method {method.Name} has invalid attributes");
             }
         }
     }
