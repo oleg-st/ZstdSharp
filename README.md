@@ -27,6 +27,8 @@ var decompressed = decompressor.Unwrap(src);
 
 # Benchmark
 
+Best performance is achieved on `.NET Core`. `System.Runtime.Intrinsics` namespace is required for hardware accelerated bit and vector operations. `.NET Standard` and `.NET Framework` will use software implementation
+
 Comparision `zstd` (native) and `ZstdSharp`  
 ```
 BenchmarkDotNet=v0.12.1, OS=Windows 10.0.19041.1052 (2004/?/20H1)
