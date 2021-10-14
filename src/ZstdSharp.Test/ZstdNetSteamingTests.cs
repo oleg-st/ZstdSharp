@@ -147,6 +147,27 @@ namespace ZstdSharp.Test
         }
 
         [Fact]
+        public void StreamingDecompressionTruncatedInput()
+        {
+            var dataStream = DataGenerator.GetLargeStream(DataFill.Sequential);
+
+            var resultStream = new MemoryStream();
+            using (var compressionStream = new CompressionStream(resultStream))
+                dataStream.CopyTo(compressionStream);
+
+            // truncate resultStream
+            var truncatedStream =
+                new MemoryStream(resultStream.ToArray(), 0, Math.Min(32, (int) resultStream.Length / 3));
+
+            var exception = Record.Exception(() =>
+            {
+                using var decompressionStream = new DecompressionStream(truncatedStream);
+                decompressionStream.CopyTo(resultStream);
+            });
+            Assert.True(exception is EndOfStreamException);
+        }
+
+        [Fact]
         public void StreamingCompressionFlushDataFromInternalBuffers()
         {
             var testBuffer = new byte[1];

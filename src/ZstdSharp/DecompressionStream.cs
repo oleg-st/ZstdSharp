@@ -60,9 +60,6 @@ namespace ZstdSharp
             if (decompressor == null)
                 return;
 
-            if (lastDecompressResult != 0)
-                throw new EndOfStreamException("Premature end of stream");
-
             decompressor.Dispose();
             decompressor = null;
             ArrayPool<byte>.Shared.Return(inputBuffer);
@@ -86,7 +83,12 @@ namespace ZstdSharp
                 {
                     int bytesRead;
                     if ((bytesRead = innerStream.Read(inputBuffer, 0, inputBufferSize)) == 0)
+                    {
+                        if (lastDecompressResult != 0)
+                            throw new EndOfStreamException("Premature end of stream");
+
                         break;
+                    }
 
                     input.size = (nuint) bytesRead;
                     input.pos = 0;
@@ -119,7 +121,12 @@ namespace ZstdSharp
                     int bytesRead;
                     if ((bytesRead = await innerStream.ReadAsync(inputBuffer, 0, inputBufferSize, cancellationToken)
                         .ConfigureAwait(false)) == 0)
+                    {
+                        if (lastDecompressResult != 0)
+                            throw new EndOfStreamException("Premature end of stream");
+
                         break;
+                    }
 
                     input.size = (nuint) bytesRead;
                     input.pos = 0;
