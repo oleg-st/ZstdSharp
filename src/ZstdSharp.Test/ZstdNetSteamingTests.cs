@@ -425,6 +425,33 @@ namespace ZstdSharp.Test
                 });
         }
 
+        [Fact]
+        public void RoundTrip_WrapperStreams()
+        {
+            using var compressor = new Compressor();
+            using var decompressor = new Decompressor();
+
+            using var dataStream = DataGenerator.GetLargeStream(DataFill.Sequential);
+
+            using var tempStream = new MemoryStream();
+            using (var compressionStream = new CompressionStream(tempStream, compressor))
+                dataStream.CopyTo(compressionStream);
+
+            var data = DataGenerator.GetLargeBuffer(DataFill.Sequential);
+            var compressed = compressor.Wrap(data).ToArray();
+
+            using var resultStream = new MemoryStream();
+            using (var decompressionStream = new DecompressionStream(new MemoryStream(compressed), decompressor))
+                decompressionStream.CopyTo(resultStream);
+
+            Assert.True(data.SequenceEqual(resultStream.ToArray()));
+
+            var resultBuffer = new byte[dataStream.Length];
+            Assert.Equal(dataStream.Length, decompressor.Unwrap(tempStream.ToArray(), resultBuffer, 0));
+
+            Assert.True(dataStream.ToArray().SequenceEqual(resultBuffer));
+        }
+
         private static byte[] TrainDict()
         {
             var trainingData = new byte[100][];
