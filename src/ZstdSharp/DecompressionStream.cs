@@ -12,11 +12,18 @@ namespace ZstdSharp
         private readonly Stream innerStream;
         private readonly byte[] inputBuffer;
         private readonly int inputBufferSize;
+        private readonly bool preserveDecompressor;
         private Decompressor decompressor;
         private ZSTD_inBuffer_s input;
         private nuint lastDecompressResult = 0;
 
         public DecompressionStream(Stream stream, int bufferSize = 0)
+            : this(stream, new Decompressor(), bufferSize)
+        {
+            preserveDecompressor = false;
+        }
+
+        public DecompressionStream(Stream stream, Decompressor decompressor, int bufferSize = 0)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -28,7 +35,8 @@ namespace ZstdSharp
                 throw new ArgumentOutOfRangeException(nameof(bufferSize));
 
             innerStream = stream;
-            decompressor = new Decompressor();
+            this.decompressor = decompressor;
+            preserveDecompressor = true;
 
             inputBufferSize = bufferSize > 0 ? bufferSize : (int) Methods.ZSTD_CStreamInSize().EnsureZstdSuccess();
             inputBuffer = ArrayPool<byte>.Shared.Rent(inputBufferSize);
@@ -60,8 +68,12 @@ namespace ZstdSharp
             if (decompressor == null)
                 return;
 
-            decompressor.Dispose();
-            decompressor = null;
+            if (!preserveDecompressor)
+            {
+                decompressor.Dispose();
+                decompressor = null;
+            }
+
             ArrayPool<byte>.Shared.Return(inputBuffer);
         }
 
