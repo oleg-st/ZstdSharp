@@ -302,38 +302,244 @@ namespace ZstdSharp.Unsafe
                 ZSTD_compressBlock_lazy2_dedicatedDictSearch_row,
             },
         };
-        static searchMax_f[][] searchFuncs = new searchMax_f[4][] 
+        static ZSTD_LazyVTable[][] hcVTables = new ZSTD_LazyVTable[4][] 
         {
-            new searchMax_f[3]
+            new ZSTD_LazyVTable[3]
             {
-                ZSTD_HcFindBestMatch_selectMLS,
-                ZSTD_BtFindBestMatch_selectMLS,
-                ZSTD_RowFindBestMatch_selectRowLog,
+                new (ZSTD_HcFindBestMatch_noDict_4),
+                new (ZSTD_HcFindBestMatch_noDict_5),
+                new (ZSTD_HcFindBestMatch_noDict_6),
             },
-            new searchMax_f[3]
+            new ZSTD_LazyVTable[3]
             {
-                null,
-                null,
-                null,
+                new (ZSTD_HcFindBestMatch_extDict_4),
+                new (ZSTD_HcFindBestMatch_extDict_5),
+                new (ZSTD_HcFindBestMatch_extDict_6),
             },
-            new searchMax_f[3]
+            new ZSTD_LazyVTable[3]
             {
-                ZSTD_HcFindBestMatch_dictMatchState_selectMLS,
-                ZSTD_BtFindBestMatch_dictMatchState_selectMLS,
-                ZSTD_RowFindBestMatch_dictMatchState_selectRowLog,
+                new (ZSTD_HcFindBestMatch_dictMatchState_4),
+                new (ZSTD_HcFindBestMatch_dictMatchState_5),
+                new (ZSTD_HcFindBestMatch_dictMatchState_6),
             },
-            new searchMax_f[3]
+            new ZSTD_LazyVTable[3]
             {
-                ZSTD_HcFindBestMatch_dedicatedDictSearch_selectMLS,
-                null,
-                ZSTD_RowFindBestMatch_dedicatedDictSearch_selectRowLog,
+                new (ZSTD_HcFindBestMatch_dedicatedDictSearch_4),
+                new (ZSTD_HcFindBestMatch_dedicatedDictSearch_5),
+                new (ZSTD_HcFindBestMatch_dedicatedDictSearch_6),
             },
         };
-        static searchMax_f[] searchFuncsExtGeneric = new searchMax_f[3] 
+        static ZSTD_LazyVTable[][] btVTables = new ZSTD_LazyVTable[4][] 
         {
-            ZSTD_HcFindBestMatch_extDict_selectMLS,
-            ZSTD_BtFindBestMatch_extDict_selectMLS,
-            ZSTD_RowFindBestMatch_extDict_selectRowLog,
+            new ZSTD_LazyVTable[3]
+            {
+                new (ZSTD_BtFindBestMatch_noDict_4),
+                new (ZSTD_BtFindBestMatch_noDict_5),
+                new (ZSTD_BtFindBestMatch_noDict_6),
+            },
+            new ZSTD_LazyVTable[3]
+            {
+                new (ZSTD_BtFindBestMatch_extDict_4),
+                new (ZSTD_BtFindBestMatch_extDict_5),
+                new (ZSTD_BtFindBestMatch_extDict_6),
+            },
+            new ZSTD_LazyVTable[3]
+            {
+                new (ZSTD_BtFindBestMatch_dictMatchState_4),
+                new (ZSTD_BtFindBestMatch_dictMatchState_5),
+                new (ZSTD_BtFindBestMatch_dictMatchState_6),
+            },
+            new ZSTD_LazyVTable[3]
+            {
+                new (ZSTD_BtFindBestMatch_dedicatedDictSearch_4),
+                new (ZSTD_BtFindBestMatch_dedicatedDictSearch_5),
+                new (ZSTD_BtFindBestMatch_dedicatedDictSearch_6),
+            },
+        };
+        static ZSTD_LazyVTable[][][] rowVTables = new ZSTD_LazyVTable[4][][] 
+        {
+            new ZSTD_LazyVTable[3][]
+            {
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_noDict_4_4),
+                    new (ZSTD_RowFindBestMatch_noDict_4_5),
+                    new (ZSTD_RowFindBestMatch_noDict_4_6),
+                },
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_noDict_5_4),
+                    new (ZSTD_RowFindBestMatch_noDict_5_5),
+                    new (ZSTD_RowFindBestMatch_noDict_5_6),
+                },
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_noDict_6_4),
+                    new (ZSTD_RowFindBestMatch_noDict_6_5),
+                    new (ZSTD_RowFindBestMatch_noDict_6_6),
+                },
+            },
+            new ZSTD_LazyVTable[3][]
+            {
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_extDict_4_4),
+                    new (ZSTD_RowFindBestMatch_extDict_4_5),
+                    new (ZSTD_RowFindBestMatch_extDict_4_6),
+                },
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_extDict_5_4),
+                    new (ZSTD_RowFindBestMatch_extDict_5_5),
+                    new (ZSTD_RowFindBestMatch_extDict_5_6),
+                },
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_extDict_6_4),
+                    new (ZSTD_RowFindBestMatch_extDict_6_5),
+                    new (ZSTD_RowFindBestMatch_extDict_6_6),
+                },
+            },
+            new ZSTD_LazyVTable[3][]
+            {
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_dictMatchState_4_4),
+                    new (ZSTD_RowFindBestMatch_dictMatchState_4_5),
+                    new (ZSTD_RowFindBestMatch_dictMatchState_4_6),
+                },
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_dictMatchState_5_4),
+                    new (ZSTD_RowFindBestMatch_dictMatchState_5_5),
+                    new (ZSTD_RowFindBestMatch_dictMatchState_5_6),
+                },
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_dictMatchState_6_4),
+                    new (ZSTD_RowFindBestMatch_dictMatchState_6_5),
+                    new (ZSTD_RowFindBestMatch_dictMatchState_6_6),
+                },
+            },
+            new ZSTD_LazyVTable[3][]
+            {
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_4_4),
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_4_5),
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_4_6),
+                },
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_5_4),
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_5_5),
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_5_6),
+                },
+                new ZSTD_LazyVTable[3]
+                {
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_6_4),
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_6_5),
+                    new (ZSTD_RowFindBestMatch_dedicatedDictSearch_6_6),
+                },
+            },
+        };
+        static uint* baseLLfreqs = GetArrayPointer(new uint[36] 
+        {
+            4,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+        });
+        static uint* baseOFCfreqs = GetArrayPointer(new uint[32] 
+        {
+            6,
+            2,
+            1,
+            1,
+            2,
+            3,
+            4,
+            4,
+            4,
+            3,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+        });
+        static ZSTD_getAllMatchesFn[][] getAllMatchesFns = new ZSTD_getAllMatchesFn[3][] 
+        {
+            new ZSTD_getAllMatchesFn[4]
+            {
+                ZSTD_btGetAllMatches_noDict_3,
+                ZSTD_btGetAllMatches_noDict_4,
+                ZSTD_btGetAllMatches_noDict_5,
+                ZSTD_btGetAllMatches_noDict_6,
+            },
+            new ZSTD_getAllMatchesFn[4]
+            {
+                ZSTD_btGetAllMatches_extDict_3,
+                ZSTD_btGetAllMatches_extDict_4,
+                ZSTD_btGetAllMatches_extDict_5,
+                ZSTD_btGetAllMatches_extDict_6,
+            },
+            new ZSTD_getAllMatchesFn[4]
+            {
+                ZSTD_btGetAllMatches_dictMatchState_3,
+                ZSTD_btGetAllMatches_dictMatchState_4,
+                ZSTD_btGetAllMatches_dictMatchState_5,
+                ZSTD_btGetAllMatches_dictMatchState_6,
+            },
         };
         static decompressionAlgo[] decompress = new decompressionAlgo[2] 
         {
@@ -363,6 +569,6 @@ namespace ZstdSharp.Unsafe
             11,
         });
 
-        private static byte* emptyString = GetArrayPointer(new byte[] {0});
+        private static byte* emptyWindowString = GetArrayPointer(new byte[] {32, 0});
     }
 }

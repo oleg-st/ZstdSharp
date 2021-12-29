@@ -52,6 +52,6 @@ namespace ZstdSharp.Unsafe
         /* pre-calculated dictionary statistics */
         public ZSTD_entropyCTables_t* symbolCosts;
 
-        public ZSTD_literalCompressionMode_e literalCompressionMode;
+        public ZSTD_paramSwitch_e literalCompressionMode;
     }
 }

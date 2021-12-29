@@ -82,7 +82,8 @@ namespace ZstdSharp.Unsafe
             return flSize + 1;
         }
 
-        public static nuint ZSTD_compressLiterals(ZSTD_hufCTables_t* prevHuf, ZSTD_hufCTables_t* nextHuf, ZSTD_strategy strategy, int disableLiteralCompression, void* dst, nuint dstCapacity, void* src, nuint srcSize, void* entropyWorkspace, nuint entropyWorkspaceSize, int bmi2)
+        /* If suspectUncompressible then some sampling checks will be run to potentially skip huffman coding */
+        public static nuint ZSTD_compressLiterals(ZSTD_hufCTables_t* prevHuf, ZSTD_hufCTables_t* nextHuf, ZSTD_strategy strategy, int disableLiteralCompression, void* dst, nuint dstCapacity, void* src, nuint srcSize, void* entropyWorkspace, nuint entropyWorkspaceSize, int bmi2, uint suspectUncompressible)
         {
             nuint minGain = ZSTD_minGain(srcSize, strategy);
             nuint lhSize = (nuint)(3 + ((srcSize >= (uint)(1 * (1 << 10))) ? 1 : 0) + ((srcSize >= (uint)(16 * (1 << 10))) ? 1 : 0));
@@ -122,7 +123,7 @@ namespace ZstdSharp.Unsafe
                     singleStream = 1;
                 }
 
-                cLitSize = singleStream != 0 ? HUF_compress1X_repeat((void*)(ostart + lhSize), dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, (HUF_CElt_s*)(nextHuf->CTable), &repeat, preferRepeat, bmi2) : HUF_compress4X_repeat((void*)(ostart + lhSize), dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, (HUF_CElt_s*)(nextHuf->CTable), &repeat, preferRepeat, bmi2);
+                cLitSize = singleStream != 0 ? HUF_compress1X_repeat((void*)(ostart + lhSize), dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, (nuint*)(nextHuf->CTable), &repeat, preferRepeat, bmi2, suspectUncompressible) : HUF_compress4X_repeat((void*)(ostart + lhSize), dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, (nuint*)(nextHuf->CTable), &repeat, preferRepeat, bmi2, suspectUncompressible);
                 if (repeat != HUF_repeat.HUF_repeat_none)
                 {
                     hType = symbolEncodingType_e.set_repeat;

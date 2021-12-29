@@ -31,9 +31,9 @@ namespace ZstdSharp.Unsafe
         public int compressionLevel;
 
         /* Indicates whether the CDict was created with params that would use
-                                                             * row-based matchfinder. Unless the cdict is reloaded, we will use
-                                                             * the same greedy/lazy matchfinder at compression time.
-                                                             */
-        public ZSTD_useRowMatchFinderMode_e useRowMatchFinder;
+                                                   * row-based matchfinder. Unless the cdict is reloaded, we will use
+                                                   * the same greedy/lazy matchfinder at compression time.
+                                                   */
+        public ZSTD_paramSwitch_e useRowMatchFinder;
     }
 }

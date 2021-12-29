@@ -174,7 +174,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZDICT_analyzeEntropy(void* dstBuffer, nuint maxDstSize, int compressionLevel, void* srcBuffer, nuint* fileSizes, uint nbFiles, void* dictBuffer, nuint dictBufferSize, uint notificationLevel)
         {
             uint* countLit = stackalloc uint[256];
-            HUF_CElt_s* hufTable = stackalloc HUF_CElt_s[256];
+            nuint* hufTable = stackalloc nuint[257];
             uint* offcodeCount = stackalloc uint[31];
             short* offcodeNCount = stackalloc short[31];
             uint offcodeMax = ZSTD_highbit32((uint)(dictBufferSize + (uint)(128 * (1 << 10))));
@@ -186,8 +186,8 @@ namespace ZstdSharp.Unsafe
             offsetCount_t* bestRepOffset = stackalloc offsetCount_t[4];
             EStats_ress_t esr = new EStats_ress_t
             {
-                dict = null,
-                zc = null,
+                dict = (ZSTD_CDict_s*)null,
+                zc = (ZSTD_CCtx_s*)null,
                 workPlace = null,
             };
             ZSTD_parameters @params;
@@ -248,9 +248,16 @@ namespace ZstdSharp.Unsafe
                 pos += fileSizes[u];
             }
 
+            if (notificationLevel >= 4)
+            {
+                for (u = 0; u <= offcodeMax; u++)
+                {
+                }
+            }
+
 
             {
-                nuint maxNbBits = HUF_buildCTable((HUF_CElt_s*)hufTable, (uint*)countLit, 255, huffLog);
+                nuint maxNbBits = HUF_buildCTable((nuint*)hufTable, (uint*)countLit, 255, huffLog);
 
                 if ((ERR_isError(maxNbBits)) != 0)
                 {
@@ -261,7 +268,7 @@ namespace ZstdSharp.Unsafe
                 if (maxNbBits == 8)
                 {
                     ZDICT_flatLit((uint*)countLit);
-                    maxNbBits = HUF_buildCTable((HUF_CElt_s*)hufTable, (uint*)countLit, 255, huffLog);
+                    maxNbBits = HUF_buildCTable((nuint*)hufTable, (uint*)countLit, 255, huffLog);
                     assert(maxNbBits == 9);
                 }
 
@@ -322,7 +329,7 @@ namespace ZstdSharp.Unsafe
             llLog = (uint)(errorCode);
 
             {
-                nuint hhSize = HUF_writeCTable((void*)dstPtr, maxDstSize, (HUF_CElt_s*)hufTable, 255, huffLog);
+                nuint hhSize = HUF_writeCTable((void*)dstPtr, maxDstSize, (nuint*)hufTable, 255, huffLog);
 
                 if ((ERR_isError(hhSize)) != 0)
                 {
@@ -397,6 +404,22 @@ namespace ZstdSharp.Unsafe
             return eSize;
         }
 
+        /**
+         * @returns the maximum repcode value
+         */
+        private static uint ZDICT_maxRep(uint* reps)
+        {
+            uint maxRep = reps[0];
+            int r;
+
+            for (r = 1; r < 3; ++r)
+            {
+                maxRep = ((maxRep) > (reps[r]) ? (maxRep) : (reps[r]));
+            }
+
+            return maxRep;
+        }
+
         /*! ZDICT_finalizeDictionary():
          * Given a custom content as a basis for dictionary, and a set of samples,
          * finalize dictionary by adding headers and statistics according to the zstd
@@ -421,7 +444,6 @@ namespace ZstdSharp.Unsafe
          * is presumed that the most profitable content is at the end of the dictionary,
          * since that is the cheapest to reference.
          *
-         * `dictContentSize` must be >= ZDICT_CONTENTSIZE_MIN bytes.
          * `maxDictSize` must be >= max(dictContentSize, ZSTD_DICTSIZE_MIN).
          *
          * @return: size of dictionary stored into `dstDictBuffer` (<= `maxDictSize`),
@@ -439,15 +461,12 @@ namespace ZstdSharp.Unsafe
             byte* header = stackalloc byte[256];
             int compressionLevel = (@params.compressionLevel == 0) ? 3 : @params.compressionLevel;
             uint notificationLevel = @params.notificationLevel;
+            nuint minContentSize = (nuint)(ZDICT_maxRep(repStartValue));
+            nuint paddingSize;
 
             if (dictBufferCapacity < dictContentSize)
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
-            }
-
-            if (dictContentSize < 128)
-            {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong)));
             }
 
             if (dictBufferCapacity < 256)
@@ -458,7 +477,7 @@ namespace ZstdSharp.Unsafe
             MEM_writeLE32((void*)header, 0xEC30A437);
 
             {
-                ulong randomID = XXH64(customDictContent, dictContentSize, 0);
+                ulong randomID = ZSTD_XXH64(customDictContent, dictContentSize, 0);
                 uint compliantID = (uint)((randomID % ((1U << 31) - 32768)) + 32768);
                 uint dictID = @params.dictID != 0 ? @params.dictID : compliantID;
 
@@ -483,13 +502,32 @@ namespace ZstdSharp.Unsafe
                 dictContentSize = dictBufferCapacity - hSize;
             }
 
+            if (dictContentSize < minContentSize)
+            {
+                if (hSize + minContentSize > dictBufferCapacity)
+                {
+                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
+                }
+
+                paddingSize = minContentSize - dictContentSize;
+            }
+            else
+            {
+                paddingSize = 0;
+            }
+
 
             {
-                nuint dictSize = hSize + dictContentSize;
-                sbyte* dictEnd = (sbyte*)(dictBuffer) + dictSize;
+                nuint dictSize = hSize + paddingSize + dictContentSize;
+                byte* outDictHeader = (byte*)(dictBuffer);
+                byte* outDictPadding = outDictHeader + hSize;
+                byte* outDictContent = outDictPadding + paddingSize;
 
-                memmove((void*)(dictEnd - dictContentSize), customDictContent, dictContentSize);
-                memcpy(dictBuffer, (void*)header, hSize);
+                assert(dictSize <= dictBufferCapacity);
+                assert(outDictContent + dictContentSize == (byte*)(dictBuffer) + dictSize);
+                memmove((void*)outDictContent, customDictContent, dictContentSize);
+                memcpy((void*)outDictHeader, (void*)header, hSize);
+                memset((void*)outDictPadding, 0, paddingSize);
                 return dictSize;
             }
         }
@@ -515,7 +553,7 @@ namespace ZstdSharp.Unsafe
             MEM_writeLE32(dictBuffer, 0xEC30A437);
 
             {
-                ulong randomID = XXH64((void*)((sbyte*)(dictBuffer) + dictBufferCapacity - dictContentSize), dictContentSize, 0);
+                ulong randomID = ZSTD_XXH64((void*)((sbyte*)(dictBuffer) + dictBufferCapacity - dictContentSize), dictContentSize, 0);
                 uint compliantID = (uint)((randomID % ((1U << 31) - 32768)) + 32768);
                 uint dictID = @params.dictID != 0 ? @params.dictID : compliantID;
 

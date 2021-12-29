@@ -8,9 +8,9 @@ namespace ZstdSharp.Unsafe
     public partial struct HUF_DEltX1
     {
         /* single-symbol decoding */
-        public byte @byte;
+        public byte nbBits;
 
         /* single-symbol decoding */
-        public byte nbBits;
+        public byte @byte;
     }
 }

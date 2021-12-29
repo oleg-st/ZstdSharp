@@ -2,25 +2,14 @@ using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
+#if NETCOREAPP3_0_OR_GREATER
+using System.Runtime.Intrinsics.X86;
+#endif
 
 namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        /**
-         * Ignore: this is an internal helper.
-         *
-         * This is a helper function to help force C99-correctness during compilation.
-         * Under strict compilation modes, variadic macro arguments can't be empty.
-         * However, variadic function arguments can be. Using a function therefore lets
-         * us statically check that at least one (string) argument was passed,
-         * independent of the compilation flags.
-         */
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void _force_has_format_string(sbyte* format)
-        {
-        }
-
         public static uint* repStartValue = GetArrayPointer(new uint[3]
         {
             1,
@@ -46,7 +35,7 @@ namespace ZstdSharp.Unsafe
 
         public const nuint ZSTD_blockHeaderSize = 3;
 
-        public static uint* LL_bits = GetArrayPointer(new uint[36]
+        public static byte* LL_bits = GetArrayPointer(new byte[36]
         {
             0,
             0,
@@ -128,7 +117,7 @@ namespace ZstdSharp.Unsafe
 
         public const uint LL_defaultNormLog = 6;
 
-        public static uint* ML_bits = GetArrayPointer(new uint[53]
+        public static byte* ML_bits = GetArrayPointer(new byte[53]
         {
             0,
             0,
@@ -287,9 +276,23 @@ namespace ZstdSharp.Unsafe
             memcpy((dst), (src), (8));
         }
 
+        /* Need to use memmove here since the literal buffer can now be located within
+           the dst buffer. In circumstances where the op "catches up" to where the
+           literal buffer is, there can be partial overlaps in this call on the final
+           copy if the literal is being shifted by less than 16 bytes. */
+        [InlineMethod.Inline]
         private static void ZSTD_copy16(void* dst, void* src)
         {
-            memcpy((dst), (src), (16));
+#if NETCOREAPP3_0_OR_GREATER
+            if (Sse2.IsSupported)
+            {
+                Sse2.Store((byte*)dst, Sse2.LoadVector128((byte*)src));
+            }
+            else
+#endif
+            {
+                memcpy((dst), (src), (16));
+            }
         }
 
         /*! ZSTD_wildcopy() :
@@ -307,7 +310,6 @@ namespace ZstdSharp.Unsafe
             byte* op = (byte*)(dst);
             byte* oend = op + length;
 
-            assert(diff >= 8 || (ovtype == ZSTD_overlap_e.ZSTD_no_overlap && diff <= -16));
             if (ovtype == ZSTD_overlap_e.ZSTD_overlap_src_before_dst && diff < 16)
             {
                 do
@@ -404,6 +406,19 @@ namespace ZstdSharp.Unsafe
             {
                 return (uint)BitOperations.Log2(val);
             }
+        }
+
+        /**
+         * Counts the number of trailing zeros of a `size_t`.
+         * Most compilers should support CTZ as a builtin. A backup
+         * implementation is provided if the builtin isn't supported, but
+         * it may not be terribly efficient.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint ZSTD_countTrailingZeros(nuint val)
+        {
+            assert(val != 0);
+            return (uint)BitOperations.TrailingZeroCount(val);
         }
     }
 }

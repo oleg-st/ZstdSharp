@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
@@ -81,7 +82,7 @@ namespace ZstdSharp.Unsafe
             0x7FFFFFFD,
         });
 
-        public static uint* OF_bits = GetArrayPointer(new uint[32]
+        public static byte* OF_bits = GetArrayPointer(new byte[32]
         {
             0,
             1,
@@ -173,5 +174,11 @@ namespace ZstdSharp.Unsafe
             0x8003,
             0x10003,
         });
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_DCtx_get_bmi2(ZSTD_DCtx_s* dctx)
+        {
+            return dctx->bmi2;
+        }
     }
 }

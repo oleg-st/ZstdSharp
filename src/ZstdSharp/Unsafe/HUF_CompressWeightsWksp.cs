@@ -6,7 +6,7 @@ namespace ZstdSharp.Unsafe
     {
         public fixed uint CTable[59];
 
-        public fixed uint scratchBuffer[30];
+        public fixed uint scratchBuffer[41];
 
         public fixed uint count[13];
 

@@ -205,6 +205,7 @@ namespace ZstdSharp.Unsafe
                         bitD->bitContainer += (nuint)(((byte*)(srcBuffer))[6]) << (int)((nuint)(sizeof(nuint)) * 8 - 16);
                     }
 
+                    ;
 
                     goto case 6;
                     case 6:
@@ -212,6 +213,7 @@ namespace ZstdSharp.Unsafe
                         bitD->bitContainer += (nuint)(((byte*)(srcBuffer))[5]) << (int)((nuint)(sizeof(nuint)) * 8 - 24);
                     }
 
+                    ;
 
                     goto case 5;
                     case 5:
@@ -219,6 +221,7 @@ namespace ZstdSharp.Unsafe
                         bitD->bitContainer += (nuint)(((byte*)(srcBuffer))[4]) << (int)((nuint)(sizeof(nuint)) * 8 - 32);
                     }
 
+                    ;
 
                     goto case 4;
                     case 4:
@@ -226,6 +229,7 @@ namespace ZstdSharp.Unsafe
                         bitD->bitContainer += (nuint)(((byte*)(srcBuffer))[3]) << 24;
                     }
 
+                    ;
 
                     goto case 3;
                     case 3:
@@ -233,6 +237,7 @@ namespace ZstdSharp.Unsafe
                         bitD->bitContainer += (nuint)(((byte*)(srcBuffer))[2]) << 16;
                     }
 
+                    ;
 
                     goto case 2;
                     case 2:
@@ -240,6 +245,7 @@ namespace ZstdSharp.Unsafe
                         bitD->bitContainer += (nuint)(((byte*)(srcBuffer))[1]) << 8;
                     }
 
+                    ;
 
                     goto default;
                     default:
@@ -277,7 +283,7 @@ namespace ZstdSharp.Unsafe
             uint regMask = (uint)((nuint)(sizeof(nuint)) * 8 - 1);
 
             assert(nbBits < ((nuint)(sizeof(uint) * 32) / (nuint)(sizeof(uint))));
-            return (bitContainer >> (int)(start & regMask)) & BIT_mask[nbBits];
+            return (nuint)((bitContainer >> (int)(start & regMask)) & ((((ulong)(1)) << (int)nbBits) - 1));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

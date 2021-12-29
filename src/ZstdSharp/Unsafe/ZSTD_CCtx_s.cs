@@ -68,7 +68,7 @@ namespace ZstdSharp.Unsafe
         /* entropy workspace of ENTROPY_WORKSPACE_SIZE bytes */
         public uint* entropyWorkspace;
 
-        /* Wether we are streaming or not */
+        /* Whether we are streaming or not */
         public ZSTD_buffered_policy_e bufferedPolicy;
 
         /* streaming */
@@ -106,5 +106,8 @@ namespace ZstdSharp.Unsafe
 
         /* single-usage dictionary */
         public ZSTD_prefixDict_s prefixDict;
+
+        /* Workspace for block splitter */
+        public ZSTD_blockSplitCtx blockSplitCtx;
     }
 }

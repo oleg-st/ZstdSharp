@@ -200,5 +200,13 @@ namespace ZstdSharp
             }
             return 0;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
+        public static void SkipInit<T>(out T value)
+        {
+            Ret();
+            throw InlineIL.IL.Unreachable();
+        }
     }
 }

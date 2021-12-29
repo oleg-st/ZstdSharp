@@ -2,12 +2,14 @@
 using System.IO;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 using Zstd.Extern;
 using ZstdSharp.Unsafe;
 
 namespace ZstdSharp.Benchmark
 {
     [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+    [HardwareCounters(HardwareCounter.InstructionRetired)]
     public unsafe class Benchmark
     {
         private byte[] src;

@@ -6,6 +6,6 @@ namespace ZstdSharp.Unsafe
     {
         public fixed short norm[53];
 
-        public fixed uint wksp[182];
+        public fixed uint wksp[285];
     }
 }

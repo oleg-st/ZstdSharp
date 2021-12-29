@@ -4,8 +4,8 @@ namespace ZstdSharp.Unsafe
 {
     public partial struct rankPos
     {
-        public uint @base;
+        public ushort @base;
 
-        public uint curr;
+        public ushort curr;
     }
 }

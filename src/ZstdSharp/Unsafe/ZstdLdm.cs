@@ -222,7 +222,7 @@ namespace ZstdSharp.Unsafe
             nuint ldmBucketSize = ((nuint)(1)) << (int)(@params.hashLog - ldmBucketSizeLog);
             nuint totalSize = ZSTD_cwksp_alloc_size(ldmBucketSize) + ZSTD_cwksp_alloc_size(ldmHSize * (nuint)(8));
 
-            return @params.enableLdm != 0 ? totalSize : 0;
+            return @params.enableLdm == ZSTD_paramSwitch_e.ZSTD_ps_enable ? totalSize : 0;
         }
 
         /** ZSTD_ldm_getSeqSpace() :
@@ -231,7 +231,7 @@ namespace ZstdSharp.Unsafe
          */
         public static nuint ZSTD_ldm_getMaxNbSeq(ldmParams_t @params, nuint maxChunkSize)
         {
-            return @params.enableLdm != 0 ? (maxChunkSize / @params.minMatchLength) : 0;
+            return @params.enableLdm == ZSTD_paramSwitch_e.ZSTD_ps_enable ? (maxChunkSize / @params.minMatchLength) : 0;
         }
 
         /** ZSTD_ldm_getBucket() :
@@ -357,7 +357,7 @@ namespace ZstdSharp.Unsafe
                     if (ip + splits[n] >= istart + minMatchLength)
                     {
                         byte* split = ip + splits[n] - minMatchLength;
-                        ulong xxhash = XXH64((void*)split, minMatchLength, 0);
+                        ulong xxhash = ZSTD_XXH64((void*)split, minMatchLength, 0);
                         uint hash = (uint)(xxhash & (((uint)(1) << (int)hBits) - 1));
                         ldmEntry_t entry;
 
@@ -427,7 +427,7 @@ namespace ZstdSharp.Unsafe
                 for (n = 0; n < numSplits; n++)
                 {
                     byte* split = ip + splits[n] - minMatchLength;
-                    ulong xxhash = XXH64((void*)split, minMatchLength, 0);
+                    ulong xxhash = ZSTD_XXH64((void*)split, minMatchLength, 0);
                     uint hash = (uint)(xxhash & (((uint)(1) << (int)hBits) - 1));
 
                     candidates[n].split = split;
@@ -758,7 +758,7 @@ namespace ZstdSharp.Unsafe
          * two. We handle that case correctly, and update `rawSeqStore` appropriately.
          * NOTE: This function does not return any errors.
          */
-        public static nuint ZSTD_ldm_blockCompress(rawSeqStore_t* rawSeqStore, ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, ZSTD_useRowMatchFinderMode_e useRowMatchFinder, void* src, nuint srcSize)
+        public static nuint ZSTD_ldm_blockCompress(rawSeqStore_t* rawSeqStore, ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, ZSTD_paramSwitch_e useRowMatchFinder, void* src, nuint srcSize)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint minMatch = cParams->minMatch;

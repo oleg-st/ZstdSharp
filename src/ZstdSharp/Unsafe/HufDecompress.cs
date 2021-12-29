@@ -25,15 +25,51 @@ namespace ZstdSharp.Unsafe
 
             if (BitConverter.IsLittleEndian)
             {
-                D4 = (ulong)(symbol + (nbBits << 8));
+                D4 = (ulong)((symbol << 8) + nbBits);
             }
             else
             {
-                D4 = (ulong)((symbol << 8) + nbBits);
+                D4 = (ulong)(symbol + (nbBits << 8));
             }
 
             D4 *= 0x0001000100010001UL;
             return D4;
+        }
+
+        /**
+         * Increase the tableLog to targetTableLog and rescales the stats.
+         * If tableLog > targetTableLog this is a no-op.
+         * @returns New tableLog
+         */
+        private static uint HUF_rescaleStats(byte* huffWeight, uint* rankVal, uint nbSymbols, uint tableLog, uint targetTableLog)
+        {
+            if (tableLog > targetTableLog)
+            {
+                return tableLog;
+            }
+
+            if (tableLog < targetTableLog)
+            {
+                uint scale = targetTableLog - tableLog;
+                uint s;
+
+                for (s = 0; s < nbSymbols; ++s)
+                {
+                    huffWeight[s] += (byte)((huffWeight[s] == 0) ? 0 : scale);
+                }
+
+                for (s = targetTableLog; s > scale; --s)
+                {
+                    rankVal[s] = rankVal[s - scale];
+                }
+
+                for (s = scale; s > 0; --s)
+                {
+                    rankVal[s] = 0;
+                }
+            }
+
+            return targetTableLog;
         }
 
         public static nuint HUF_readDTableX1_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize)
@@ -64,7 +100,10 @@ namespace ZstdSharp.Unsafe
 
             {
                 DTableDesc dtd = HUF_getDTableDesc(DTable);
+                uint maxTableLog = (uint)(dtd.maxTableLog + 1);
+                uint targetTableLog = ((maxTableLog) < (11) ? (maxTableLog) : (11));
 
+                tableLog = HUF_rescaleStats((byte*)wksp->huffWeight, (uint*)wksp->rankVal, nbSymbols, tableLog, targetTableLog);
                 if (tableLog > (uint)(dtd.maxTableLog + 1))
                 {
                     return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
@@ -86,7 +125,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint curr = (uint)nextRankStart;
 
-                    nextRankStart += (int)((int)(wksp->rankVal[n]));
+                    nextRankStart += (int)(wksp->rankVal[n]);
                     wksp->rankStart[n] = curr;
                 }
 
@@ -226,24 +265,31 @@ namespace ZstdSharp.Unsafe
         {
             byte* pStart = p;
 
-            while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p < pEnd - 3)))
+            if ((pEnd - p) > 3)
             {
-                if (MEM_64bits)
+                while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p < pEnd - 3)))
                 {
+                    if (MEM_64bits)
+                    {
+                        *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+                    }
+
+                    if (MEM_64bits || (12 <= 12))
+                    {
+                        *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+                    }
+
+                    if (MEM_64bits)
+                    {
+                        *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+                    }
+
                     *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
                 }
-
-                if (MEM_64bits || (12 <= 12))
-                {
-                    *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                }
-
-                if (MEM_64bits)
-                {
-                    *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                }
-
-                *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+            }
+            else
+            {
+                BIT_reloadDStream(bitDPtr);
             }
 
             if (MEM_32bits)
@@ -337,6 +383,11 @@ namespace ZstdSharp.Unsafe
                     return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected)));
                 }
 
+                if (opStart4 > oend)
+                {
+                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected)));
+                }
+
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD1, (void*)istart1, length1);
@@ -377,76 +428,79 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                for (; ((endSignal) & (uint)((((op4 < olimit)) ? 1 : 0))) != 0;)
+                if ((nuint)(oend - op4) >= (nuint)(sizeof(nuint)))
                 {
-                    if (MEM_64bits)
+                    for (; ((endSignal) & (uint)((((op4 < olimit)) ? 1 : 0))) != 0;)
                     {
+                        if (MEM_64bits)
+                        {
+                            *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
+                        }
+
+                        if (MEM_64bits)
+                        {
+                            *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
+                        }
+
+                        if (MEM_64bits)
+                        {
+                            *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
+                        }
+
+                        if (MEM_64bits)
+                        {
+                            *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
+                        }
+
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
+                        }
+
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
+                        }
+
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
+                        }
+
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
+                        }
+
+                        if (MEM_64bits)
+                        {
+                            *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
+                        }
+
+                        if (MEM_64bits)
+                        {
+                            *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
+                        }
+
+                        if (MEM_64bits)
+                        {
+                            *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
+                        }
+
+                        if (MEM_64bits)
+                        {
+                            *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
+                        }
+
                         *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                    }
-
-                    if (MEM_64bits)
-                    {
                         *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                    }
-
-                    if (MEM_64bits)
-                    {
                         *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                    }
-
-                    if (MEM_64bits)
-                    {
                         *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
+                        endSignal &= ((BIT_reloadDStreamFast(&bitD1) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
+                        endSignal &= ((BIT_reloadDStreamFast(&bitD2) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
+                        endSignal &= ((BIT_reloadDStreamFast(&bitD3) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
+                        endSignal &= ((BIT_reloadDStreamFast(&bitD4) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
                     }
-
-                    if (MEM_64bits || (12 <= 12))
-                    {
-                        *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                    }
-
-                    if (MEM_64bits || (12 <= 12))
-                    {
-                        *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                    }
-
-                    if (MEM_64bits || (12 <= 12))
-                    {
-                        *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                    }
-
-                    if (MEM_64bits || (12 <= 12))
-                    {
-                        *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                    }
-
-                    if (MEM_64bits)
-                    {
-                        *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                    }
-
-                    if (MEM_64bits)
-                    {
-                        *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                    }
-
-                    if (MEM_64bits)
-                    {
-                        *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                    }
-
-                    if (MEM_64bits)
-                    {
-                        *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                    }
-
-                    *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                    *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                    *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                    *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                    endSignal &= ((BIT_reloadDStreamFast(&bitD1) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
-                    endSignal &= ((BIT_reloadDStreamFast(&bitD2) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
-                    endSignal &= ((BIT_reloadDStreamFast(&bitD3) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
-                    endSignal &= ((BIT_reloadDStreamFast(&bitD4) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
                 }
 
                 if (op1 > opStart2)
@@ -482,6 +536,16 @@ namespace ZstdSharp.Unsafe
             }
         }
 
+        private static nuint HUF_decompress4X1_usingDTable_internal_bmi2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
+        {
+            return HUF_decompress4X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
+        }
+
+        private static nuint HUF_decompress4X1_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
+        {
+            return HUF_decompress4X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
+        }
+
         private static nuint HUF_decompress1X1_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
             return HUF_decompress1X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
@@ -500,16 +564,6 @@ namespace ZstdSharp.Unsafe
             }
 
             return HUF_decompress1X1_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
-        private static nuint HUF_decompress4X1_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress4X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
-        private static nuint HUF_decompress4X1_usingDTable_internal_bmi2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress4X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
         private static nuint HUF_decompress4X1_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
@@ -591,115 +645,253 @@ namespace ZstdSharp.Unsafe
             return HUF_decompress4X1_DCtx_wksp_bmi2(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, 0);
         }
 
+        /**
+         * Constructs a HUF_DEltX2 in a U32.
+         */
+        [InlineMethod.Inline]
+        private static uint HUF_buildDEltX2U32(uint symbol, uint nbBits, uint baseSeq, int level)
+        {
+            uint seq;
+
+            if (BitConverter.IsLittleEndian)
+            {
+                seq = level == 1 ? symbol : (baseSeq + (symbol << 8));
+                return seq + (nbBits << 16) + ((uint)(level) << 24);
+            }
+            else
+            {
+                seq = level == 1 ? (symbol << 8) : ((baseSeq << 8) + symbol);
+                return (seq << 16) + (nbBits << 8) + (uint)(level);
+            }
+        }
+
+        /**
+         * Constructs a HUF_DEltX2.
+         */
+        [InlineMethod.Inline]
+        private static HUF_DEltX2 HUF_buildDEltX2(uint symbol, uint nbBits, uint baseSeq, int level)
+        {
+            HUF_DEltX2 DElt;
+            uint val = HUF_buildDEltX2U32(symbol, nbBits, baseSeq, level);
+
+            memcpy((void*)(&DElt), (void*)(&val), ((nuint)(sizeof(uint))));
+            return DElt;
+        }
+
+        /**
+         * Constructs 2 HUF_DEltX2s and packs them into a U64.
+         */
+        [InlineMethod.Inline]
+        private static ulong HUF_buildDEltX2U64(uint symbol, uint nbBits, ushort baseSeq, int level)
+        {
+            uint DElt = HUF_buildDEltX2U32(symbol, nbBits, baseSeq, level);
+
+            return (ulong)(DElt) + ((ulong)(DElt) << 32);
+        }
+
+        /**
+         * Fills the DTable rank with all the symbols from [begin, end) that are each
+         * nbBits long.
+         *
+         * @param DTableRank The start of the rank in the DTable.
+         * @param begin The first symbol to fill (inclusive).
+         * @param end The last symbol to fill (exclusive).
+         * @param nbBits Each symbol is nbBits long.
+         * @param tableLog The table log.
+         * @param baseSeq If level == 1 { 0 } else { the first level symbol }
+         * @param level The level in the table. Must be 1 or 2.
+         */
+        [InlineMethod.Inline]
+        private static void HUF_fillDTableX2ForWeight(HUF_DEltX2* DTableRank, sortedSymbol_t* begin, sortedSymbol_t* end, uint nbBits, uint tableLog, ushort baseSeq, int level)
+        {
+            uint length = 1U << (int)((tableLog - nbBits) & 0x1F);
+            sortedSymbol_t* ptr;
+
+            assert(level >= 1 && level <= 2);
+            switch (length)
+            {
+                case 1:
+                {
+                    for (ptr = begin; ptr != end; ++ptr)
+                    {
+                        HUF_DEltX2 DElt = HUF_buildDEltX2(ptr->symbol, nbBits, baseSeq, level);
+
+                        *DTableRank++ = DElt;
+                    }
+                }
+
+                break;
+                case 2:
+                {
+                    for (ptr = begin; ptr != end; ++ptr)
+                    {
+                        HUF_DEltX2 DElt = HUF_buildDEltX2(ptr->symbol, nbBits, baseSeq, level);
+
+                        DTableRank[0] = DElt;
+                        DTableRank[1] = DElt;
+                        DTableRank += 2;
+                    }
+                }
+
+                break;
+                case 4:
+                {
+                    for (ptr = begin; ptr != end; ++ptr)
+                    {
+                        ulong DEltX2 = HUF_buildDEltX2U64(ptr->symbol, nbBits, baseSeq, level);
+
+                        memcpy((void*)((DTableRank + 0)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                        memcpy((void*)((DTableRank + 2)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                        DTableRank += 4;
+                    }
+                }
+
+                break;
+                case 8:
+                {
+                    for (ptr = begin; ptr != end; ++ptr)
+                    {
+                        ulong DEltX2 = HUF_buildDEltX2U64(ptr->symbol, nbBits, baseSeq, level);
+
+                        memcpy((void*)((DTableRank + 0)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                        memcpy((void*)((DTableRank + 2)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                        memcpy((void*)((DTableRank + 4)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                        memcpy((void*)((DTableRank + 6)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                        DTableRank += 8;
+                    }
+                }
+
+                break;
+                default:
+                {
+                    for (ptr = begin; ptr != end; ++ptr)
+                    {
+                        ulong DEltX2 = HUF_buildDEltX2U64(ptr->symbol, nbBits, baseSeq, level);
+                        HUF_DEltX2* DTableRankEnd = DTableRank + length;
+
+                        for (; DTableRank != DTableRankEnd; DTableRank += 8)
+                        {
+                            memcpy((void*)((DTableRank + 0)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                            memcpy((void*)((DTableRank + 2)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                            memcpy((void*)((DTableRank + 4)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                            memcpy((void*)((DTableRank + 6)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                        }
+                    }
+                }
+
+                break;
+            }
+        }
+
         /* HUF_fillDTableX2Level2() :
          * `rankValOrigin` must be a table of at least (HUF_TABLELOG_MAX + 1) U32 */
         [InlineMethod.Inline]
-        private static void HUF_fillDTableX2Level2(HUF_DEltX2* DTable, uint sizeLog, uint consumed, uint* rankValOrigin, int minWeight, sortedSymbol_t* sortedSymbols, uint sortedListSize, uint nbBitsBaseline, ushort baseSeq, uint* wksp, nuint wkspSize)
+        private static void HUF_fillDTableX2Level2(HUF_DEltX2* DTable, uint targetLog, uint consumedBits, uint* rankVal, int minWeight, int maxWeight1, sortedSymbol_t* sortedSymbols, uint* rankStart, uint nbBitsBaseline, ushort baseSeq)
         {
-            HUF_DEltX2 DElt;
-            uint* rankVal = wksp;
-
-            assert(wkspSize >= (uint)(12 + 1));
-            memcpy((void*)(rankVal), (void*)(rankValOrigin), ((nuint)(sizeof(uint)) * (uint)((12 + 1))));
             if (minWeight > 1)
             {
-                uint i, skipSize = rankVal[minWeight];
+                uint length = 1U << (int)((targetLog - consumedBits) & 0x1F);
+                ulong DEltX2 = HUF_buildDEltX2U64(baseSeq, consumedBits, 0, 1);
+                int skipSize = (int)(rankVal[minWeight]);
 
-                MEM_writeLE16((void*)&(DElt.sequence), baseSeq);
-                DElt.nbBits = (byte)(consumed);
-                DElt.length = 1;
-                for (i = 0; i < skipSize; i++)
+                assert(length > 1);
+                assert((uint)(skipSize) < length);
+                switch (length)
                 {
-                    DTable[i] = DElt;
+                    case 2:
+                    {
+                        assert(skipSize == 1);
+                    }
+
+                    memcpy((void*)(DTable), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                    break;
+                    case 4:
+                    {
+                        assert(skipSize <= 4);
+                    }
+
+                    memcpy((void*)((DTable + 0)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                    memcpy((void*)((DTable + 2)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                    break;
+                    default:
+                    {
+                        int i;
+
+                        for (i = 0; i < skipSize; i += 8)
+                        {
+                            memcpy((void*)((DTable + i + 0)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                            memcpy((void*)((DTable + i + 2)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                            memcpy((void*)((DTable + i + 4)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                            memcpy((void*)((DTable + i + 6)), (void*)(&DEltX2), ((nuint)(sizeof(ulong))));
+                        }
+                    }
+                    break;
                 }
             }
 
 
             {
-                uint s;
+                int w;
 
-                for (s = 0; s < sortedListSize; s++)
+                for (w = minWeight; w < maxWeight1; ++w)
                 {
-                    uint symbol = sortedSymbols[s].symbol;
-                    uint weight = sortedSymbols[s].weight;
-                    uint nbBits = nbBitsBaseline - weight;
-                    uint length = (uint)(1 << (int)(sizeLog - nbBits));
-                    uint start = rankVal[weight];
-                    uint i = start;
-                    uint end = start + length;
+                    int begin = (int)(rankStart[w]);
+                    int end = (int)(rankStart[w + 1]);
+                    uint nbBits = nbBitsBaseline - (uint)w;
+                    uint totalBits = nbBits + consumedBits;
 
-                    MEM_writeLE16((void*)&(DElt.sequence), (ushort)(baseSeq + (symbol << 8)));
-                    DElt.nbBits = (byte)(nbBits + consumed);
-                    DElt.length = 2;
-                    do
-                    {
-                        DTable[i++] = DElt;
-                    }
-                    while (i < end);
-
-                    rankVal[weight] += length;
+                    HUF_fillDTableX2ForWeight(DTable + rankVal[w], sortedSymbols + begin, sortedSymbols + end, totalBits, targetLog, baseSeq, 2);
                 }
             }
         }
 
-        private static void HUF_fillDTableX2(HUF_DEltX2* DTable, uint targetLog, sortedSymbol_t* sortedList, uint sortedListSize, uint* rankStart, rankValCol_t* rankValOrigin, uint maxWeight, uint nbBitsBaseline, uint* wksp, nuint wkspSize)
+        private static void HUF_fillDTableX2(HUF_DEltX2* DTable, uint targetLog, sortedSymbol_t* sortedList, uint* rankStart, rankValCol_t* rankValOrigin, uint maxWeight, uint nbBitsBaseline)
         {
-            uint* rankVal = wksp;
+            uint* rankVal = (uint*)(rankValOrigin[0]);
             int scaleLog = (int)(nbBitsBaseline - targetLog);
             uint minBits = nbBitsBaseline - maxWeight;
-            uint s;
+            int w;
+            int wEnd = (int)(maxWeight) + 1;
 
-            assert(wkspSize >= (uint)(12 + 1));
-            wksp += 12 + 1;
-            wkspSize -= (nuint)(12 + 1);
-            memcpy((void*)(rankVal), (void*)(rankValOrigin), ((nuint)(sizeof(uint)) * (uint)((12 + 1))));
-            for (s = 0; s < sortedListSize; s++)
+            for (w = 1; w < wEnd; ++w)
             {
-                ushort symbol = sortedList[s].symbol;
-                uint weight = sortedList[s].weight;
-                uint nbBits = nbBitsBaseline - weight;
-                uint start = rankVal[weight];
-                uint length = (uint)(1 << (int)(targetLog - nbBits));
+                int begin = (int)(rankStart[w]);
+                int end = (int)(rankStart[w + 1]);
+                uint nbBits = nbBitsBaseline - (uint)w;
 
                 if (targetLog - nbBits >= minBits)
                 {
-                    uint sortedRank;
+                    int start = (int)(rankVal[w]);
+                    uint length = 1U << (int)((targetLog - nbBits) & 0x1F);
                     int minWeight = (int)(nbBits + (uint)scaleLog);
+                    int s;
 
                     if (minWeight < 1)
                     {
                         minWeight = 1;
                     }
 
-                    sortedRank = rankStart[minWeight];
-                    HUF_fillDTableX2Level2(DTable + start, targetLog - nbBits, nbBits, (uint*)(rankValOrigin[nbBits]), minWeight, sortedList + sortedRank, sortedListSize - sortedRank, nbBitsBaseline, symbol, wksp, wkspSize);
+                    for (s = begin; s != end; ++s)
+                    {
+                        HUF_fillDTableX2Level2(DTable + start, targetLog, nbBits, (uint*)(rankValOrigin[nbBits]), minWeight, wEnd, sortedList, rankStart, nbBitsBaseline, sortedList[s].symbol);
+                        start += (int)length;
+                    }
                 }
                 else
                 {
-                    HUF_DEltX2 DElt;
-
-                    MEM_writeLE16((void*)&(DElt.sequence), symbol);
-                    DElt.nbBits = (byte)(nbBits);
-                    DElt.length = 1;
-
-                    {
-                        uint end = start + length;
-                        uint u;
-
-                        for (u = start; u < end; u++)
-                        {
-                            DTable[u] = DElt;
-                        }
-                    }
+                    HUF_fillDTableX2ForWeight(DTable + rankVal[w], sortedList + begin, sortedList + end, nbBits, targetLog, 0, 1);
                 }
-
-                rankVal[weight] += length;
             }
         }
 
         public static nuint HUF_readDTableX2_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize)
         {
-            uint tableLog, maxW, sizeOfSort, nbSymbols;
+            return HUF_readDTableX2_wksp_bmi2(DTable, src, srcSize, workSpace, wkspSize, 0);
+        }
+
+        public static nuint HUF_readDTableX2_wksp_bmi2(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int bmi2)
+        {
+            uint tableLog, maxW, nbSymbols;
             DTableDesc dtd = HUF_getDTableDesc(DTable);
             uint maxTableLog = dtd.maxTableLog;
             nuint iSize;
@@ -715,13 +907,13 @@ namespace ZstdSharp.Unsafe
 
             rankStart = wksp->rankStart0 + 1;
             memset((void*)(wksp->rankStats), (0), ((nuint)(sizeof(uint) * 13)));
-            memset((void*)(wksp->rankStart0), (0), ((nuint)(sizeof(uint) * 14)));
+            memset((void*)(wksp->rankStart0), (0), ((nuint)(sizeof(uint) * 15)));
             if (maxTableLog > 12)
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
             }
 
-            iSize = HUF_readStats_wksp((byte*)wksp->weightList, (nuint)(255 + 1), (uint*)wksp->rankStats, &nbSymbols, &tableLog, src, srcSize, (void*)wksp->calleeWksp, (nuint)(sizeof(uint) * 218), 0);
+            iSize = HUF_readStats_wksp((byte*)wksp->weightList, (nuint)(255 + 1), (uint*)wksp->rankStats, &nbSymbols, &tableLog, src, srcSize, (void*)wksp->calleeWksp, (nuint)(sizeof(uint) * 218), bmi2);
             if ((ERR_isError(iSize)) != 0)
             {
                 return iSize;
@@ -730,6 +922,11 @@ namespace ZstdSharp.Unsafe
             if (tableLog > maxTableLog)
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
+            }
+
+            if (tableLog <= 11 && maxTableLog > 11)
+            {
+                maxTableLog = 11;
             }
 
             for (maxW = tableLog; wksp->rankStats[maxW] == 0; maxW--)
@@ -749,7 +946,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 rankStart[0] = nextRankStart;
-                sizeOfSort = nextRankStart;
+                rankStart[maxW + 1] = nextRankStart;
             }
 
 
@@ -762,7 +959,6 @@ namespace ZstdSharp.Unsafe
                     uint r = rankStart[w]++;
 
                     wksp->sortedSymbol[r].symbol = (byte)(s);
-                    wksp->sortedSymbol[r].weight = (byte)(w);
                 }
 
                 rankStart[0] = 0;
@@ -805,7 +1001,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            HUF_fillDTableX2(dt, maxTableLog, (sortedSymbol_t*)wksp->sortedSymbol, sizeOfSort, (uint*)wksp->rankStart0, wksp->rankVal, maxW, tableLog + 1, (uint*)wksp->calleeWksp, (nuint)(sizeof(uint) * 218) / (nuint)(sizeof(uint)));
+            HUF_fillDTableX2(dt, maxTableLog, (sortedSymbol_t*)wksp->sortedSymbol, (uint*)wksp->rankStart0, wksp->rankVal, maxW, tableLog + 1);
             dtd.tableLog = (byte)(maxTableLog);
             dtd.tableType = 1;
             memcpy((void*)(DTable), (void*)(&dtd), ((nuint)(sizeof(DTableDesc))));
@@ -817,7 +1013,7 @@ namespace ZstdSharp.Unsafe
         {
             nuint val = BIT_lookBitsFast(DStream, dtLog);
 
-            memcpy((op), (void*)((dt + val)), (2));
+            memcpy((op), (void*)((&dt[val].sequence)), (2));
             BIT_skipBits(DStream, dt[val].nbBits);
             return dt[val].length;
         }
@@ -827,7 +1023,7 @@ namespace ZstdSharp.Unsafe
         {
             nuint val = BIT_lookBitsFast(DStream, dtLog);
 
-            memcpy((op), (void*)((dt + val)), (1));
+            memcpy((op), (void*)((&dt[val].sequence)), (1));
             if (dt[val].length == 1)
             {
                 BIT_skipBits(DStream, dt[val].nbBits);
@@ -852,34 +1048,58 @@ namespace ZstdSharp.Unsafe
         {
             byte* pStart = p;
 
-            while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p < pEnd - ((nuint)(sizeof(nuint)) - 1))))
+            if ((nuint)(pEnd - p) >= (nuint)(sizeof(nuint)))
             {
-                if (MEM_64bits)
+                if (dtLog <= 11 && MEM_64bits)
                 {
-                    p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                    while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p < pEnd - 9)))
+                    {
+                        p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                        p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                        p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                        p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                        p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                    }
                 }
-
-                if (MEM_64bits || (12 <= 12))
+                else
                 {
-                    p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
-                }
+                    while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p < pEnd - ((nuint)(sizeof(nuint)) - 1))))
+                    {
+                        if (MEM_64bits)
+                        {
+                            p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                        }
 
-                if (MEM_64bits)
-                {
-                    p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
-                }
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                        }
 
-                p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                        if (MEM_64bits)
+                        {
+                            p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                        }
+
+                        p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                    }
+                }
+            }
+            else
+            {
+                BIT_reloadDStream(bitDPtr);
             }
 
-            while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p <= pEnd - 2)))
+            if ((nuint)(pEnd - p) >= 2)
             {
-                p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
-            }
+                while (((BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished) && (p <= pEnd - 2)))
+                {
+                    p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                }
 
-            while (p <= pEnd - 2)
-            {
-                p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                while (p <= pEnd - 2)
+                {
+                    p += HUF_decodeSymbolX2((void*)p, bitDPtr, dt, dtLog);
+                }
             }
 
             if (p < pEnd)
@@ -969,6 +1189,11 @@ namespace ZstdSharp.Unsafe
                     return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected)));
                 }
 
+                if (opStart4 > oend)
+                {
+                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected)));
+                }
+
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD1, (void*)istart1, length1);
@@ -1009,76 +1234,79 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                for (; ((endSignal) & (uint)((((op4 < olimit)) ? 1 : 0))) != 0;)
+                if ((nuint)(oend - op4) >= (nuint)(sizeof(nuint)))
                 {
-                    if (MEM_64bits)
+                    for (; ((endSignal) & (uint)((((op4 < olimit)) ? 1 : 0))) != 0;)
                     {
+                        if (MEM_64bits)
+                        {
+                            op1 += HUF_decodeSymbolX2((void*)op1, &bitD1, dt, dtLog);
+                        }
+
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            op1 += HUF_decodeSymbolX2((void*)op1, &bitD1, dt, dtLog);
+                        }
+
+                        if (MEM_64bits)
+                        {
+                            op1 += HUF_decodeSymbolX2((void*)op1, &bitD1, dt, dtLog);
+                        }
+
                         op1 += HUF_decodeSymbolX2((void*)op1, &bitD1, dt, dtLog);
-                    }
+                        if (MEM_64bits)
+                        {
+                            op2 += HUF_decodeSymbolX2((void*)op2, &bitD2, dt, dtLog);
+                        }
 
-                    if (MEM_64bits || (12 <= 12))
-                    {
-                        op1 += HUF_decodeSymbolX2((void*)op1, &bitD1, dt, dtLog);
-                    }
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            op2 += HUF_decodeSymbolX2((void*)op2, &bitD2, dt, dtLog);
+                        }
 
-                    if (MEM_64bits)
-                    {
-                        op1 += HUF_decodeSymbolX2((void*)op1, &bitD1, dt, dtLog);
-                    }
+                        if (MEM_64bits)
+                        {
+                            op2 += HUF_decodeSymbolX2((void*)op2, &bitD2, dt, dtLog);
+                        }
 
-                    op1 += HUF_decodeSymbolX2((void*)op1, &bitD1, dt, dtLog);
-                    if (MEM_64bits)
-                    {
                         op2 += HUF_decodeSymbolX2((void*)op2, &bitD2, dt, dtLog);
-                    }
+                        endSignal &= ((BIT_reloadDStreamFast(&bitD1) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
+                        endSignal &= ((BIT_reloadDStreamFast(&bitD2) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
+                        if (MEM_64bits)
+                        {
+                            op3 += HUF_decodeSymbolX2((void*)op3, &bitD3, dt, dtLog);
+                        }
 
-                    if (MEM_64bits || (12 <= 12))
-                    {
-                        op2 += HUF_decodeSymbolX2((void*)op2, &bitD2, dt, dtLog);
-                    }
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            op3 += HUF_decodeSymbolX2((void*)op3, &bitD3, dt, dtLog);
+                        }
 
-                    if (MEM_64bits)
-                    {
-                        op2 += HUF_decodeSymbolX2((void*)op2, &bitD2, dt, dtLog);
-                    }
+                        if (MEM_64bits)
+                        {
+                            op3 += HUF_decodeSymbolX2((void*)op3, &bitD3, dt, dtLog);
+                        }
 
-                    op2 += HUF_decodeSymbolX2((void*)op2, &bitD2, dt, dtLog);
-                    endSignal &= ((BIT_reloadDStreamFast(&bitD1) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
-                    endSignal &= ((BIT_reloadDStreamFast(&bitD2) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
-                    if (MEM_64bits)
-                    {
                         op3 += HUF_decodeSymbolX2((void*)op3, &bitD3, dt, dtLog);
-                    }
+                        if (MEM_64bits)
+                        {
+                            op4 += HUF_decodeSymbolX2((void*)op4, &bitD4, dt, dtLog);
+                        }
 
-                    if (MEM_64bits || (12 <= 12))
-                    {
-                        op3 += HUF_decodeSymbolX2((void*)op3, &bitD3, dt, dtLog);
-                    }
+                        if (MEM_64bits || (12 <= 12))
+                        {
+                            op4 += HUF_decodeSymbolX2((void*)op4, &bitD4, dt, dtLog);
+                        }
 
-                    if (MEM_64bits)
-                    {
-                        op3 += HUF_decodeSymbolX2((void*)op3, &bitD3, dt, dtLog);
-                    }
+                        if (MEM_64bits)
+                        {
+                            op4 += HUF_decodeSymbolX2((void*)op4, &bitD4, dt, dtLog);
+                        }
 
-                    op3 += HUF_decodeSymbolX2((void*)op3, &bitD3, dt, dtLog);
-                    if (MEM_64bits)
-                    {
                         op4 += HUF_decodeSymbolX2((void*)op4, &bitD4, dt, dtLog);
+                        endSignal &= ((BIT_reloadDStreamFast(&bitD3) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
+                        endSignal &= ((BIT_reloadDStreamFast(&bitD4) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
                     }
-
-                    if (MEM_64bits || (12 <= 12))
-                    {
-                        op4 += HUF_decodeSymbolX2((void*)op4, &bitD4, dt, dtLog);
-                    }
-
-                    if (MEM_64bits)
-                    {
-                        op4 += HUF_decodeSymbolX2((void*)op4, &bitD4, dt, dtLog);
-                    }
-
-                    op4 += HUF_decodeSymbolX2((void*)op4, &bitD4, dt, dtLog);
-                    endSignal &= ((BIT_reloadDStreamFast(&bitD3) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
-                    endSignal &= ((BIT_reloadDStreamFast(&bitD4) == BIT_DStream_status.BIT_DStream_unfinished) ? 1U : 0U);
                 }
 
                 if (op1 > opStart2)
@@ -1114,6 +1342,26 @@ namespace ZstdSharp.Unsafe
             }
         }
 
+        private static nuint HUF_decompress4X2_usingDTable_internal_bmi2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
+        {
+            return HUF_decompress4X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
+        }
+
+        private static nuint HUF_decompress4X2_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
+        {
+            return HUF_decompress4X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
+        }
+
+        private static nuint HUF_decompress4X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
+        {
+            if (bmi2 != 0)
+            {
+                return HUF_decompress4X2_usingDTable_internal_bmi2(dst, dstSize, cSrc, cSrcSize, DTable);
+            }
+
+            return HUF_decompress4X2_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
+        }
+
         private static nuint HUF_decompress1X2_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
             return HUF_decompress1X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
@@ -1132,26 +1380,6 @@ namespace ZstdSharp.Unsafe
             }
 
             return HUF_decompress1X2_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
-        private static nuint HUF_decompress4X2_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress4X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
-        private static nuint HUF_decompress4X2_usingDTable_internal_bmi2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress4X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
-        private static nuint HUF_decompress4X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
-        {
-            if (bmi2 != 0)
-            {
-                return HUF_decompress4X2_usingDTable_internal_bmi2(dst, dstSize, cSrc, cSrcSize, DTable);
-            }
-
-            return HUF_decompress4X2_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
         public static nuint HUF_decompress1X2_usingDTable(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
@@ -1242,7 +1470,7 @@ namespace ZstdSharp.Unsafe
 
         public static algo_time_t[][] algoTime = new algo_time_t[16][]
         {
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
@@ -1254,13 +1482,8 @@ namespace ZstdSharp.Unsafe
                     tableTime = 1,
                     decode256Time = 1,
                 },
-                new algo_time_t
-                {
-                    tableTime = 2,
-                    decode256Time = 2,
-                },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
@@ -1272,262 +1495,187 @@ namespace ZstdSharp.Unsafe
                     tableTime = 1,
                     decode256Time = 1,
                 },
-                new algo_time_t
-                {
-                    tableTime = 2,
-                    decode256Time = 2,
-                },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
-                    tableTime = 38,
-                    decode256Time = 130,
+                    tableTime = 150,
+                    decode256Time = 216,
                 },
                 new algo_time_t
                 {
-                    tableTime = 1313,
-                    decode256Time = 74,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2151,
-                    decode256Time = 38,
+                    tableTime = 381,
+                    decode256Time = 119,
                 },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
-                    tableTime = 448,
-                    decode256Time = 128,
+                    tableTime = 170,
+                    decode256Time = 205,
                 },
                 new algo_time_t
                 {
-                    tableTime = 1353,
-                    decode256Time = 74,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2238,
-                    decode256Time = 41,
+                    tableTime = 514,
+                    decode256Time = 112,
                 },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
-                    tableTime = 556,
-                    decode256Time = 128,
+                    tableTime = 177,
+                    decode256Time = 199,
                 },
                 new algo_time_t
                 {
-                    tableTime = 1353,
-                    decode256Time = 74,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2238,
-                    decode256Time = 47,
+                    tableTime = 539,
+                    decode256Time = 110,
                 },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
-                    tableTime = 714,
-                    decode256Time = 128,
+                    tableTime = 197,
+                    decode256Time = 194,
                 },
                 new algo_time_t
                 {
-                    tableTime = 1418,
-                    decode256Time = 74,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2436,
-                    decode256Time = 53,
+                    tableTime = 644,
+                    decode256Time = 107,
                 },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
-                    tableTime = 883,
-                    decode256Time = 128,
+                    tableTime = 221,
+                    decode256Time = 192,
                 },
                 new algo_time_t
                 {
-                    tableTime = 1437,
-                    decode256Time = 74,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2464,
-                    decode256Time = 61,
+                    tableTime = 735,
+                    decode256Time = 107,
                 },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
-                    tableTime = 897,
-                    decode256Time = 128,
+                    tableTime = 256,
+                    decode256Time = 189,
                 },
                 new algo_time_t
                 {
-                    tableTime = 1515,
-                    decode256Time = 75,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2622,
-                    decode256Time = 68,
-                },
-            },
-            new algo_time_t[3]
-            {
-                new algo_time_t
-                {
-                    tableTime = 926,
-                    decode256Time = 128,
-                },
-                new algo_time_t
-                {
-                    tableTime = 1613,
-                    decode256Time = 75,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2730,
-                    decode256Time = 75,
-                },
-            },
-            new algo_time_t[3]
-            {
-                new algo_time_t
-                {
-                    tableTime = 947,
-                    decode256Time = 128,
-                },
-                new algo_time_t
-                {
-                    tableTime = 1729,
-                    decode256Time = 77,
-                },
-                new algo_time_t
-                {
-                    tableTime = 3359,
-                    decode256Time = 77,
-                },
-            },
-            new algo_time_t[3]
-            {
-                new algo_time_t
-                {
-                    tableTime = 1107,
-                    decode256Time = 128,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2083,
-                    decode256Time = 81,
-                },
-                new algo_time_t
-                {
-                    tableTime = 4006,
-                    decode256Time = 84,
-                },
-            },
-            new algo_time_t[3]
-            {
-                new algo_time_t
-                {
-                    tableTime = 1177,
-                    decode256Time = 128,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2379,
-                    decode256Time = 87,
-                },
-                new algo_time_t
-                {
-                    tableTime = 4785,
-                    decode256Time = 88,
-                },
-            },
-            new algo_time_t[3]
-            {
-                new algo_time_t
-                {
-                    tableTime = 1242,
-                    decode256Time = 128,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2415,
-                    decode256Time = 93,
-                },
-                new algo_time_t
-                {
-                    tableTime = 5155,
-                    decode256Time = 84,
-                },
-            },
-            new algo_time_t[3]
-            {
-                new algo_time_t
-                {
-                    tableTime = 1349,
-                    decode256Time = 128,
-                },
-                new algo_time_t
-                {
-                    tableTime = 2644,
-                    decode256Time = 106,
-                },
-                new algo_time_t
-                {
-                    tableTime = 5260,
+                    tableTime = 881,
                     decode256Time = 106,
                 },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
-                    tableTime = 1455,
-                    decode256Time = 128,
+                    tableTime = 359,
+                    decode256Time = 188,
                 },
                 new algo_time_t
                 {
-                    tableTime = 2422,
-                    decode256Time = 124,
-                },
-                new algo_time_t
-                {
-                    tableTime = 4174,
-                    decode256Time = 124,
+                    tableTime = 1167,
+                    decode256Time = 109,
                 },
             },
-            new algo_time_t[3]
+            new algo_time_t[2]
             {
                 new algo_time_t
                 {
-                    tableTime = 722,
-                    decode256Time = 128,
+                    tableTime = 582,
+                    decode256Time = 187,
                 },
                 new algo_time_t
                 {
-                    tableTime = 1891,
-                    decode256Time = 145,
+                    tableTime = 1570,
+                    decode256Time = 114,
+                },
+            },
+            new algo_time_t[2]
+            {
+                new algo_time_t
+                {
+                    tableTime = 688,
+                    decode256Time = 187,
                 },
                 new algo_time_t
                 {
-                    tableTime = 1936,
-                    decode256Time = 146,
+                    tableTime = 1712,
+                    decode256Time = 122,
+                },
+            },
+            new algo_time_t[2]
+            {
+                new algo_time_t
+                {
+                    tableTime = 825,
+                    decode256Time = 186,
+                },
+                new algo_time_t
+                {
+                    tableTime = 1965,
+                    decode256Time = 136,
+                },
+            },
+            new algo_time_t[2]
+            {
+                new algo_time_t
+                {
+                    tableTime = 976,
+                    decode256Time = 185,
+                },
+                new algo_time_t
+                {
+                    tableTime = 2131,
+                    decode256Time = 150,
+                },
+            },
+            new algo_time_t[2]
+            {
+                new algo_time_t
+                {
+                    tableTime = 1180,
+                    decode256Time = 186,
+                },
+                new algo_time_t
+                {
+                    tableTime = 2070,
+                    decode256Time = 175,
+                },
+            },
+            new algo_time_t[2]
+            {
+                new algo_time_t
+                {
+                    tableTime = 1377,
+                    decode256Time = 185,
+                },
+                new algo_time_t
+                {
+                    tableTime = 1731,
+                    decode256Time = 202,
+                },
+            },
+            new algo_time_t[2]
+            {
+                new algo_time_t
+                {
+                    tableTime = 1412,
+                    decode256Time = 185,
+                },
+                new algo_time_t
+                {
+                    tableTime = 1695,
+                    decode256Time = 202,
                 },
             },
         };
@@ -1548,7 +1696,7 @@ namespace ZstdSharp.Unsafe
                 uint DTime0 = algoTime[Q][0].tableTime + (algoTime[Q][0].decode256Time * D256);
                 uint DTime1 = algoTime[Q][1].tableTime + (algoTime[Q][1].decode256Time * D256);
 
-                DTime1 += DTime1 >> 3;
+                DTime1 += DTime1 >> 5;
                 return ((DTime1 < DTime0) ? 1U : 0U);
             }
         }

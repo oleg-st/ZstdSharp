@@ -264,8 +264,8 @@ namespace ZstdSharp.Unsafe
             void* alloc = ws->objectEnd;
             void* end = (void*)((byte*)(alloc) + roundedBytes);
 
-            assert(((nuint)(alloc) & ((nuint)(sizeof(void*)) - 1)) == 0);
-            assert((bytes & ((nuint)(sizeof(void*)) - 1)) == 0);
+            assert(((nuint)(alloc) % (nuint)sizeof(nuint)) == 0);
+            assert((bytes % (nuint)sizeof(nuint)) == 0);
             ZSTD_cwksp_assert_internal_consistency(ws);
             if (ws->phase != ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_objects || end > ws->workspaceEnd)
             {

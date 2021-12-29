@@ -350,7 +350,7 @@ namespace ZstdSharp.Unsafe
 
                 for (n = 0; n < oSize; n++)
                 {
-                    if (huffWeight[n] >= 12)
+                    if (huffWeight[n] > 12)
                     {
                         return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected)));
                     }

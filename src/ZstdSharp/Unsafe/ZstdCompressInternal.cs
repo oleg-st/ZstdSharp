@@ -143,16 +143,16 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int ZSTD_disableLiteralsCompression(ZSTD_CCtx_params_s* cctxParams)
+        private static int ZSTD_literalsCompressionIsDisabled(ZSTD_CCtx_params_s* cctxParams)
         {
             switch (cctxParams->literalCompressionMode)
             {
-                case ZSTD_literalCompressionMode_e.ZSTD_lcm_huffman:
+                case ZSTD_paramSwitch_e.ZSTD_ps_enable:
                 {
                     return 0;
                 }
 
-                case ZSTD_literalCompressionMode_e.ZSTD_lcm_uncompressed:
+                case ZSTD_paramSwitch_e.ZSTD_ps_disable:
                 {
                     return 1;
                 }
@@ -162,9 +162,10 @@ namespace ZstdSharp.Unsafe
                     assert(0 != 0);
                 }
 
+                ;
 
-                goto case ZSTD_literalCompressionMode_e.ZSTD_lcm_auto;
-                case ZSTD_literalCompressionMode_e.ZSTD_lcm_auto:
+                goto case ZSTD_paramSwitch_e.ZSTD_ps_auto;
+                case ZSTD_paramSwitch_e.ZSTD_ps_auto:
                 {
                     return (((cctxParams->cParams.strategy == ZSTD_strategy.ZSTD_fast) && (cctxParams->cParams.targetLength > 0)) ? 1 : 0);
                 }
@@ -250,11 +251,7 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static uint ZSTD_NbCommonBytes(nuint val)
         {
-            if (val == 0)
-            {
-                return 0;
-            }
-
+            assert(val != 0);
             if (BitConverter.IsLittleEndian)
             {
                 return (uint)(BitOperations.TrailingZeroCount(val) >> 3);
@@ -264,7 +261,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint ZSTD_count(byte* pIn, byte* pMatch, byte* pInLimit)
         {
             byte* pStart = pIn;
@@ -424,37 +420,17 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static nuint ZSTD_hashPtr(void* p, uint hBits, uint mls)
         {
-            switch (mls)
-            {
-                default:
-                case 4:
-                {
-                    return ZSTD_hash4Ptr(p, hBits);
-                }
-
-                case 5:
-                {
-                    return ZSTD_hash5Ptr(p, hBits);
-                }
-
-                case 6:
-                {
-                    return ZSTD_hash6Ptr(p, hBits);
-                }
-
-                case 7:
-                {
-                    return ZSTD_hash7Ptr(p, hBits);
-                }
-
-                case 8:
-                {
-                    return ZSTD_hash8Ptr(p, hBits);
-                }
-            }
+            if (mls == 5)
+                return ZSTD_hash5Ptr(p, hBits);
+            if (mls == 6)
+                return ZSTD_hash6Ptr(p, hBits);
+            if (mls == 7)
+                return ZSTD_hash7Ptr(p, hBits);
+            if (mls == 8)
+                return ZSTD_hash8Ptr(p, hBits);
+            return ZSTD_hash4Ptr(p, hBits);
         }
 
         /** ZSTD_ipow() :
@@ -543,7 +519,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_window_isEmpty(ZSTD_window_t window)
         {
-            return ((window.dictLimit == 1 && window.lowLimit == 1 && (window.nextSrc - window.@base) == 1) ? 1U : 0U);
+            return ((window.dictLimit == 2 && window.lowLimit == 2 && (window.nextSrc - window.@base) == 2) ? 1U : 0U);
         }
 
         /**
@@ -577,7 +553,7 @@ namespace ZstdSharp.Unsafe
         {
             uint cycleSize = 1U << (int)cycleLog;
             uint curr = (uint)((byte*)(src) - window.@base);
-            uint minIndexToOverflowCorrect = cycleSize + ((maxDist) > (cycleSize) ? (maxDist) : (cycleSize));
+            uint minIndexToOverflowCorrect = cycleSize + ((maxDist) > (cycleSize) ? (maxDist) : (cycleSize)) + 2;
             uint adjustment = window.nbOverflowCorrections + 1;
             uint adjustedIndex = ((minIndexToOverflowCorrect * adjustment) > (minIndexToOverflowCorrect) ? (minIndexToOverflowCorrect * adjustment) : (minIndexToOverflowCorrect));
             uint indexLargeEnough = ((curr > adjustedIndex) ? 1U : 0U);
@@ -615,9 +591,9 @@ namespace ZstdSharp.Unsafe
             uint cycleSize = 1U << (int)cycleLog;
             uint cycleMask = cycleSize - 1;
             uint curr = (uint)((byte*)(src) - window->@base);
-            uint currentCycle0 = curr & cycleMask;
-            uint currentCycle1 = currentCycle0 == 0 ? cycleSize : currentCycle0;
-            uint newCurrent = currentCycle1 + ((maxDist) > (cycleSize) ? (maxDist) : (cycleSize));
+            uint currentCycle = curr & cycleMask;
+            uint currentCycleCorrection = currentCycle < 2 ? ((cycleSize) > (2) ? (cycleSize) : (2)) : 0;
+            uint newCurrent = currentCycle + currentCycleCorrection + ((maxDist) > (cycleSize) ? (maxDist) : (cycleSize));
             uint correction = curr - newCurrent;
 
             assert((maxDist & (maxDist - 1)) == 0);
@@ -630,18 +606,18 @@ namespace ZstdSharp.Unsafe
 
             window->@base += correction;
             window->dictBase += correction;
-            if (window->lowLimit <= correction)
+            if (window->lowLimit < correction + 2)
             {
-                window->lowLimit = 1;
+                window->lowLimit = 2;
             }
             else
             {
                 window->lowLimit -= correction;
             }
 
-            if (window->dictLimit <= correction)
+            if (window->dictLimit < correction + 2)
             {
-                window->dictLimit = 1;
+                window->dictLimit = 2;
             }
             else
             {
@@ -649,7 +625,7 @@ namespace ZstdSharp.Unsafe
             }
 
             assert(newCurrent >= maxDist);
-            assert(newCurrent - maxDist >= 1);
+            assert(newCurrent - maxDist >= 2);
             assert(window->lowLimit <= newCurrent);
             assert(window->dictLimit <= newCurrent);
             ++window->nbOverflowCorrections;
@@ -747,11 +723,11 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_window_init(ZSTD_window_t* window)
         {
             memset((void*)(window), (0), ((nuint)(sizeof(ZSTD_window_t))));
-            window->@base = emptyString;
-            window->dictBase = emptyString;
-            window->dictLimit = 1;
-            window->lowLimit = 1;
-            window->nextSrc = window->@base + 1;
+            window->@base = (byte*)emptyWindowString;
+            window->dictBase = (byte*)emptyWindowString;
+            window->dictLimit = 2;
+            window->lowLimit = 2;
+            window->nextSrc = window->@base + 2;
             window->nbOverflowCorrections = 0;
         }
 
@@ -808,7 +784,6 @@ namespace ZstdSharp.Unsafe
          * Returns the lowest allowed match index. It may either be in the ext-dict or the prefix.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static uint ZSTD_getLowestMatchIndex(ZSTD_matchState_t* ms, uint curr, uint windowLog)
         {
             uint maxDistance = 1U << (int)windowLog;

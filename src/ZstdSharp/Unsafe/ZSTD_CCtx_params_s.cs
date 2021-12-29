@@ -28,7 +28,7 @@ namespace ZstdSharp.Unsafe
 
         public ZSTD_dictAttachPref_e attachDictPref;
 
-        public ZSTD_literalCompressionMode_e literalCompressionMode;
+        public ZSTD_paramSwitch_e literalCompressionMode;
 
         /* Multithreading: used to pass parameters to mtctx */
         public int nbWorkers;
@@ -56,10 +56,10 @@ namespace ZstdSharp.Unsafe
         public int validateSequences;
 
         /* Block splitting */
-        public int splitBlocks;
+        public ZSTD_paramSwitch_e useBlockSplitter;
 
         /* Param for deciding whether to use row-based matchfinder */
-        public ZSTD_useRowMatchFinderMode_e useRowMatchFinder;
+        public ZSTD_paramSwitch_e useRowMatchFinder;
 
         /* Always load a dictionary in ext-dict mode (not prefix mode)? */
         public int deterministicRefPrefix;

@@ -111,12 +111,6 @@ namespace ZstdSharp.Unsafe
 
         public nuint lhSize;
 
-        public void* legacyContext;
-
-        public uint previousLegacyVersion;
-
-        public uint legacyVersion;
-
         public uint hostageByte;
 
         public int noForwardProgress;
@@ -126,7 +120,14 @@ namespace ZstdSharp.Unsafe
         public ZSTD_outBuffer_s expectedOutBuffer;
 
         /* workspace */
-        public fixed byte litBuffer[131104];
+        public byte* litBuffer;
+
+        public byte* litBufferEnd;
+
+        public ZSTD_litLocation_e litBufferLocation;
+
+        /* literal buffer can be split between storage within dst and within this scratch buffer */
+        public fixed byte litExtraBuffer[65568];
 
         public fixed byte headerBuffer[18];
 

@@ -539,6 +539,7 @@ namespace ZstdSharp.Unsafe
                         }
                     }
 
+                    assert(oend >= op);
 
                     {
                         nuint NCountSize = FSE_writeNCount((void*)op, (nuint)(oend - op), (short*)wksp->norm, max, tableLog);
@@ -555,7 +556,7 @@ namespace ZstdSharp.Unsafe
 
 
                         {
-                            nuint err_code = (FSE_buildCTable_wksp(nextCTable, (short*)wksp->norm, max, tableLog, (void*)wksp->wksp, (nuint)(728)));
+                            nuint err_code = (FSE_buildCTable_wksp(nextCTable, (short*)wksp->norm, max, tableLog, (void*)wksp->wksp, (nuint)(1140)));
 
                             if ((ERR_isError(err_code)) != 0)
                             {

@@ -453,7 +453,7 @@ namespace ZstdSharp.Unsafe
             ZDICT_cover_params_t coverParams;
             FASTCOVER_accel_t accelParams;
 
-            g_displayLevel = (int)parameters.zParams.notificationLevel;
+            g_displayLevel = (int)(parameters.zParams.notificationLevel);
             parameters.splitPoint = 1.0;
             parameters.f = (uint)(parameters.f == 0 ? 20 : parameters.f);
             parameters.accel = (uint)(parameters.accel == 0 ? 1 : parameters.accel);
@@ -538,7 +538,7 @@ namespace ZstdSharp.Unsafe
             uint f = (uint)(parameters->f == 0 ? 20 : parameters->f);
             uint accel = (uint)(parameters->accel == 0 ? 1 : parameters->accel);
             uint shrinkDict = 0;
-            int displayLevel = (int)parameters->zParams.notificationLevel;
+            int displayLevel = (int)(parameters->zParams.notificationLevel);
             uint iteration = 1;
             uint d;
             uint k;
@@ -671,7 +671,7 @@ namespace ZstdSharp.Unsafe
                     data->parameters.splitPoint = splitPoint;
                     data->parameters.steps = kSteps;
                     data->parameters.shrinkDict = shrinkDict;
-                    data->parameters.zParams.notificationLevel = (uint)g_displayLevel;
+                    data->parameters.zParams.notificationLevel = (uint)(g_displayLevel);
                     if ((FASTCOVER_checkParameters(data->parameters, dictBufferCapacity, data->ctx->f, accel)) == 0)
                     {
                         free((void*)data);

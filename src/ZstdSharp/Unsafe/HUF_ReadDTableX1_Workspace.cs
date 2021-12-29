@@ -4,9 +4,9 @@ namespace ZstdSharp.Unsafe
 {
     public unsafe partial struct HUF_ReadDTableX1_Workspace
     {
-        public fixed uint rankVal[16];
+        public fixed uint rankVal[13];
 
-        public fixed uint rankStart[16];
+        public fixed uint rankStart[13];
 
         public fixed uint statsWksp[218];
 

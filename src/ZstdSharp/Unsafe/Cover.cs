@@ -5,7 +5,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static int g_displayLevel = 2;
+        public static int g_displayLevel = 0;
 
         /**
          * Returns the sum of the sample sizes.
@@ -276,7 +276,7 @@ namespace ZstdSharp.Unsafe
         {
             COVER_dictSelection selection = new COVER_dictSelection
             {
-                dictContent = null,
+                dictContent = (byte*)null,
                 dictSize = 0,
                 totalCompressedSize = error,
             };

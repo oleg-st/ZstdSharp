@@ -12,7 +12,7 @@ namespace ZstdSharp.Unsafe
 
         public fixed uint rankStats[13];
 
-        public fixed uint rankStart0[14];
+        public fixed uint rankStart0[15];
 
         public _sortedSymbol_e__FixedBuffer sortedSymbol;
 

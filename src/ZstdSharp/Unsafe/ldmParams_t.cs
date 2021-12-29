@@ -4,8 +4,8 @@ namespace ZstdSharp.Unsafe
 {
     public partial struct ldmParams_t
     {
-        /* 1 if enable long distance matching */
-        public uint enableLdm;
+        /* ZSTD_ps_enable to enable LDM. ZSTD_ps_auto by default */
+        public ZSTD_paramSwitch_e enableLdm;
 
         /* Log size of hashTable */
         public uint hashLog;

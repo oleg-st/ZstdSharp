@@ -19,16 +19,13 @@ namespace ZstdSharp.Unsafe
             void* FSCT = (void*)(((uint*)(ptr)) + 1 + (tableLog != 0 ? tableSize >> 1 : 1));
             FSE_symbolCompressionTransform* symbolTT = (FSE_symbolCompressionTransform*)(FSCT);
             uint step = (((tableSize) >> 1) + ((tableSize) >> 3) + 3);
-            uint* cumul = (uint*)(workSpace);
-            byte* tableSymbol = (byte*)(cumul + (maxSymbolValue + 2));
+            uint maxSV1 = maxSymbolValue + 1;
+            ushort* cumul = (ushort*)(workSpace);
+            byte* tableSymbol = (byte*)(cumul + (maxSV1 + 1));
             uint highThreshold = tableSize - 1;
 
-            if (((nuint)(workSpace) & 3) != 0)
-            {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
-            }
-
-            if (((nuint)(sizeof(uint)) * (maxSymbolValue + 2 + (1UL << (int)(tableLog - 2)))) > wkspSize)
+            assert(((nuint)(workSpace) & 1) == 0);
+            if (((nuint)(sizeof(uint)) * (((maxSymbolValue + 2) + (1UL << (int)(tableLog))) / 2 + (nuint)(sizeof(ulong)) / (nuint)(sizeof(uint)))) > wkspSize)
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge)));
             }
@@ -41,28 +38,81 @@ namespace ZstdSharp.Unsafe
                 uint u;
 
                 cumul[0] = 0;
-                for (u = 1; u <= maxSymbolValue + 1; u++)
+                for (u = 1; u <= maxSV1; u++)
                 {
                     if (normalizedCounter[u - 1] == -1)
                     {
-                        cumul[u] = cumul[u - 1] + 1;
+                        cumul[u] = (ushort)(cumul[u - 1] + 1);
                         tableSymbol[highThreshold--] = (byte)(u - 1);
                     }
                     else
                     {
-                        cumul[u] = cumul[u - 1] + (ushort)(normalizedCounter[u - 1]);
+                        assert(normalizedCounter[u - 1] >= 0);
+                        cumul[u] = (ushort)(cumul[u - 1] + (ushort)(normalizedCounter[u - 1]));
+                        assert(cumul[u] >= cumul[u - 1]);
                     }
                 }
 
-                cumul[maxSymbolValue + 1] = tableSize + 1;
+                cumul[maxSV1] = (ushort)(tableSize + 1);
             }
 
+            if (highThreshold == tableSize - 1)
+            {
+                byte* spread = tableSymbol + tableSize;
 
+
+                {
+                    ulong add = 0x0101010101010101UL;
+                    nuint pos = 0;
+                    ulong sv = 0;
+                    uint s;
+
+                    for (s = 0; s < maxSV1; ++s , sv += add)
+                    {
+                        int i;
+                        int n = normalizedCounter[s];
+
+                        MEM_write64((void*)(spread + pos), sv);
+                        for (i = 8; i < n; i += 8)
+                        {
+                            MEM_write64((void*)(spread + pos + i), sv);
+                        }
+
+                        assert(n >= 0);
+                        pos += (nuint)(n);
+                    }
+                }
+
+
+                {
+                    nuint position = 0;
+                    nuint s;
+                    nuint unroll = 2;
+
+                    assert(tableSize % unroll == 0);
+                    for (s = 0; s < (nuint)(tableSize); s += unroll)
+                    {
+                        nuint u;
+
+                        for (u = 0; u < unroll; ++u)
+                        {
+                            nuint uPosition = (position + (u * step)) & tableMask;
+
+                            tableSymbol[uPosition] = spread[s + u];
+                        }
+
+                        position = (position + (unroll * step)) & tableMask;
+                    }
+
+                    assert(position == 0);
+                }
+            }
+            else
             {
                 uint position = 0;
                 uint symbol;
 
-                for (symbol = 0; symbol <= maxSymbolValue; symbol++)
+                for (symbol = 0; symbol < maxSV1; symbol++)
                 {
                     int nbOccurrences;
                     int freq = normalizedCounter[symbol];
@@ -114,16 +164,22 @@ namespace ZstdSharp.Unsafe
                             symbolTT[s].deltaNbBits = (tableLog << 16) - (uint)((1 << (int)tableLog));
                         }
 
+                        assert(total <= 2147483647);
                         symbolTT[s].deltaFindState = (int)(total - 1);
                         total++;
                         break;
                         default:
                         {
-                            uint maxBitsOut = tableLog - BIT_highbit32((uint)(normalizedCounter[s] - 1));
-                            uint minStatePlus = (uint)(normalizedCounter[s] << (int)maxBitsOut);
+                            assert(normalizedCounter[s] > 1);
+                        }
+
+
+                        {
+                            uint maxBitsOut = tableLog - BIT_highbit32((uint)(normalizedCounter[s]) - 1);
+                            uint minStatePlus = (uint)(normalizedCounter[s]) << (int)maxBitsOut;
 
                             symbolTT[s].deltaNbBits = (maxBitsOut << 16) - minStatePlus;
-                            symbolTT[s].deltaFindState = (int)(total - (ushort)(normalizedCounter[s]));
+                            symbolTT[s].deltaFindState = (int)(total - (uint)(normalizedCounter[s]));
                             total += (uint)(normalizedCounter[s]);
                         }
                         break;
@@ -134,22 +190,12 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
-        /*! FSE_buildCTable():
-            Builds `ct`, which must be already allocated, using FSE_createCTable().
-            @return : 0, or an errorCode, which can be tested using FSE_isError() */
-        public static nuint FSE_buildCTable(uint* ct, short* normalizedCounter, uint maxSymbolValue, uint tableLog)
-        {
-            byte* tableSymbol = stackalloc byte[4096];
-
-            return FSE_buildCTable_wksp(ct, normalizedCounter, maxSymbolValue, tableLog, (void*)tableSymbol, (nuint)(sizeof(byte) * 4096));
-        }
-
         /*-**************************************************************
         *  FSE NCount encoding
         ****************************************************************/
         public static nuint FSE_NCountWriteBound(uint maxSymbolValue, uint tableLog)
         {
-            nuint maxHeaderSize = (((maxSymbolValue + 1) * tableLog) >> 3) + 3;
+            nuint maxHeaderSize = (((maxSymbolValue + 1) * tableLog + 4 + 2) / 8) + 1 + 2;
 
             return maxSymbolValue != 0 ? maxHeaderSize : 512;
         }
@@ -335,7 +381,6 @@ namespace ZstdSharp.Unsafe
         }
 
         /* provides the minimum logSize to safely represent a distribution */
-        [InlineMethod.Inline]
         private static uint FSE_minTableLog(nuint srcSize, uint maxSymbolValue)
         {
             uint minBitsSrc = BIT_highbit32((uint)(srcSize)) + 1;
@@ -467,7 +512,7 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                norm[maxV] += (short)(short)(ToDistribute);
+                norm[maxV] += (short)(ToDistribute);
                 return 0;
             }
 
@@ -587,7 +632,7 @@ namespace ZstdSharp.Unsafe
                         {
                             ulong restToBeat = vStep * rtbTable[proba];
 
-                            proba += (short)((((count[s] * step) - ((ulong)(proba) << (int)scale) > restToBeat) ? 1 : 0));
+                            proba += (short)(((count[s] * step) - ((ulong)(proba) << (int)scale) > restToBeat) ? 1 : 0);
                         }
 
                         if (proba > largestP)
@@ -612,7 +657,7 @@ namespace ZstdSharp.Unsafe
                 }
                 else
                 {
-                    normalizedCounter[largest] += (short)(short)(stillToDistribute);
+                    normalizedCounter[largest] += (short)(stillToDistribute);
                 }
             }
 
