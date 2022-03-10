@@ -68,9 +68,6 @@ namespace ZstdSharp.Unsafe
 
         public nuint staticSize;
 
-        /* == 1 if the CPU supports BMI2 and 0 otherwise. CPU support is determined dynamically once per context lifetime. */
-        public int bmi2;
-
         /* dictionary */
         public ZSTD_DDict_s* ddictLocal;
 

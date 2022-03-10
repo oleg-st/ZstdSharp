@@ -246,21 +246,11 @@ namespace ZstdSharp.Unsafe
             return FSE_readNCount_body(normalizedCounter, maxSVPtr, tableLogPtr, headerBuffer, hbSize);
         }
 
-        private static nuint FSE_readNCount_body_bmi2(short* normalizedCounter, uint* maxSVPtr, uint* tableLogPtr, void* headerBuffer, nuint hbSize)
-        {
-            return FSE_readNCount_body(normalizedCounter, maxSVPtr, tableLogPtr, headerBuffer, hbSize);
-        }
-
         /*! FSE_readNCount_bmi2():
          * Same as FSE_readNCount() but pass bmi2=1 when your CPU supports BMI2 and 0 otherwise.
          */
         public static nuint FSE_readNCount_bmi2(short* normalizedCounter, uint* maxSVPtr, uint* tableLogPtr, void* headerBuffer, nuint hbSize, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                return FSE_readNCount_body_bmi2(normalizedCounter, maxSVPtr, tableLogPtr, headerBuffer, hbSize);
-            }
-
             return FSE_readNCount_body_default(normalizedCounter, maxSVPtr, tableLogPtr, headerBuffer, hbSize);
         }
 
@@ -407,18 +397,8 @@ namespace ZstdSharp.Unsafe
             return HUF_readStats_body(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, workSpace, wkspSize, 0);
         }
 
-        private static nuint HUF_readStats_body_bmi2(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize, void* workSpace, nuint wkspSize)
-        {
-            return HUF_readStats_body(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, workSpace, wkspSize, 1);
-        }
-
         public static nuint HUF_readStats_wksp(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                return HUF_readStats_body_bmi2(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, workSpace, wkspSize);
-            }
-
             return HUF_readStats_body_default(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, workSpace, wkspSize);
         }
     }

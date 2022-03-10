@@ -37,38 +37,6 @@ namespace ZstdSharp.Unsafe
             return (mlBase > 127) ? ZSTD_highbit32(mlBase) + ML_deltaCode : ML_Code[mlBase];
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static repcodes_s ZSTD_updateRep(uint* rep, uint offset, uint ll0)
-        {
-            repcodes_s newReps;
-
-            if (offset >= 3)
-            {
-                newReps.rep[2] = rep[1];
-                newReps.rep[1] = rep[0];
-                newReps.rep[0] = offset - (uint)((3 - 1));
-            }
-            else
-            {
-                uint repCode = offset + ll0;
-
-                if (repCode > 0)
-                {
-                    uint currentOffset = (repCode == 3) ? (rep[0] - 1) : rep[repCode];
-
-                    newReps.rep[2] = (repCode >= 2) ? rep[1] : rep[2];
-                    newReps.rep[1] = rep[0];
-                    newReps.rep[0] = currentOffset;
-                }
-                else
-                {
-                    memcpy((void*)(&newReps), (void*)(rep), ((nuint)(sizeof(repcodes_s))));
-                }
-            }
-
-            return newReps;
-        }
-
         /* ZSTD_cParam_withinBounds:
          * @return 1 if value is within cParam bounds,
          * 0 otherwise */
@@ -194,14 +162,14 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! ZSTD_storeSeq() :
-         *  Store a sequence (litlen, litPtr, offCode and mlBase) into seqStore_t.
-         *  `offCode` : distance to match + ZSTD_REP_MOVE (values <= ZSTD_REP_MOVE are repCodes).
-         *  `mlBase` : matchLength - MINMATCH
+         *  Store a sequence (litlen, litPtr, offCode and matchLength) into seqStore_t.
+         *  @offBase_minus1 : Users should use employ macros STORE_REPCODE_X and STORE_OFFSET().
+         *  @matchLength : must be >= MINMATCH
          *  Allowed to overread literals up to litLimit.
         */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static void ZSTD_storeSeq(seqStore_t* seqStorePtr, nuint litLength, byte* literals, byte* litLimit, uint offCode, nuint mlBase)
+        private static void ZSTD_storeSeq(seqStore_t* seqStorePtr, nuint litLength, byte* literals, byte* litLimit, uint offBase_minus1, nuint matchLength)
         {
             byte* litLimit_w = litLimit - 32;
             byte* litEnd = literals + litLength;
@@ -233,16 +201,64 @@ namespace ZstdSharp.Unsafe
             }
 
             seqStorePtr->sequences[0].litLength = (ushort)(litLength);
-            seqStorePtr->sequences[0].offset = offCode + 1;
-            if (mlBase > 0xFFFF)
+            seqStorePtr->sequences[0].offBase = ((offBase_minus1) + 1);
+            assert(matchLength >= 3);
+
             {
-                assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
-                seqStorePtr->longLengthType = ZSTD_longLengthType_e.ZSTD_llt_matchLength;
-                seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
+                nuint mlBase = matchLength - 3;
+
+                if (mlBase > 0xFFFF)
+                {
+                    assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
+                    seqStorePtr->longLengthType = ZSTD_longLengthType_e.ZSTD_llt_matchLength;
+                    seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
+                }
+
+                seqStorePtr->sequences[0].mlBase = (ushort)(mlBase);
             }
 
-            seqStorePtr->sequences[0].matchLength = (ushort)(mlBase);
             seqStorePtr->sequences++;
+        }
+
+        /* ZSTD_updateRep() :
+         * updates in-place @rep (array of repeat offsets)
+         * @offBase_minus1 : sum-type, with same numeric representation as ZSTD_storeSeq()
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ZSTD_updateRep(uint* rep, uint offBase_minus1, uint ll0)
+        {
+            if (((offBase_minus1) > (uint)((3 - 1))))
+            {
+                rep[2] = rep[1];
+                rep[1] = rep[0];
+                assert(((offBase_minus1) > (uint)((3 - 1)))); rep[0] = ((offBase_minus1) - (uint)((3 - 1)));
+            }
+            else
+            {
+                assert(((offBase_minus1) <= (uint)((3 - 1)))); uint repCode = ((offBase_minus1) + 1) - 1 + ll0;
+
+                if (repCode > 0)
+                {
+                    uint currentOffset = (repCode == 3) ? (rep[0] - 1) : rep[repCode];
+
+                    rep[2] = (repCode >= 2) ? rep[1] : rep[2];
+                    rep[1] = rep[0];
+                    rep[0] = currentOffset;
+                }
+                else
+                {
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static repcodes_s ZSTD_newRep(uint* rep, uint offBase_minus1, uint ll0)
+        {
+            repcodes_s newReps;
+
+            memcpy((void*)(&newReps), (void*)(rep), ((nuint)(sizeof(repcodes_s))));
+            ZSTD_updateRep(newReps.rep, offBase_minus1, ll0);
+            return newReps;
         }
 
         /*-*************************************

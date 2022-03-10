@@ -274,25 +274,18 @@ namespace ZstdSharp.Unsafe
             public nuint e255;
             public nuint e256;
 
-            public ref nuint this[int index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
-            }
-
-            public ref nuint this[uint index]
+            public ref nuint this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
                 get => ref *(this + index);
             }
 
-            public ref nuint this[nuint index]
+            public ref nuint this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
+                get => ref *(this + (nuint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -300,22 +293,6 @@ namespace ZstdSharp.Unsafe
             public static implicit operator nuint*(in _CTable_e__FixedBuffer t)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_CTable_e__FixedBuffer), nameof(e0)));
-                return IL.ReturnPointer<nuint>();
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static nuint* operator +(in _CTable_e__FixedBuffer t, uint index)
-            {
-                Ldarg_0();
-                Ldflda(new FieldRef(typeof(_CTable_e__FixedBuffer), nameof(e0)));
-                Ldarg_1();
-                Conv_I();
-                Sizeof<nuint>();
-                Conv_I();
-                Mul();
-                Add();
                 return IL.ReturnPointer<nuint>();
             }
 
@@ -324,9 +301,7 @@ namespace ZstdSharp.Unsafe
             public static nuint* operator +(in _CTable_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_CTable_e__FixedBuffer), nameof(e0)));
                 Ldarg_1();
-                Conv_I();
                 Sizeof<nuint>();
                 Conv_I();
                 Mul();

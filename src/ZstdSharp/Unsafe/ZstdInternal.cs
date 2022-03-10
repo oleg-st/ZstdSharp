@@ -2,22 +2,19 @@ using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
-#if NETCOREAPP3_0_OR_GREATER
-using System.Runtime.Intrinsics.X86;
-#endif
 
 namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static uint* repStartValue = GetArrayPointer(new uint[3]
+        public static readonly uint* repStartValue = GetArrayPointer(new uint[3]
         {
             1,
             4,
             8,
         });
 
-        public static nuint* ZSTD_fcs_fieldSize = GetArrayPointer(new nuint[4]
+        public static readonly nuint* ZSTD_fcs_fieldSize = GetArrayPointer(new nuint[4]
         {
             0,
             2,
@@ -25,7 +22,7 @@ namespace ZstdSharp.Unsafe
             8,
         });
 
-        public static nuint* ZSTD_did_fieldSize = GetArrayPointer(new nuint[4]
+        public static readonly nuint* ZSTD_did_fieldSize = GetArrayPointer(new nuint[4]
         {
             0,
             1,
@@ -35,7 +32,7 @@ namespace ZstdSharp.Unsafe
 
         public const nuint ZSTD_blockHeaderSize = 3;
 
-        public static byte* LL_bits = GetArrayPointer(new byte[36]
+        public static readonly byte* LL_bits = GetArrayPointer(new byte[36]
         {
             0,
             0,
@@ -75,7 +72,7 @@ namespace ZstdSharp.Unsafe
             16,
         });
 
-        public static short* LL_defaultNorm = GetArrayPointer(new short[36]
+        public static readonly short* LL_defaultNorm = GetArrayPointer(new short[36]
         {
             4,
             3,
@@ -117,7 +114,7 @@ namespace ZstdSharp.Unsafe
 
         public const uint LL_defaultNormLog = 6;
 
-        public static byte* ML_bits = GetArrayPointer(new byte[53]
+        public static readonly byte* ML_bits = GetArrayPointer(new byte[53]
         {
             0,
             0,
@@ -174,7 +171,7 @@ namespace ZstdSharp.Unsafe
             16,
         });
 
-        public static short* ML_defaultNorm = GetArrayPointer(new short[53]
+        public static readonly short* ML_defaultNorm = GetArrayPointer(new short[53]
         {
             1,
             4,
@@ -233,7 +230,7 @@ namespace ZstdSharp.Unsafe
 
         public const uint ML_defaultNormLog = 6;
 
-        public static short* OF_defaultNorm = GetArrayPointer(new short[29]
+        public static readonly short* OF_defaultNorm = GetArrayPointer(new short[29]
         {
             1,
             1,
@@ -280,19 +277,9 @@ namespace ZstdSharp.Unsafe
            the dst buffer. In circumstances where the op "catches up" to where the
            literal buffer is, there can be partial overlaps in this call on the final
            copy if the literal is being shifted by less than 16 bytes. */
-        [InlineMethod.Inline]
         private static void ZSTD_copy16(void* dst, void* src)
         {
-#if NETCOREAPP3_0_OR_GREATER
-            if (Sse2.IsSupported)
-            {
-                Sse2.Store((byte*)dst, Sse2.LoadVector128((byte*)src));
-            }
-            else
-#endif
-            {
-                memcpy((dst), (src), (16));
-            }
+            memcpy((dst), (src), (16));
         }
 
         /*! ZSTD_wildcopy() :
@@ -380,7 +367,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_sequenceLength seqLen;
 
             seqLen.litLength = seq->litLength;
-            seqLen.matchLength = (uint)(seq->matchLength + 3);
+            seqLen.matchLength = (uint)(seq->mlBase + 3);
             if (seqStore->longLengthPos == (uint)(seq - seqStore->sequencesStart))
             {
                 if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_literalLength)

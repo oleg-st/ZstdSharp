@@ -21,7 +21,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_hash8Ptr(p, f);
         }
 
-        public static FASTCOVER_accel_t* FASTCOVER_defaultAccelParameters = GetArrayPointer(new FASTCOVER_accel_t[11]
+        public static readonly FASTCOVER_accel_t* FASTCOVER_defaultAccelParameters = GetArrayPointer(new FASTCOVER_accel_t[11]
         {
             new FASTCOVER_accel_t
             {

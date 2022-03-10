@@ -273,9 +273,15 @@ namespace ZstdSharp.Unsafe
          * cost of literalLength symbol */
         private static uint ZSTD_litLengthPrice(uint litLength, optState_t* optPtr, int optLevel)
         {
+            assert(litLength <= (uint)((1 << 17)));
             if (optPtr->priceType == ZSTD_OptPrice_e.zop_predef)
             {
                 return (optLevel != 0 ? ZSTD_fracWeight(litLength) : ZSTD_bitWeight(litLength));
+            }
+
+            if (litLength == (uint)((1 << 17)))
+            {
+                return (uint)((1 << 8)) + ZSTD_litLengthPrice((uint)((1 << 17) - 1), optPtr, optLevel);
             }
 
 
@@ -289,12 +295,14 @@ namespace ZstdSharp.Unsafe
         /* ZSTD_getMatchPrice() :
          * Provides the cost of the match part (offset + matchLength) of a sequence
          * Must be combined with ZSTD_fullLiteralsCost() to get the full cost of a sequence.
-         * optLevel: when <2, favors small offset for decompression speed (improved cache efficiency) */
+         * @offcode : expects a scale where 0,1,2 are repcodes 1-3, and 3+ are real_offsets+2
+         * @optLevel: when <2, favors small offset for decompression speed (improved cache efficiency)
+         */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_getMatchPrice(uint offset, uint matchLength, optState_t* optPtr, int optLevel)
+        private static uint ZSTD_getMatchPrice(uint offcode, uint matchLength, optState_t* optPtr, int optLevel)
         {
             uint price;
-            uint offCode = ZSTD_highbit32(offset + 1);
+            uint offCode = ZSTD_highbit32(((offcode) + 1));
             uint mlBase = matchLength - 3;
 
             assert(matchLength >= 3);
@@ -346,7 +354,7 @@ namespace ZstdSharp.Unsafe
 
 
             {
-                uint offCode = ZSTD_highbit32(offsetCode + 1);
+                uint offCode = ZSTD_highbit32(((offsetCode) + 1));
 
                 assert(offCode <= 31);
                 optPtr->offCodeFreq[offCode]++;
@@ -637,7 +645,7 @@ namespace ZstdSharp.Unsafe
                     if (repLen > bestLength)
                     {
                         bestLength = repLen;
-                        matches[mnum].off = repCode - ll0;
+                        assert((repCode - ll0 + 1) >= 1); assert((repCode - ll0 + 1) <= 3); matches[mnum].off = ((repCode - ll0 + 1) - 1);
                         matches[mnum].len = (uint)(repLen);
                         mnum++;
                         if (((repLen > sufficient_len) || (ip + repLen == iLimit)))
@@ -674,7 +682,7 @@ namespace ZstdSharp.Unsafe
                         bestLength = mlen;
                         assert(curr > matchIndex3);
                         assert(mnum == 0);
-                        matches[0].off = (curr - matchIndex3) + (uint)((3 - 1));
+                        assert((curr - matchIndex3) > 0); matches[0].off = (curr - matchIndex3 + (uint)((3 - 1)));
                         matches[0].len = (uint)(mlen);
                         mnum = 1;
                         if (((mlen > sufficient_len) || (ip + mlen == iLimit)))
@@ -725,7 +733,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                     bestLength = matchLength;
-                    matches[mnum].off = (curr - matchIndex) + (uint)((3 - 1));
+                    assert((curr - matchIndex) > 0); matches[mnum].off = (curr - matchIndex + (uint)((3 - 1)));
                     matches[mnum].len = (uint)(matchLength);
                     mnum++;
                     if (((matchLength > (uint)((1 << 12))) || (ip + matchLength == iLimit)))
@@ -797,7 +805,7 @@ namespace ZstdSharp.Unsafe
                         }
 
                         bestLength = matchLength;
-                        matches[mnum].off = (curr - matchIndex) + (uint)((3 - 1));
+                        assert((curr - matchIndex) > 0); matches[mnum].off = (curr - matchIndex + (uint)((3 - 1)));
                         matches[mnum].len = (uint)(matchLength);
                         mnum++;
                         if (((matchLength > (uint)((1 << 12))) || (ip + matchLength == iLimit)))
@@ -913,7 +921,8 @@ namespace ZstdSharp.Unsafe
         }
 
         /* ZSTD_optLdm_skipRawSeqStoreBytes():
-         * Moves forward in rawSeqStore by nbBytes, which will update the fields 'pos' and 'posInSequence'.
+         * Moves forward in @rawSeqStore by @nbBytes,
+         * which will update the fields 'pos' and 'posInSequence'.
          */
         private static void ZSTD_optLdm_skipRawSeqStoreBytes(rawSeqStore_t* rawSeqStore, nuint nbBytes)
         {
@@ -987,14 +996,14 @@ namespace ZstdSharp.Unsafe
         }
 
         /* ZSTD_optLdm_maybeAddMatch():
-         * Adds a match if it's long enough, based on it's 'matchStartPosInBlock'
-         * and 'matchEndPosInBlock', into 'matches'. Maintains the correct ordering of 'matches'
+         * Adds a match if it's long enough,
+         * based on it's 'matchStartPosInBlock' and 'matchEndPosInBlock',
+         * into 'matches'. Maintains the correct ordering of 'matches'.
          */
         private static void ZSTD_optLdm_maybeAddMatch(ZSTD_match_t* matches, uint* nbMatches, ZSTD_optLdm_t* optLdm, uint currPosInBlock)
         {
             uint posDiff = currPosInBlock - optLdm->startPosInBlock;
             uint candidateMatchLength = optLdm->endPosInBlock - optLdm->startPosInBlock - posDiff;
-            uint candidateOffCode = optLdm->offset + (uint)((3 - 1));
 
             if (currPosInBlock < optLdm->startPosInBlock || currPosInBlock >= optLdm->endPosInBlock || candidateMatchLength < 3)
             {
@@ -1003,6 +1012,8 @@ namespace ZstdSharp.Unsafe
 
             if (*nbMatches == 0 || ((candidateMatchLength > matches[*nbMatches - 1].len) && *nbMatches < (uint)((1 << 12))))
             {
+                assert((optLdm->offset) > 0); uint candidateOffCode = (optLdm->offset + (uint)((3 - 1)));
+
                 matches[*nbMatches].len = candidateMatchLength;
                 matches[*nbMatches].off = candidateOffCode;
                 (*nbMatches)++;
@@ -1103,13 +1114,13 @@ namespace ZstdSharp.Unsafe
 
                     {
                         uint maxML = matches[nbMatches - 1].len;
-                        uint maxOffset = matches[nbMatches - 1].off;
+                        uint maxOffcode = matches[nbMatches - 1].off;
 
                         if (maxML > sufficient_len)
                         {
                             lastSequence.litlen = litlen;
                             lastSequence.mlen = maxML;
-                            lastSequence.off = maxOffset;
+                            lastSequence.off = maxOffcode;
                             cur = 0;
                             last_pos = ZSTD_totalLen(lastSequence);
                             goto _shortestPath;
@@ -1130,16 +1141,16 @@ namespace ZstdSharp.Unsafe
 
                         for (matchNb = 0; matchNb < nbMatches; matchNb++)
                         {
-                            uint offset = matches[matchNb].off;
+                            uint offcode = matches[matchNb].off;
                             uint end = matches[matchNb].len;
 
                             for (; pos <= end; pos++)
                             {
-                                uint matchPrice = ZSTD_getMatchPrice(offset, pos, optStatePtr, optLevel);
+                                uint matchPrice = ZSTD_getMatchPrice(offcode, pos, optStatePtr, optLevel);
                                 uint sequencePrice = literalsPrice + matchPrice;
 
                                 opt[pos].mlen = pos;
-                                opt[pos].off = offset;
+                                opt[pos].off = offcode;
                                 opt[pos].litlen = litlen;
                                 opt[pos].price = (int)(sequencePrice);
                             }
@@ -1176,7 +1187,7 @@ namespace ZstdSharp.Unsafe
                     if (opt[cur].mlen != 0)
                     {
                         uint prev = cur - opt[cur].mlen;
-                        repcodes_s newReps = ZSTD_updateRep(opt[prev].rep, opt[cur].off, ((opt[cur].litlen == 0) ? 1U : 0U));
+                        repcodes_s newReps = ZSTD_newRep(opt[prev].rep, opt[cur].off, ((opt[cur].litlen == 0) ? 1U : 0U));
 
                         memcpy((void*)((opt[cur].rep)), (void*)(&newReps), ((nuint)(sizeof(repcodes_s))));
                     }
@@ -1280,7 +1291,7 @@ namespace ZstdSharp.Unsafe
                 assert(opt[0].mlen == 0);
                 if (lastSequence.mlen != 0)
                 {
-                    repcodes_s reps = ZSTD_updateRep(opt[cur].rep, lastSequence.off, ((lastSequence.litlen == 0) ? 1U : 0U));
+                    repcodes_s reps = ZSTD_newRep(opt[cur].rep, lastSequence.off, ((lastSequence.litlen == 0) ? 1U : 0U));
 
                     memcpy((void*)(rep), (void*)(&reps), ((nuint)(sizeof(repcodes_s))));
                 }
@@ -1326,7 +1337,7 @@ namespace ZstdSharp.Unsafe
 
                             assert(anchor + llen <= iend);
                             ZSTD_updateStats(optStatePtr, llen, anchor, offCode, mlen);
-                            ZSTD_storeSeq(seqStore, llen, anchor, iend, offCode, mlen - 3);
+                            ZSTD_storeSeq(seqStore, llen, anchor, iend, offCode, mlen);
                             anchor += advance;
                             ip = anchor;
                         }

@@ -99,8 +99,8 @@ namespace ZstdSharp.Unsafe
                     if (nbSeq >= 2)
                     {
                         seqDef_s* seq = seqStorePtr->sequencesStart;
-                        uint offset1 = seq[0].offset - 3;
-                        uint offset2 = seq[1].offset - 3;
+                        uint offset1 = seq[0].offBase - 3;
+                        uint offset2 = seq[1].offBase - 3;
 
                         if (offset1 >= 1024)
                         {

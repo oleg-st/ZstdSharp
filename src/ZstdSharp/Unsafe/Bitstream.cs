@@ -21,7 +21,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static uint* BIT_mask = GetArrayPointer(new uint[32]
+        public static readonly uint* BIT_mask = GetArrayPointer(new uint[32]
         {
             0,
             1,
@@ -283,13 +283,35 @@ namespace ZstdSharp.Unsafe
             uint regMask = (uint)((nuint)(sizeof(nuint)) * 8 - 1);
 
             assert(nbBits < ((nuint)(sizeof(uint) * 32) / (nuint)(sizeof(uint))));
-            return (nuint)((bitContainer >> (int)(start & regMask)) & ((((ulong)(1)) << (int)nbBits) - 1));
+#if NETCOREAPP3_1_OR_GREATER
+            if (System.Runtime.Intrinsics.X86.Bmi2.X64.IsSupported)
+            {
+                return (nuint)System.Runtime.Intrinsics.X86.Bmi2.X64.ZeroHighBits(bitContainer >> (int)(start & regMask), nbBits);
+            }
+
+            if (System.Runtime.Intrinsics.X86.Bmi2.IsSupported)
+            {
+                return System.Runtime.Intrinsics.X86.Bmi2.ZeroHighBits((uint)(bitContainer >> (int)(start & regMask)), nbBits);
+            }
+#endif
+            return bitContainer >> (int)(start & regMask) & BIT_mask[nbBits];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint BIT_getLowerBits(nuint bitContainer, uint nbBits)
         {
             assert(nbBits < ((nuint)(sizeof(uint) * 32) / (nuint)(sizeof(uint))));
+#if NETCOREAPP3_1_OR_GREATER
+            if (System.Runtime.Intrinsics.X86.Bmi2.X64.IsSupported)
+            {
+                return (nuint)System.Runtime.Intrinsics.X86.Bmi2.X64.ZeroHighBits(bitContainer, nbBits);
+            }
+
+            if (System.Runtime.Intrinsics.X86.Bmi2.IsSupported)
+            {
+                return System.Runtime.Intrinsics.X86.Bmi2.ZeroHighBits((uint)bitContainer, nbBits);
+            }
+#endif
             return bitContainer & BIT_mask[nbBits];
         }
 
@@ -308,6 +330,7 @@ namespace ZstdSharp.Unsafe
         /*! BIT_lookBitsFast() :
          *  unsafe version; only works if nbBits >= 1 */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static nuint BIT_lookBitsFast(BIT_DStream_t* bitD, uint nbBits)
         {
             uint regMask = (uint)((nuint)(sizeof(nuint)) * 8 - 1);
@@ -317,6 +340,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static void BIT_skipBits(BIT_DStream_t* bitD, uint nbBits)
         {
             bitD->bitsConsumed += nbBits;
@@ -354,6 +378,7 @@ namespace ZstdSharp.Unsafe
          *     point you must use BIT_reloadDStream() to reload.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static BIT_DStream_status BIT_reloadDStreamFast(BIT_DStream_t* bitD)
         {
             if ((bitD->ptr < bitD->limitPtr))

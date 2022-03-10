@@ -14,7 +14,6 @@ namespace ZstdSharp.Unsafe
         public static implicit operator uint*(in rankValCol_t t)
         {
             Ldarg_0();
-            Ldflda(new FieldRef(typeof(rankValCol_t), nameof(Body)));
             return IL.ReturnPointer<uint>();
         }
     }

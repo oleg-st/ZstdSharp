@@ -6,7 +6,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static uint* kInverseProbabilityLog256 = GetArrayPointer(new uint[256]
+        public static readonly uint* kInverseProbabilityLog256 = GetArrayPointer(new uint[256]
         {
             0,
             2048,
@@ -581,7 +581,6 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_encodeSequences_body(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, seqDef_s* sequences, nuint nbSeq, int longOffsets)
         {
             BIT_CStream_t blockStream;
@@ -603,7 +602,7 @@ namespace ZstdSharp.Unsafe
                 BIT_flushBits(&blockStream);
             }
 
-            BIT_addBits(&blockStream, sequences[nbSeq - 1].matchLength, ML_bits[mlCodeTable[nbSeq - 1]]);
+            BIT_addBits(&blockStream, sequences[nbSeq - 1].mlBase, ML_bits[mlCodeTable[nbSeq - 1]]);
             if (MEM_32bits)
             {
                 BIT_flushBits(&blockStream);
@@ -616,15 +615,15 @@ namespace ZstdSharp.Unsafe
 
                 if (extraBits != 0)
                 {
-                    BIT_addBits(&blockStream, sequences[nbSeq - 1].offset, extraBits);
+                    BIT_addBits(&blockStream, sequences[nbSeq - 1].offBase, extraBits);
                     BIT_flushBits(&blockStream);
                 }
 
-                BIT_addBits(&blockStream, sequences[nbSeq - 1].offset >> (int)extraBits, ofBits - extraBits);
+                BIT_addBits(&blockStream, sequences[nbSeq - 1].offBase >> (int)extraBits, ofBits - extraBits);
             }
             else
             {
-                BIT_addBits(&blockStream, sequences[nbSeq - 1].offset, ofCodeTable[nbSeq - 1]);
+                BIT_addBits(&blockStream, sequences[nbSeq - 1].offBase, ofCodeTable[nbSeq - 1]);
             }
 
             BIT_flushBits(&blockStream);
@@ -660,7 +659,7 @@ namespace ZstdSharp.Unsafe
                         BIT_flushBits(&blockStream);
                     }
 
-                    BIT_addBits(&blockStream, sequences[n].matchLength, mlBits);
+                    BIT_addBits(&blockStream, sequences[n].mlBase, mlBits);
                     if (MEM_32bits || (ofBits + mlBits + llBits > 56))
                     {
                         BIT_flushBits(&blockStream);
@@ -672,15 +671,15 @@ namespace ZstdSharp.Unsafe
 
                         if (extraBits != 0)
                         {
-                            BIT_addBits(&blockStream, sequences[n].offset, extraBits);
+                            BIT_addBits(&blockStream, sequences[n].offBase, extraBits);
                             BIT_flushBits(&blockStream);
                         }
 
-                        BIT_addBits(&blockStream, sequences[n].offset >> (int)extraBits, ofBits - extraBits);
+                        BIT_addBits(&blockStream, sequences[n].offBase >> (int)extraBits, ofBits - extraBits);
                     }
                     else
                     {
-                        BIT_addBits(&blockStream, sequences[n].offset, ofBits);
+                        BIT_addBits(&blockStream, sequences[n].offBase, ofBits);
                     }
 
                     BIT_flushBits(&blockStream);
@@ -708,18 +707,8 @@ namespace ZstdSharp.Unsafe
             return ZSTD_encodeSequences_body(dst, dstCapacity, CTable_MatchLength, mlCodeTable, CTable_OffsetBits, ofCodeTable, CTable_LitLength, llCodeTable, sequences, nbSeq, longOffsets);
         }
 
-        private static nuint ZSTD_encodeSequences_bmi2(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, seqDef_s* sequences, nuint nbSeq, int longOffsets)
-        {
-            return ZSTD_encodeSequences_body(dst, dstCapacity, CTable_MatchLength, mlCodeTable, CTable_OffsetBits, ofCodeTable, CTable_LitLength, llCodeTable, sequences, nbSeq, longOffsets);
-        }
-
         public static nuint ZSTD_encodeSequences(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, seqDef_s* sequences, nuint nbSeq, int longOffsets, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                return ZSTD_encodeSequences_bmi2(dst, dstCapacity, CTable_MatchLength, mlCodeTable, CTable_OffsetBits, ofCodeTable, CTable_LitLength, llCodeTable, sequences, nbSeq, longOffsets);
-            }
-
             return ZSTD_encodeSequences_default(dst, dstCapacity, CTable_MatchLength, mlCodeTable, CTable_OffsetBits, ofCodeTable, CTable_LitLength, llCodeTable, sequences, nbSeq, longOffsets);
         }
     }

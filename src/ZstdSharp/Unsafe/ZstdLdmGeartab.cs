@@ -5,7 +5,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static ulong* ZSTD_ldm_gearTab = GetArrayPointer(new ulong[256]
+        public static readonly ulong* ZSTD_ldm_gearTab = GetArrayPointer(new ulong[256]
         {
             0xf5b8f72c5f77775c,
             0x84935f266b7ac412,

@@ -181,7 +181,7 @@ namespace ZstdSharp.Unsafe
 
                     if ((4 * (int)(matchLength - bestLength)) > (int)(ZSTD_highbit32(curr - matchIndex + 1) - ZSTD_highbit32((uint)(offsetPtr[0]) + 1)))
                     {
-                        bestLength = matchLength; *offsetPtr = (uint)((3 - 1)) + curr - matchIndex;
+                        bestLength = matchLength; assert((curr - matchIndex) > 0); *offsetPtr = (curr - matchIndex + (uint)((3 - 1)));
                     }
 
                     if (ip + matchLength == iend)
@@ -214,7 +214,7 @@ namespace ZstdSharp.Unsafe
 
             if (bestLength >= 3)
             {
-                uint mIndex = curr - ((uint)(*offsetPtr) - (uint)((3 - 1)));
+                assert(((*offsetPtr) > (uint)((3 - 1)))); uint mIndex = curr - (uint)((*offsetPtr) - (uint)((3 - 1)));
             }
 
             return bestLength;
@@ -314,7 +314,7 @@ namespace ZstdSharp.Unsafe
 
                         if ((4 * (int)(matchLength - bestLength)) > (int)(ZSTD_highbit32(curr - matchIndex + 1) - ZSTD_highbit32((uint)(offsetPtr[0]) + 1)))
                         {
-                            bestLength = matchLength; *offsetPtr = (uint)((3 - 1)) + curr - matchIndex;
+                            bestLength = matchLength; assert((curr - matchIndex) > 0); *offsetPtr = (curr - matchIndex + (uint)((3 - 1)));
                         }
 
                         if (ip + matchLength == iend)
@@ -367,7 +367,7 @@ namespace ZstdSharp.Unsafe
                 ms->nextToUpdate = matchEndIdx - 8;
                 if (bestLength >= 3)
                 {
-                    uint mIndex = curr - ((uint)(*offsetPtr) - (uint)((3 - 1)));
+                    assert(((*offsetPtr) > (uint)((3 - 1)))); uint mIndex = curr - (uint)((*offsetPtr) - (uint)((3 - 1)));
                 }
 
                 return bestLength;
@@ -567,7 +567,7 @@ namespace ZstdSharp.Unsafe
                 if (currentMl > ml)
                 {
                     ml = currentMl;
-                    *offsetPtr = curr - (matchIndex + ddsIndexDelta) + (uint)((3 - 1));
+                    assert((curr - (matchIndex + ddsIndexDelta)) > 0); *offsetPtr = (curr - (matchIndex + ddsIndexDelta) + (uint)((3 - 1)));
                     if (ip + currentMl == iLimit)
                     {
                         return ml;
@@ -606,7 +606,7 @@ namespace ZstdSharp.Unsafe
                     if (currentMl > ml)
                     {
                         ml = currentMl;
-                        *offsetPtr = curr - (matchIndex + ddsIndexDelta) + (uint)((3 - 1));
+                        assert((curr - (matchIndex + ddsIndexDelta)) > 0); *offsetPtr = (curr - (matchIndex + ddsIndexDelta) + (uint)((3 - 1)));
                         if (ip + currentMl == iLimit)
                         {
                             break;
@@ -714,7 +714,7 @@ namespace ZstdSharp.Unsafe
                 if (currentMl > ml)
                 {
                     ml = currentMl;
-                    *offsetPtr = curr - matchIndex + (uint)((3 - 1));
+                    assert((curr - matchIndex) > 0); *offsetPtr = (curr - matchIndex + (uint)((3 - 1)));
                     if (ip + currentMl == iLimit)
                     {
                         break;
@@ -761,7 +761,8 @@ namespace ZstdSharp.Unsafe
                     if (currentMl > ml)
                     {
                         ml = currentMl;
-                        *offsetPtr = curr - (matchIndex + dmsIndexDelta) + (uint)((3 - 1));
+                        assert(curr > matchIndex + dmsIndexDelta);
+                        assert((curr - (matchIndex + dmsIndexDelta)) > 0); *offsetPtr = (curr - (matchIndex + dmsIndexDelta) + (uint)((3 - 1)));
                         if (ip + currentMl == iLimit)
                         {
                             break;
@@ -994,7 +995,6 @@ namespace ZstdSharp.Unsafe
 
             assert((rowEntries == 16) || (rowEntries == 32) || rowEntries == 64);
             assert(rowEntries <= 64);
-
 #if NETCOREAPP3_0_OR_GREATER
             if (Sse2.IsSupported)
             {
@@ -1230,7 +1230,7 @@ namespace ZstdSharp.Unsafe
                     if (currentMl > ml)
                     {
                         ml = currentMl;
-                        *offsetPtr = curr - matchIndex + (uint)((3 - 1));
+                        assert((curr - matchIndex) > 0); *offsetPtr = (curr - matchIndex + (uint)((3 - 1)));
                         if (ip + currentMl == iLimit)
                         {
                             break;
@@ -1295,7 +1295,8 @@ namespace ZstdSharp.Unsafe
                         if (currentMl > ml)
                         {
                             ml = currentMl;
-                            *offsetPtr = curr - (matchIndex + dmsIndexDelta) + (uint)((3 - 1));
+                            assert(curr > matchIndex + dmsIndexDelta);
+                            assert((curr - (matchIndex + dmsIndexDelta)) > 0); *offsetPtr = (curr - (matchIndex + dmsIndexDelta) + (uint)((3 - 1)));
                             if (ip + currentMl == iLimit)
                             {
                                 break;
@@ -1712,6 +1713,9 @@ namespace ZstdSharp.Unsafe
          */
         private static ZSTD_LazyVTable ZSTD_selectLazyVTable(ZSTD_matchState_t* ms, searchMethod_e searchMethod, ZSTD_dictMode_e dictMode)
         {
+
+
+
             uint mls = (uint)((4) > (((6) < (ms->cParams.minMatch) ? (6) : (ms->cParams.minMatch))) ? (4) : (((6) < (ms->cParams.minMatch) ? (6) : (ms->cParams.minMatch))));
             uint rowLog = (uint)((4) > (((6) < (ms->cParams.searchLog) ? (6) : (ms->cParams.searchLog))) ? (4) : (((6) < (ms->cParams.searchLog) ? (6) : (ms->cParams.searchLog))));
 
@@ -1798,7 +1802,7 @@ namespace ZstdSharp.Unsafe
             while (ip < ilimit)
             {
                 nuint matchLength = 0;
-                nuint offset = 0;
+                assert((1) >= 1); assert((1) <= 3); nuint offcode = (nuint)(((1) - 1));
                 byte* start = ip + 1;
 
                 if (isDxS != 0)
@@ -1834,7 +1838,7 @@ namespace ZstdSharp.Unsafe
 
                     if (ml2 > matchLength)
                     {
-                        matchLength = ml2; start = ip; offset = offsetFound;
+                        matchLength = ml2; start = ip; offcode = offsetFound;
                     }
                 }
 
@@ -1849,15 +1853,15 @@ namespace ZstdSharp.Unsafe
                     while (ip < ilimit)
                     {
                         ip++;
-                        if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) && (offset) != 0 && (((offset_1 > 0) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_1))))))
+                        if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) && (offcode) != 0 && (((offset_1 > 0) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_1))))))
                         {
                             nuint mlRep = ZSTD_count(ip + 4, ip + 4 - offset_1, iend) + 4;
                             int gain2 = (int)(mlRep * 3);
-                            int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)(offset) + 1) + 1);
+                            int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)((offcode) + 1)) + 1);
 
                             if ((mlRep >= 4) && (gain2 > gain1))
                             {
-                                matchLength = mlRep; offset = 0; start = ip;
+                                matchLength = mlRep; assert((1) >= 1); assert((1) <= 3); offcode = (nuint)(((1) - 1)); start = ip;
                             }
                         }
 
@@ -1871,11 +1875,11 @@ namespace ZstdSharp.Unsafe
                                 byte* repMatchEnd = repIndex < prefixLowestIndex ? dictEnd : iend;
                                 nuint mlRep = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repMatchEnd, prefixLowest) + 4;
                                 int gain2 = (int)(mlRep * 3);
-                                int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)(offset) + 1) + 1);
+                                int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)((offcode) + 1)) + 1);
 
                                 if ((mlRep >= 4) && (gain2 > gain1))
                                 {
-                                    matchLength = mlRep; offset = 0; start = ip;
+                                    matchLength = mlRep; assert((1) >= 1); assert((1) <= 3); offcode = (nuint)(((1) - 1)); start = ip;
                                 }
                             }
                         }
@@ -1884,12 +1888,12 @@ namespace ZstdSharp.Unsafe
                         {
                             nuint offset2 = 999999999;
                             nuint ml2 = searchMax(ms, ip, iend, &offset2);
-                            int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)(offset2) + 1));
-                            int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offset) + 1) + 4);
+                            int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)((offset2) + 1)));
+                            int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)((offcode) + 1)) + 4);
 
                             if ((ml2 >= 4) && (gain2 > gain1))
                             {
-                                matchLength = ml2; offset = offset2; start = ip;
+                                matchLength = ml2; offcode = offset2; start = ip;
                                 continue;
                             }
                         }
@@ -1897,15 +1901,15 @@ namespace ZstdSharp.Unsafe
                         if ((depth == 2) && (ip < ilimit))
                         {
                             ip++;
-                            if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) && (offset) != 0 && (((offset_1 > 0) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_1))))))
+                            if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) && (offcode) != 0 && (((offset_1 > 0) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_1))))))
                             {
                                 nuint mlRep = ZSTD_count(ip + 4, ip + 4 - offset_1, iend) + 4;
                                 int gain2 = (int)(mlRep * 4);
-                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offset) + 1) + 1);
+                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)((offcode) + 1)) + 1);
 
                                 if ((mlRep >= 4) && (gain2 > gain1))
                                 {
-                                    matchLength = mlRep; offset = 0; start = ip;
+                                    matchLength = mlRep; assert((1) >= 1); assert((1) <= 3); offcode = (nuint)(((1) - 1)); start = ip;
                                 }
                             }
 
@@ -1919,11 +1923,11 @@ namespace ZstdSharp.Unsafe
                                     byte* repMatchEnd = repIndex < prefixLowestIndex ? dictEnd : iend;
                                     nuint mlRep = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repMatchEnd, prefixLowest) + 4;
                                     int gain2 = (int)(mlRep * 4);
-                                    int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offset) + 1) + 1);
+                                    int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)((offcode) + 1)) + 1);
 
                                     if ((mlRep >= 4) && (gain2 > gain1))
                                     {
-                                        matchLength = mlRep; offset = 0; start = ip;
+                                        matchLength = mlRep; assert((1) >= 1); assert((1) <= 3); offcode = (nuint)(((1) - 1)); start = ip;
                                     }
                                 }
                             }
@@ -1932,12 +1936,12 @@ namespace ZstdSharp.Unsafe
                             {
                                 nuint offset2 = 999999999;
                                 nuint ml2 = searchMax(ms, ip, iend, &offset2);
-                                int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)(offset2) + 1));
-                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offset) + 1) + 7);
+                                int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)((offset2) + 1)));
+                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)((offcode) + 1)) + 7);
 
                                 if ((ml2 >= 4) && (gain2 > gain1))
                                 {
-                                    matchLength = ml2; offset = offset2; start = ip;
+                                    matchLength = ml2; offcode = offset2; start = ip;
                                     continue;
                                 }
                             }
@@ -1947,11 +1951,11 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                if (offset != 0)
+                if (((offcode) > (uint)((3 - 1))))
                 {
                     if (dictMode == ZSTD_dictMode_e.ZSTD_noDict)
                     {
-                        while ((((start > anchor) && (start - (offset - (uint)((3 - 1))) > prefixLowest))) && (start[-1] == (start - (offset - (uint)((3 - 1))))[-1]))
+                        assert(((offcode) > (uint)((3 - 1)))); assert(((offcode) > (uint)((3 - 1)))); while ((((start > anchor) && (start - ((offcode) - (uint)((3 - 1))) > prefixLowest))) && (start[-1] == (start - ((offcode) - (uint)((3 - 1))))[-1]))
                         {
                             start--;
                             matchLength++;
@@ -1960,7 +1964,7 @@ namespace ZstdSharp.Unsafe
 
                     if (isDxS != 0)
                     {
-                        uint matchIndex = (uint)((nuint)(start - @base) - (offset - (uint)((3 - 1))));
+                        assert(((offcode) > (uint)((3 - 1)))); uint matchIndex = (uint)((nuint)(start - @base) - ((offcode) - (uint)((3 - 1))));
                         byte* match = (matchIndex < prefixLowestIndex) ? dictBase + matchIndex - dictIndexDelta : @base + matchIndex;
                         byte* mStart = (matchIndex < prefixLowestIndex) ? dictLowest : prefixLowest;
 
@@ -1973,14 +1977,14 @@ namespace ZstdSharp.Unsafe
                     }
 
                     offset_2 = offset_1;
-                    offset_1 = (uint)(offset - (uint)((3 - 1)));
+                    assert(((offcode) > (uint)((3 - 1)))); offset_1 = (uint)((offcode) - (uint)((3 - 1)));
                 }
 
                 _storeSequence:
                         {
                     nuint litLength = (nuint)(start - anchor);
 
-                    ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)(offset), matchLength - 3);
+                    ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)(offcode), matchLength);
                     anchor = ip = start + matchLength;
                 }
 
@@ -1997,10 +2001,10 @@ namespace ZstdSharp.Unsafe
                             byte* repEnd2 = repIndex < prefixLowestIndex ? dictEnd : iend;
 
                             matchLength = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repEnd2, prefixLowest) + 4;
-                            offset = offset_2;
+                            offcode = offset_2;
                             offset_2 = offset_1;
-                            offset_1 = (uint)(offset);
-                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 0, matchLength - 3);
+                            offset_1 = (uint)(offcode);
+                            assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), matchLength);
                             ip += matchLength;
                             anchor = ip;
                             continue;
@@ -2015,10 +2019,10 @@ namespace ZstdSharp.Unsafe
                     while ((((ip <= ilimit) && (offset_2 > 0))) && (MEM_read32((void*)ip) == MEM_read32((void*)(ip - offset_2))))
                     {
                         matchLength = ZSTD_count(ip + 4, ip + 4 - offset_2, iend) + 4;
-                        offset = offset_2;
+                        offcode = offset_2;
                         offset_2 = offset_1;
-                        offset_1 = (uint)(offset);
-                        ZSTD_storeSeq(seqStore, 0, anchor, iend, 0, matchLength - 3);
+                        offset_1 = (uint)(offcode);
+                        assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), matchLength);
                         ip += matchLength;
                         anchor = ip;
                         continue;
@@ -2161,7 +2165,7 @@ namespace ZstdSharp.Unsafe
             while (ip < ilimit)
             {
                 nuint matchLength = 0;
-                nuint offset = 0;
+                assert((1) >= 1); assert((1) <= 3); nuint offcode = (nuint)(((1) - 1));
                 byte* start = ip + 1;
                 uint curr = (uint)(ip - @base);
 
@@ -2194,7 +2198,7 @@ namespace ZstdSharp.Unsafe
 
                     if (ml2 > matchLength)
                     {
-                        matchLength = ml2; start = ip; offset = offsetFound;
+                        matchLength = ml2; start = ip; offcode = offsetFound;
                     }
                 }
 
@@ -2210,7 +2214,7 @@ namespace ZstdSharp.Unsafe
                     {
                         ip++;
                         curr++;
-                        if (offset != 0)
+                        if (offcode != 0)
                         {
                             uint windowLow = ZSTD_getLowestMatchIndex(ms, curr, windowLog);
                             uint repIndex = (uint)(curr - offset_1);
@@ -2224,11 +2228,11 @@ namespace ZstdSharp.Unsafe
                                     byte* repEnd = repIndex < dictLimit ? dictEnd : iend;
                                     nuint repLength = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repEnd, prefixStart) + 4;
                                     int gain2 = (int)(repLength * 3);
-                                    int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)(offset) + 1) + 1);
+                                    int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)((offcode) + 1)) + 1);
 
                                     if ((repLength >= 4) && (gain2 > gain1))
                                     {
-                                        matchLength = repLength; offset = 0; start = ip;
+                                        matchLength = repLength; assert((1) >= 1); assert((1) <= 3); offcode = (nuint)(((1) - 1)); start = ip;
                                     }
                                 }
                             }
@@ -2238,12 +2242,12 @@ namespace ZstdSharp.Unsafe
                         {
                             nuint offset2 = 999999999;
                             nuint ml2 = searchMax(ms, ip, iend, &offset2);
-                            int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)(offset2) + 1));
-                            int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offset) + 1) + 4);
+                            int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)((offset2) + 1)));
+                            int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)((offcode) + 1)) + 4);
 
                             if ((ml2 >= 4) && (gain2 > gain1))
                             {
-                                matchLength = ml2; offset = offset2; start = ip;
+                                matchLength = ml2; offcode = offset2; start = ip;
                                 continue;
                             }
                         }
@@ -2252,7 +2256,7 @@ namespace ZstdSharp.Unsafe
                         {
                             ip++;
                             curr++;
-                            if (offset != 0)
+                            if (offcode != 0)
                             {
                                 uint windowLow = ZSTD_getLowestMatchIndex(ms, curr, windowLog);
                                 uint repIndex = (uint)(curr - offset_1);
@@ -2266,11 +2270,11 @@ namespace ZstdSharp.Unsafe
                                         byte* repEnd = repIndex < dictLimit ? dictEnd : iend;
                                         nuint repLength = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repEnd, prefixStart) + 4;
                                         int gain2 = (int)(repLength * 4);
-                                        int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offset) + 1) + 1);
+                                        int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)((offcode) + 1)) + 1);
 
                                         if ((repLength >= 4) && (gain2 > gain1))
                                         {
-                                            matchLength = repLength; offset = 0; start = ip;
+                                            matchLength = repLength; assert((1) >= 1); assert((1) <= 3); offcode = (nuint)(((1) - 1)); start = ip;
                                         }
                                     }
                                 }
@@ -2280,12 +2284,12 @@ namespace ZstdSharp.Unsafe
                             {
                                 nuint offset2 = 999999999;
                                 nuint ml2 = searchMax(ms, ip, iend, &offset2);
-                                int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)(offset2) + 1));
-                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offset) + 1) + 7);
+                                int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)((offset2) + 1)));
+                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)((offcode) + 1)) + 7);
 
                                 if ((ml2 >= 4) && (gain2 > gain1))
                                 {
-                                    matchLength = ml2; offset = offset2; start = ip;
+                                    matchLength = ml2; offcode = offset2; start = ip;
                                     continue;
                                 }
                             }
@@ -2295,9 +2299,9 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                if (offset != 0)
+                if (((offcode) > (uint)((3 - 1))))
                 {
-                    uint matchIndex = (uint)((nuint)(start - @base) - (offset - (uint)((3 - 1))));
+                    assert(((offcode) > (uint)((3 - 1)))); uint matchIndex = (uint)((nuint)(start - @base) - ((offcode) - (uint)((3 - 1))));
                     byte* match = (matchIndex < dictLimit) ? dictBase + matchIndex : @base + matchIndex;
                     byte* mStart = (matchIndex < dictLimit) ? dictStart : prefixStart;
 
@@ -2309,14 +2313,14 @@ namespace ZstdSharp.Unsafe
                     }
 
                     offset_2 = offset_1;
-                    offset_1 = (uint)(offset - (uint)((3 - 1)));
+                    assert(((offcode) > (uint)((3 - 1)))); offset_1 = (uint)((offcode) - (uint)((3 - 1)));
                 }
 
                 _storeSequence:
                         {
                     nuint litLength = (nuint)(start - anchor);
 
-                    ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)(offset), matchLength - 3);
+                    ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)(offcode), matchLength);
                     anchor = ip = start + matchLength;
                 }
 
@@ -2335,10 +2339,10 @@ namespace ZstdSharp.Unsafe
                             byte* repEnd = repIndex < dictLimit ? dictEnd : iend;
 
                             matchLength = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repEnd, prefixStart) + 4;
-                            offset = offset_2;
+                            offcode = offset_2;
                             offset_2 = offset_1;
-                            offset_1 = (uint)(offset);
-                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 0, matchLength - 3);
+                            offset_1 = (uint)(offcode);
+                            assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), matchLength);
                             ip += matchLength;
                             anchor = ip;
                             continue;

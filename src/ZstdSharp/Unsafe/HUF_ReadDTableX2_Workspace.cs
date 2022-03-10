@@ -35,25 +35,18 @@ namespace ZstdSharp.Unsafe
             public rankValCol_t e10;
             public rankValCol_t e11;
 
-            public ref rankValCol_t this[int index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
-            }
-
-            public ref rankValCol_t this[uint index]
+            public ref rankValCol_t this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
                 get => ref *(this + index);
             }
 
-            public ref rankValCol_t this[nuint index]
+            public ref rankValCol_t this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
+                get => ref *(this + (nuint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -61,18 +54,15 @@ namespace ZstdSharp.Unsafe
             public static implicit operator rankValCol_t*(in _rankVal_e__FixedBuffer t)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_rankVal_e__FixedBuffer), nameof(e0)));
                 return IL.ReturnPointer<rankValCol_t>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static rankValCol_t* operator +(in _rankVal_e__FixedBuffer t, uint index)
+            public static rankValCol_t* operator +(in _rankVal_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_rankVal_e__FixedBuffer), nameof(e0)));
                 Ldarg_1();
-                Conv_I();
                 Sizeof<rankValCol_t>();
                 Conv_I();
                 Mul();
@@ -340,25 +330,18 @@ namespace ZstdSharp.Unsafe
             public sortedSymbol_t e254;
             public sortedSymbol_t e255;
 
-            public ref sortedSymbol_t this[int index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
-            }
-
-            public ref sortedSymbol_t this[uint index]
+            public ref sortedSymbol_t this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
                 get => ref *(this + index);
             }
 
-            public ref sortedSymbol_t this[nuint index]
+            public ref sortedSymbol_t this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
+                get => ref *(this + (nuint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -366,18 +349,15 @@ namespace ZstdSharp.Unsafe
             public static implicit operator sortedSymbol_t*(in _sortedSymbol_e__FixedBuffer t)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_sortedSymbol_e__FixedBuffer), nameof(e0)));
                 return IL.ReturnPointer<sortedSymbol_t>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static sortedSymbol_t* operator +(in _sortedSymbol_e__FixedBuffer t, uint index)
+            public static sortedSymbol_t* operator +(in _sortedSymbol_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_sortedSymbol_e__FixedBuffer), nameof(e0)));
                 Ldarg_1();
-                Conv_I();
                 Sizeof<sortedSymbol_t>();
                 Conv_I();
                 Mul();

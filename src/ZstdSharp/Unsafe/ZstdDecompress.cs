@@ -237,7 +237,6 @@ namespace ZstdSharp.Unsafe
             dctx->streamStage = ZSTD_dStreamStage.zdss_init;
             dctx->noForwardProgress = 0;
             dctx->oversizedDuration = 0;
-            dctx->bmi2 = ((IsBmi2Supported) ? 1 : 0);
             dctx->ddictSet = null;
             ZSTD_DCtx_resetParameters(dctx);
         }

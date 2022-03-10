@@ -5,7 +5,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        static uint* rtbTable = GetArrayPointer(new uint[8] {
+        static readonly uint* rtbTable = GetArrayPointer(new uint[8] {
             0,
             473195,
             504333,
@@ -15,7 +15,7 @@ namespace ZstdSharp.Unsafe
             750000,
             830000,
         });
-        static byte* LL_Code = GetArrayPointer(new byte[64] 
+        static readonly byte* LL_Code = GetArrayPointer(new byte[64] 
         {
             0,
             1,
@@ -82,7 +82,7 @@ namespace ZstdSharp.Unsafe
             24,
             24,
         });
-        static byte* ML_Code = GetArrayPointer(new byte[128] 
+        static readonly byte* ML_Code = GetArrayPointer(new byte[128] 
         {
             0,
             1,
@@ -213,14 +213,14 @@ namespace ZstdSharp.Unsafe
             42,
             42,
         });
-        static ulong* srcSizeTiers = GetArrayPointer(new ulong[4] 
+        static readonly ulong* srcSizeTiers = GetArrayPointer(new ulong[4] 
         {
             16 * (1 << 10),
             128 * (1 << 10),
             256 * (1 << 10),
             (unchecked(0UL - 1)),
         });
-        static ZSTD_blockCompressor[][] blockCompressor = new ZSTD_blockCompressor[4][] 
+        static readonly ZSTD_blockCompressor[][] blockCompressor = new ZSTD_blockCompressor[4][] 
         {
             new ZSTD_blockCompressor[10]
             {
@@ -443,7 +443,7 @@ namespace ZstdSharp.Unsafe
                 },
             },
         };
-        static uint* baseLLfreqs = GetArrayPointer(new uint[36] 
+        static readonly uint* baseLLfreqs = GetArrayPointer(new uint[36] 
         {
             4,
             2,
@@ -482,7 +482,7 @@ namespace ZstdSharp.Unsafe
             1,
             1,
         });
-        static uint* baseOFCfreqs = GetArrayPointer(new uint[32] 
+        static readonly uint* baseOFCfreqs = GetArrayPointer(new uint[32] 
         {
             6,
             2,
@@ -546,7 +546,7 @@ namespace ZstdSharp.Unsafe
             HUF_decompress4X1,
             HUF_decompress4X2,
         };
-        static uint* dec32table = GetArrayPointer(new uint[8] 
+        static readonly uint* dec32table = GetArrayPointer(new uint[8] 
         {
             0,
             1,
@@ -557,7 +557,7 @@ namespace ZstdSharp.Unsafe
             4,
             4,
         });
-        static int* dec64table = GetArrayPointer(new int[8] 
+        static readonly int* dec64table = GetArrayPointer(new int[8] 
         {
             8,
             8,
@@ -569,6 +569,6 @@ namespace ZstdSharp.Unsafe
             11,
         });
 
-        private static byte* emptyWindowString = GetArrayPointer(new byte[] {32, 0});
+        private readonly static byte* emptyWindowString = GetArrayPointer(new byte[] {32, 0});
     }
 }

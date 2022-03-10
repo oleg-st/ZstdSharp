@@ -536,43 +536,18 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static nuint HUF_decompress4X1_usingDTable_internal_bmi2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress4X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
         private static nuint HUF_decompress4X1_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
             return HUF_decompress4X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
-        private static nuint HUF_decompress1X1_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress1X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
-        private static nuint HUF_decompress1X1_usingDTable_internal_bmi2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress1X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
         private static nuint HUF_decompress1X1_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                return HUF_decompress1X1_usingDTable_internal_bmi2(dst, dstSize, cSrc, cSrcSize, DTable);
-            }
-
-            return HUF_decompress1X1_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
+            return HUF_decompress1X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
         private static nuint HUF_decompress4X1_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                return HUF_decompress4X1_usingDTable_internal_bmi2(dst, dstSize, cSrc, cSrcSize, DTable);
-            }
-
             return HUF_decompress4X1_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
@@ -1009,6 +984,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static uint HUF_decodeSymbolX2(void* op, BIT_DStream_t* DStream, HUF_DEltX2* dt, uint dtLog)
         {
             nuint val = BIT_lookBitsFast(DStream, dtLog);
@@ -1342,11 +1318,6 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static nuint HUF_decompress4X2_usingDTable_internal_bmi2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress4X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
         private static nuint HUF_decompress4X2_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
             return HUF_decompress4X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
@@ -1354,32 +1325,12 @@ namespace ZstdSharp.Unsafe
 
         private static nuint HUF_decompress4X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                return HUF_decompress4X2_usingDTable_internal_bmi2(dst, dstSize, cSrc, cSrcSize, DTable);
-            }
-
             return HUF_decompress4X2_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
-        private static nuint HUF_decompress1X2_usingDTable_internal_default(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress1X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
-        }
-
-        private static nuint HUF_decompress1X2_usingDTable_internal_bmi2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            return HUF_decompress1X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
         private static nuint HUF_decompress1X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                return HUF_decompress1X2_usingDTable_internal_bmi2(dst, dstSize, cSrc, cSrcSize, DTable);
-            }
-
-            return HUF_decompress1X2_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
+            return HUF_decompress1X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
         public static nuint HUF_decompress1X2_usingDTable(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)

@@ -14,7 +14,7 @@
     <PackageProjectUrl>https://github.com/oleg-st/ZstdSharp</PackageProjectUrl>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageTags>zstd zstandard port compression</PackageTags>
-    <Version>0.6</Version>
+    <Version>0.6.1</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

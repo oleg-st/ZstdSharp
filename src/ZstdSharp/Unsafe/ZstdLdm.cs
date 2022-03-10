@@ -803,7 +803,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                     rep[0] = sequence.offset;
-                    ZSTD_storeSeq(seqStore, newLitLength, ip - newLitLength, iend, sequence.offset + (uint)((3 - 1)), sequence.matchLength - 3);
+                    assert((sequence.offset) > 0); ZSTD_storeSeq(seqStore, newLitLength, ip - newLitLength, iend, (sequence.offset + (uint)((3 - 1))), sequence.matchLength);
                     ip += sequence.matchLength;
                 }
             }

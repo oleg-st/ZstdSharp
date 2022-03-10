@@ -91,8 +91,8 @@ namespace ZstdSharp.Unsafe
 
         /**
          * Internal function. Do not use directly.
-         * Reserves the given number of bytes within the aligned/buffer segment of the wksp, which
-         * counts from the end of the wksp. (as opposed to the object/table segment)
+         * Reserves the given number of bytes within the aligned/buffer segment of the wksp,
+         * which counts from the end of the wksp (as opposed to the object/table segment).
          *
          * Returns a pointer to the beginning of that space.
          */
@@ -121,6 +121,7 @@ namespace ZstdSharp.Unsafe
 
         /**
          * Moves the cwksp to the next phase, and does any necessary allocations.
+         * cwksp initialization must necessarily go through each phase in order.
          * Returns a 0 on success, or zstd error
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -151,16 +152,19 @@ namespace ZstdSharp.Unsafe
                     {
                         void* alloc = ws->objectEnd;
                         nuint bytesToAlign = ZSTD_cwksp_bytes_to_align_ptr(alloc, 64);
-                        void* end = (void*)((byte*)(alloc) + bytesToAlign);
+                        void* objectEnd = (void*)((byte*)(alloc) + bytesToAlign);
 
-                        if (end > ws->workspaceEnd)
+                        if (objectEnd > ws->workspaceEnd)
                         {
                             return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
                         }
 
-                        ws->objectEnd = end;
-                        ws->tableEnd = end;
-                        ws->tableValidEnd = end;
+                        ws->objectEnd = objectEnd;
+                        ws->tableEnd = objectEnd;
+                        if (ws->tableValidEnd < ws->tableEnd)
+                        {
+                            ws->tableValidEnd = ws->tableEnd;
+                        }
                     }
                 }
 
@@ -256,6 +260,7 @@ namespace ZstdSharp.Unsafe
 
         /**
          * Aligned on sizeof(void*).
+         * Note : should happen only once, at workspace first initialization
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* ZSTD_cwksp_reserve_object(ZSTD_cwksp* ws, nuint bytes)
@@ -264,8 +269,8 @@ namespace ZstdSharp.Unsafe
             void* alloc = ws->objectEnd;
             void* end = (void*)((byte*)(alloc) + roundedBytes);
 
-            assert(((nuint)(alloc) % (nuint)sizeof(nuint)) == 0);
-            assert((bytes % (nuint)sizeof(nuint)) == 0);
+            assert((nuint)(alloc) % (nuint)sizeof(void*) == 0);
+            assert(bytes % (nuint)sizeof(void*) == 0);
             ZSTD_cwksp_assert_internal_consistency(ws);
             if (ws->phase != ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_objects || end > ws->workspaceEnd)
             {

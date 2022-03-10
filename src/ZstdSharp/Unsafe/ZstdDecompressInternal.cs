@@ -6,7 +6,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static uint* LL_base = GetArrayPointer(new uint[36]
+        public static readonly uint* LL_base = GetArrayPointer(new uint[36]
         {
             0,
             1,
@@ -46,7 +46,7 @@ namespace ZstdSharp.Unsafe
             0x10000,
         });
 
-        public static uint* OF_base = GetArrayPointer(new uint[32]
+        public static readonly uint* OF_base = GetArrayPointer(new uint[32]
         {
             0,
             1,
@@ -82,7 +82,7 @@ namespace ZstdSharp.Unsafe
             0x7FFFFFFD,
         });
 
-        public static byte* OF_bits = GetArrayPointer(new byte[32]
+        public static readonly byte* OF_bits = GetArrayPointer(new byte[32]
         {
             0,
             1,
@@ -118,7 +118,7 @@ namespace ZstdSharp.Unsafe
             31,
         });
 
-        public static uint* ML_base = GetArrayPointer(new uint[53]
+        public static readonly uint* ML_base = GetArrayPointer(new uint[53]
         {
             3,
             4,
@@ -178,7 +178,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int ZSTD_DCtx_get_bmi2(ZSTD_DCtx_s* dctx)
         {
-            return dctx->bmi2;
+            return 0;
         }
     }
 }

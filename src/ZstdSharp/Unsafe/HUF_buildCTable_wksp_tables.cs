@@ -527,25 +527,18 @@ namespace ZstdSharp.Unsafe
             public nodeElt_s e510;
             public nodeElt_s e511;
 
-            public ref nodeElt_s this[int index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
-            }
-
-            public ref nodeElt_s this[uint index]
+            public ref nodeElt_s this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
                 get => ref *(this + index);
             }
 
-            public ref nodeElt_s this[nuint index]
+            public ref nodeElt_s this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
+                get => ref *(this + (nuint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -553,18 +546,15 @@ namespace ZstdSharp.Unsafe
             public static implicit operator nodeElt_s*(in _huffNodeTbl_e__FixedBuffer t)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_huffNodeTbl_e__FixedBuffer), nameof(e0)));
                 return IL.ReturnPointer<nodeElt_s>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static nodeElt_s* operator +(in _huffNodeTbl_e__FixedBuffer t, uint index)
+            public static nodeElt_s* operator +(in _huffNodeTbl_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_huffNodeTbl_e__FixedBuffer), nameof(e0)));
                 Ldarg_1();
-                Conv_I();
                 Sizeof<nodeElt_s>();
                 Conv_I();
                 Mul();
@@ -768,25 +758,18 @@ namespace ZstdSharp.Unsafe
             public rankPos e190;
             public rankPos e191;
 
-            public ref rankPos this[int index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
-            }
-
-            public ref rankPos this[uint index]
+            public ref rankPos this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
                 get => ref *(this + index);
             }
 
-            public ref rankPos this[nuint index]
+            public ref rankPos this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
+                get => ref *(this + (nuint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -794,18 +777,15 @@ namespace ZstdSharp.Unsafe
             public static implicit operator rankPos*(in _rankPosition_e__FixedBuffer t)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_rankPosition_e__FixedBuffer), nameof(e0)));
                 return IL.ReturnPointer<rankPos>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static rankPos* operator +(in _rankPosition_e__FixedBuffer t, uint index)
+            public static rankPos* operator +(in _rankPosition_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_rankPosition_e__FixedBuffer), nameof(e0)));
                 Ldarg_1();
-                Conv_I();
                 Sizeof<rankPos>();
                 Conv_I();
                 Mul();

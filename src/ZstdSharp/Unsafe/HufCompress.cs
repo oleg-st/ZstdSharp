@@ -1188,24 +1188,9 @@ namespace ZstdSharp.Unsafe
             return HUF_closeCStream(&bitC);
         }
 
-        private static nuint HUF_compress1X_usingCTable_internal_bmi2(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable)
-        {
-            return HUF_compress1X_usingCTable_internal_body(dst, dstSize, src, srcSize, CTable);
-        }
-
-        private static nuint HUF_compress1X_usingCTable_internal_default(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable)
-        {
-            return HUF_compress1X_usingCTable_internal_body(dst, dstSize, src, srcSize, CTable);
-        }
-
         private static nuint HUF_compress1X_usingCTable_internal(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                return HUF_compress1X_usingCTable_internal_bmi2(dst, dstSize, src, srcSize, CTable);
-            }
-
-            return HUF_compress1X_usingCTable_internal_default(dst, dstSize, src, srcSize, CTable);
+            return HUF_compress1X_usingCTable_internal_body(dst, dstSize, src, srcSize, CTable);
         }
 
         public static nuint HUF_compress1X_usingCTable(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable)

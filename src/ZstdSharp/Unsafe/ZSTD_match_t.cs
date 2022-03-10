@@ -7,7 +7,7 @@ namespace ZstdSharp.Unsafe
     *********************************/
     public partial struct ZSTD_match_t
     {
-        /* Offset code (offset + ZSTD_REP_MOVE) for the match */
+        /* Offset sumtype code for the match, using ZSTD_storeSeq() format */
         public uint off;
 
         /* Raw length of match */

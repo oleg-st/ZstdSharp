@@ -568,7 +568,7 @@ namespace ZstdSharp.Unsafe
                     memcpy((void*)(&rep), (void*)(prevCBlock->rep), ((nuint)(sizeof(repcodes_s))));
                     for (seq = sstart; seq < sp; ++seq)
                     {
-                        rep = ZSTD_updateRep(rep.rep, seq->offset - 1, ((ZSTD_getSequenceLength(seqStorePtr, seq).litLength == 0) ? 1U : 0U));
+                        ZSTD_updateRep(rep.rep, seq->offBase - 1, ((ZSTD_getSequenceLength(seqStorePtr, seq).litLength == 0) ? 1U : 0U));
                     }
 
                     memcpy((void*)(nextCBlock->rep), (void*)(&rep), ((nuint)(sizeof(repcodes_s))));

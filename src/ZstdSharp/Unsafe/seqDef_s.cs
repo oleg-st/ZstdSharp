@@ -7,11 +7,12 @@ namespace ZstdSharp.Unsafe
     *********************************************/
     public partial struct seqDef_s
     {
-        /* offset == rawOffset + ZSTD_REP_NUM, or equivalently, offCode + 1 */
-        public uint offset;
+        /* offBase == Offset + ZSTD_REP_NUM, or repcode 1,2,3 */
+        public uint offBase;
 
         public ushort litLength;
 
-        public ushort matchLength;
+        /* mlBase == matchLength - MINMATCH */
+        public ushort mlBase;
     }
 }

@@ -540,25 +540,18 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e511;
             public ZSTD_seqSymbol e512;
 
-            public ref ZSTD_seqSymbol this[int index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
-            }
-
-            public ref ZSTD_seqSymbol this[uint index]
+            public ref ZSTD_seqSymbol this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
                 get => ref *(this + index);
             }
 
-            public ref ZSTD_seqSymbol this[nuint index]
+            public ref ZSTD_seqSymbol this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
+                get => ref *(this + (nuint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -566,18 +559,15 @@ namespace ZstdSharp.Unsafe
             public static implicit operator ZSTD_seqSymbol*(in _LLTable_e__FixedBuffer t)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_LLTable_e__FixedBuffer), nameof(e0)));
                 return IL.ReturnPointer<ZSTD_seqSymbol>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static ZSTD_seqSymbol* operator +(in _LLTable_e__FixedBuffer t, uint index)
+            public static ZSTD_seqSymbol* operator +(in _LLTable_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_LLTable_e__FixedBuffer), nameof(e0)));
                 Ldarg_1();
-                Conv_I();
                 Sizeof<ZSTD_seqSymbol>();
                 Conv_I();
                 Mul();
@@ -846,25 +836,18 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e255;
             public ZSTD_seqSymbol e256;
 
-            public ref ZSTD_seqSymbol this[int index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
-            }
-
-            public ref ZSTD_seqSymbol this[uint index]
+            public ref ZSTD_seqSymbol this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
                 get => ref *(this + index);
             }
 
-            public ref ZSTD_seqSymbol this[nuint index]
+            public ref ZSTD_seqSymbol this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
+                get => ref *(this + (nuint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -872,18 +855,15 @@ namespace ZstdSharp.Unsafe
             public static implicit operator ZSTD_seqSymbol*(in _OFTable_e__FixedBuffer t)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_OFTable_e__FixedBuffer), nameof(e0)));
                 return IL.ReturnPointer<ZSTD_seqSymbol>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static ZSTD_seqSymbol* operator +(in _OFTable_e__FixedBuffer t, uint index)
+            public static ZSTD_seqSymbol* operator +(in _OFTable_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_OFTable_e__FixedBuffer), nameof(e0)));
                 Ldarg_1();
-                Conv_I();
                 Sizeof<ZSTD_seqSymbol>();
                 Conv_I();
                 Mul();
@@ -1408,25 +1388,18 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e511;
             public ZSTD_seqSymbol e512;
 
-            public ref ZSTD_seqSymbol this[int index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
-            }
-
-            public ref ZSTD_seqSymbol this[uint index]
+            public ref ZSTD_seqSymbol this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
                 get => ref *(this + index);
             }
 
-            public ref ZSTD_seqSymbol this[nuint index]
+            public ref ZSTD_seqSymbol this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (uint)index);
+                get => ref *(this + (nuint)index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1434,18 +1407,15 @@ namespace ZstdSharp.Unsafe
             public static implicit operator ZSTD_seqSymbol*(in _MLTable_e__FixedBuffer t)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_MLTable_e__FixedBuffer), nameof(e0)));
                 return IL.ReturnPointer<ZSTD_seqSymbol>();
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static ZSTD_seqSymbol* operator +(in _MLTable_e__FixedBuffer t, uint index)
+            public static ZSTD_seqSymbol* operator +(in _MLTable_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
-                Ldflda(new FieldRef(typeof(_MLTable_e__FixedBuffer), nameof(e0)));
                 Ldarg_1();
-                Conv_I();
                 Sizeof<ZSTD_seqSymbol>();
                 Conv_I();
                 Mul();

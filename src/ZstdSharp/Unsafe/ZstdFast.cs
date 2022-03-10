@@ -171,7 +171,7 @@ namespace ZstdSharp.Unsafe
                     mLength = ((ip0[-1] == match0[-1]) ? 1U : 0U);
                     ip0 -= mLength;
                     match0 -= mLength;
-                    offcode = 0;
+                    assert((1) >= 1); assert((1) <= 3); offcode = (uint)(((1) - 1));
                     mLength += 4;
                     goto _match;
                 }
@@ -237,7 +237,7 @@ namespace ZstdSharp.Unsafe
             match0 = @base + idx;
             rep_offset2 = rep_offset1;
             rep_offset1 = (uint)(ip0 - match0);
-            offcode = rep_offset1 + (uint)((3 - 1));
+            assert((rep_offset1) > 0); offcode = (rep_offset1 + (uint)((3 - 1)));
             mLength = 4;
             while ((((ip0 > anchor) && (match0 > prefixStart))) && (ip0[-1] == match0[-1]))
             {
@@ -248,7 +248,7 @@ namespace ZstdSharp.Unsafe
 
             _match:
             mLength += ZSTD_count(ip0 + mLength, match0 + mLength, iend);
-            ZSTD_storeSeq(seqStore, (nuint)(ip0 - anchor), anchor, iend, offcode, mLength - 3);
+            ZSTD_storeSeq(seqStore, (nuint)(ip0 - anchor), anchor, iend, offcode, mLength);
             ip0 += mLength;
             anchor = ip0;
             if (ip1 < ip0)
@@ -277,7 +277,7 @@ namespace ZstdSharp.Unsafe
 
                         hashTable[ZSTD_hashPtr((void*)ip0, hlog, mls)] = (uint)(ip0 - @base);
                         ip0 += rLength;
-                        ZSTD_storeSeq(seqStore, 0, anchor, iend, 0, rLength - 3);
+                        assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), rLength);
                         anchor = ip0;
                         continue;
                     }
@@ -438,7 +438,7 @@ namespace ZstdSharp.Unsafe
 
                     mLength = ZSTD_count_2segments(ip + 1 + 4, repMatch + 4, iend, repMatchEnd, prefixStart) + 4;
                     ip++;
-                    ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, 0, mLength - 3);
+                    assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (uint)(((1) - 1)), mLength);
                 }
                 else if ((matchIndex <= prefixStartIndex))
                 {
@@ -466,7 +466,7 @@ namespace ZstdSharp.Unsafe
 
                         offset_2 = offset_1;
                         offset_1 = offset;
-                        ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, offset + (uint)((3 - 1)), mLength - 3);
+                        assert((offset) > 0); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (offset + (uint)((3 - 1))), mLength);
                     }
                 }
                 else if (MEM_read32((void*)match) != MEM_read32((void*)ip))
@@ -489,7 +489,7 @@ namespace ZstdSharp.Unsafe
 
                     offset_2 = offset_1;
                     offset_1 = offset;
-                    ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, offset + (uint)((3 - 1)), mLength - 3);
+                    assert((offset) > 0); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (offset + (uint)((3 - 1))), mLength);
                 }
 
                 ip += mLength;
@@ -513,7 +513,7 @@ namespace ZstdSharp.Unsafe
 
                             offset_2 = offset_1;
                             offset_1 = tmpOffset;
-                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 0, repLength2 - 3);
+                            assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), repLength2);
                             hashTable[ZSTD_hashPtr((void*)ip, hlog, mls)] = current2;
                             ip += repLength2;
                             anchor = ip;
@@ -626,7 +626,7 @@ namespace ZstdSharp.Unsafe
                     nuint rLength = ZSTD_count_2segments(ip + 1 + 4, repMatch + 4, iend, repMatchEnd, prefixStart) + 4;
 
                     ip++;
-                    ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, 0, rLength - 3);
+                    assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (uint)(((1) - 1)), rLength);
                     ip += rLength;
                     anchor = ip;
                 }
@@ -655,7 +655,7 @@ namespace ZstdSharp.Unsafe
 
                         offset_2 = offset_1;
                         offset_1 = offset;
-                        ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, offset + (uint)((3 - 1)), mLength - 3);
+                        assert((offset) > 0); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (offset + (uint)((3 - 1))), mLength);
                         ip += mLength;
                         anchor = ip;
                     }
@@ -684,7 +684,7 @@ namespace ZstdSharp.Unsafe
                                 offset_1 = tmpOffset;
                             }
 
-                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 0, repLength2 - 3);
+                            assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), repLength2);
                             hashTable[ZSTD_hashPtr((void*)ip, hlog, mls)] = current2;
                             ip += repLength2;
                             anchor = ip;

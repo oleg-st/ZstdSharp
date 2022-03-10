@@ -31,7 +31,7 @@ namespace ZstdSharp.Unsafe
             assert(cctx != null);
             memset((void*)(cctx), (0), ((nuint)(sizeof(ZSTD_CCtx_s))));
             cctx->customMem = memManager;
-            cctx->bmi2 = ((IsBmi2Supported) ? 1 : 0);
+            cctx->bmi2 = 0;
 
             {
                 nuint err = ZSTD_CCtx_reset(cctx, ZSTD_ResetDirective.ZSTD_reset_parameters);
@@ -115,7 +115,7 @@ namespace ZstdSharp.Unsafe
             cctx->blockState.prevCBlock = (ZSTD_compressedBlockState_t*)(ZSTD_cwksp_reserve_object(&cctx->workspace, (nuint)(sizeof(ZSTD_compressedBlockState_t))));
             cctx->blockState.nextCBlock = (ZSTD_compressedBlockState_t*)(ZSTD_cwksp_reserve_object(&cctx->workspace, (nuint)(sizeof(ZSTD_compressedBlockState_t))));
             cctx->entropyWorkspace = (uint*)(ZSTD_cwksp_reserve_object(&cctx->workspace, ((uint)(((8 << 10) + 512)) + ((nuint)(sizeof(uint)) * (uint)((((35) > (52) ? (35) : (52)) + 2))))));
-            cctx->bmi2 = ((IsBmi2Supported) ? 1 : 0);
+            cctx->bmi2 = 0;
             return cctx;
         }
 
@@ -2721,7 +2721,7 @@ namespace ZstdSharp.Unsafe
             assert((ZSTD_window_hasExtDict(cctx->blockState.matchState.window)) == 0);
         }
 
-        public static nuint* attachDictSizeCutoffs = GetArrayPointer(new nuint[10]
+        public static readonly nuint* attachDictSizeCutoffs = GetArrayPointer(new nuint[10]
         {
             8 * (1 << 10),
             8 * (1 << 10),
@@ -3079,10 +3079,10 @@ namespace ZstdSharp.Unsafe
             for (u = 0; u < nbSeq; u++)
             {
                 uint llv = sequences[u].litLength;
-                uint mlv = sequences[u].matchLength;
+                uint mlv = sequences[u].mlBase;
 
                 llCodeTable[u] = (byte)(ZSTD_LLcode(llv));
-                ofCodeTable[u] = (byte)(ZSTD_highbit32(sequences[u].offset));
+                ofCodeTable[u] = (byte)(ZSTD_highbit32(sequences[u].offBase));
                 mlCodeTable[u] = (byte)(ZSTD_MLcode(mlv));
             }
 
@@ -3546,10 +3546,10 @@ namespace ZstdSharp.Unsafe
             memcpy((void*)(updatedRepcodes.rep), (void*)(zc->blockState.prevCBlock->rep), ((nuint)(sizeof(repcodes_s))));
             for (i = 0; i < seqStoreSeqSize; ++i)
             {
-                uint rawOffset = seqStoreSeqs[i].offset - 3;
+                uint rawOffset = seqStoreSeqs[i].offBase - 3;
 
                 outSeqs[i].litLength = seqStoreSeqs[i].litLength;
-                outSeqs[i].matchLength = (uint)(seqStoreSeqs[i].matchLength + 3);
+                outSeqs[i].matchLength = (uint)(seqStoreSeqs[i].mlBase + 3);
                 outSeqs[i].rep = 0;
                 if (i == seqStore->longLengthPos)
                 {
@@ -3563,9 +3563,9 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                if (seqStoreSeqs[i].offset <= 3)
+                if (seqStoreSeqs[i].offBase <= 3)
                 {
-                    outSeqs[i].rep = seqStoreSeqs[i].offset;
+                    outSeqs[i].rep = seqStoreSeqs[i].offBase;
                     if (outSeqs[i].litLength != 0)
                     {
                         rawOffset = updatedRepcodes.rep[outSeqs[i].rep - 1];
@@ -3584,7 +3584,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 outSeqs[i].offset = rawOffset;
-                updatedRepcodes = ZSTD_updateRep(updatedRepcodes.rep, seqStoreSeqs[i].offset - 1, ((seqStoreSeqs[i].litLength == 0) ? 1U : 0U));
+                ZSTD_updateRep(updatedRepcodes.rep, seqStoreSeqs[i].offBase - 1, ((seqStoreSeqs[i].litLength == 0) ? 1U : 0U));
                 literalsRead += outSeqs[i].litLength;
             }
 
@@ -4112,7 +4112,7 @@ namespace ZstdSharp.Unsafe
             {
                 seqDef_s seq = seqStore->sequencesStart[i];
 
-                matchBytes += (nuint)(seq.matchLength + 3);
+                matchBytes += (nuint)(seq.mlBase + 3);
                 if (i == seqStore->longLengthPos && seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_matchLength)
                 {
                     matchBytes += 0x10000;
@@ -4170,13 +4170,13 @@ namespace ZstdSharp.Unsafe
 
         /**
          * Returns the raw offset represented by the combination of offCode, ll0, and repcode history.
-         * offCode must be an offCode representing a repcode, therefore in the range of [0, 2].
+         * offCode must represent a repcode in the numeric representation of ZSTD_storeSeq().
          */
         private static uint ZSTD_resolveRepcodeToRawOffset(uint* rep, uint offCode, uint ll0)
         {
-            uint adjustedOffCode = offCode + ll0;
+            assert(((offCode) <= (uint)((3 - 1)))); uint adjustedOffCode = ((offCode) + 1) - 1 + ll0;
 
-            assert(offCode < 3);
+            assert(((offCode) <= (uint)((3 - 1))));
             if (adjustedOffCode == 3)
             {
                 assert(rep[0] > 0);
@@ -4188,11 +4188,16 @@ namespace ZstdSharp.Unsafe
 
         /**
          * ZSTD_seqStore_resolveOffCodes() reconciles any possible divergences in offset history that may arise
-         * due to emission of RLE/raw blocks that disturb the offset history, and replaces any repcodes within
-         * the seqStore that may be invalid.
+         * due to emission of RLE/raw blocks that disturb the offset history,
+         * and replaces any repcodes within the seqStore that may be invalid.
          *
-         * dRepcodes are updated as would be on the decompression side. cRepcodes are updated exactly in
-         * accordance with the seqStore.
+         * dRepcodes are updated as would be on the decompression side.
+         * cRepcodes are updated exactly in accordance with the seqStore.
+         *
+         * Note : this function assumes seq->offBase respects the following numbering scheme :
+         *        0 : invalid
+         *        1-3 : repcode 1-3
+         *        4+ : real_offset+3
          */
         private static void ZSTD_seqStore_resolveOffCodes(repcodes_s* dRepcodes, repcodes_s* cRepcodes, seqStore_t* seqStore, uint nbSeq)
         {
@@ -4202,22 +4207,22 @@ namespace ZstdSharp.Unsafe
             {
                 seqDef_s* seq = seqStore->sequencesStart + idx;
                 uint ll0 = (((seq->litLength == 0)) ? 1U : 0U);
-                uint offCode = seq->offset - 1;
+                uint offCode = ((seq->offBase) - 1);
 
-                assert(seq->offset > 0);
-                if (offCode <= (uint)((3 - 1)))
+                assert(seq->offBase > 0);
+                if (((offCode) <= (uint)((3 - 1))))
                 {
                     uint dRawOffset = ZSTD_resolveRepcodeToRawOffset(dRepcodes->rep, offCode, ll0);
                     uint cRawOffset = ZSTD_resolveRepcodeToRawOffset(cRepcodes->rep, offCode, ll0);
 
                     if (dRawOffset != cRawOffset)
                     {
-                        seq->offset = cRawOffset + 3;
+                        seq->offBase = cRawOffset + 3;
                     }
                 }
 
-                *dRepcodes = ZSTD_updateRep(dRepcodes->rep, seq->offset - 1, ll0);
-                *cRepcodes = ZSTD_updateRep(cRepcodes->rep, offCode, ll0);
+                ZSTD_updateRep(dRepcodes->rep, ((seq->offBase) - 1), ll0);
+                ZSTD_updateRep(cRepcodes->rep, offCode, ll0);
             }
         }
 
@@ -7176,19 +7181,21 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        /* Returns a ZSTD error code if sequence is not valid */
-        private static nuint ZSTD_validateSequence(uint offCode, uint matchLength, nuint posInSrc, uint windowLog, nuint dictSize, uint minMatch)
+        /* ZSTD_validateSequence() :
+         * @offCode : is presumed to follow format required by ZSTD_storeSeq()
+         * @returns a ZSTD error code if sequence is not valid
+         */
+        private static nuint ZSTD_validateSequence(uint offCode, uint matchLength, nuint posInSrc, uint windowLog, nuint dictSize)
         {
-            nuint offsetBound;
             uint windowSize = (uint)(1 << (int)windowLog);
+            nuint offsetBound = posInSrc > windowSize ? (nuint)(windowSize) : posInSrc + (nuint)(dictSize);
 
-            offsetBound = posInSrc > windowSize ? (nuint)(windowSize) : posInSrc + (nuint)(dictSize);
-            if (offCode > offsetBound + (uint)((3 - 1)))
+            assert((offsetBound) > 0); if (offCode > (offsetBound + (uint)((3 - 1))))
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected)));
             }
 
-            if (matchLength < minMatch)
+            if (matchLength < 3)
             {
                 return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected)));
             }
@@ -7199,29 +7206,23 @@ namespace ZstdSharp.Unsafe
         /* Returns an offset code, given a sequence's raw offset, the ongoing repcode array, and whether litLength == 0 */
         private static uint ZSTD_finalizeOffCode(uint rawOffset, uint* rep, uint ll0)
         {
-            uint offCode = rawOffset + (uint)((3 - 1));
-            uint repCode = 0;
+            assert((rawOffset) > 0); uint offCode = (rawOffset + (uint)((3 - 1)));
 
             if (ll0 == 0 && rawOffset == rep[0])
             {
-                repCode = 1;
+                assert((1) >= 1); assert((1) <= 3); offCode = (uint)(((1) - 1));
             }
             else if (rawOffset == rep[1])
             {
-                repCode = 2 - ll0;
+                assert((2 - ll0) >= 1); assert((2 - ll0) <= 3); offCode = ((2 - ll0) - 1);
             }
             else if (rawOffset == rep[2])
             {
-                repCode = 3 - ll0;
+                assert((3 - ll0) >= 1); assert((3 - ll0) <= 3); offCode = ((3 - ll0) - 1);
             }
             else if (ll0 != 0 && rawOffset == rep[0] - 1)
             {
-                repCode = 3;
-            }
-
-            if (repCode != 0)
-            {
-                offCode = repCode - 1;
+                assert((3) >= 1); assert((3) <= 3); offCode = (uint)(((3) - 1));
             }
 
             return offCode;
@@ -7237,10 +7238,6 @@ namespace ZstdSharp.Unsafe
             byte* iend = ip + blockSize;
             repcodes_s updatedRepcodes;
             uint dictSize;
-            uint litLength;
-            uint matchLength;
-            uint ll0;
-            uint offCode;
 
             if (cctx->cdict != null)
             {
@@ -7258,17 +7255,18 @@ namespace ZstdSharp.Unsafe
             memcpy((void*)(updatedRepcodes.rep), (void*)(cctx->blockState.prevCBlock->rep), ((nuint)(sizeof(repcodes_s))));
             for (; (inSeqs[idx].matchLength != 0 || inSeqs[idx].offset != 0) && idx < inSeqsSize; ++idx)
             {
-                litLength = inSeqs[idx].litLength;
-                matchLength = inSeqs[idx].matchLength;
-                ll0 = ((litLength == 0) ? 1U : 0U);
-                offCode = ZSTD_finalizeOffCode(inSeqs[idx].offset, updatedRepcodes.rep, ll0);
-                updatedRepcodes = ZSTD_updateRep(updatedRepcodes.rep, offCode, ll0);
+                uint litLength = inSeqs[idx].litLength;
+                uint ll0 = (((litLength == 0)) ? 1U : 0U);
+                uint matchLength = inSeqs[idx].matchLength;
+                uint offCode = ZSTD_finalizeOffCode(inSeqs[idx].offset, updatedRepcodes.rep, ll0);
+
+                ZSTD_updateRep(updatedRepcodes.rep, offCode, ll0);
                 if (cctx->appliedParams.validateSequences != 0)
                 {
                     seqPos->posInSrc += litLength + matchLength;
 
                     {
-                        nuint err_code = (ZSTD_validateSequence(offCode, matchLength, seqPos->posInSrc, cctx->appliedParams.cParams.windowLog, dictSize, cctx->appliedParams.cParams.minMatch));
+                        nuint err_code = (ZSTD_validateSequence(offCode, matchLength, seqPos->posInSrc, cctx->appliedParams.cParams.windowLog, dictSize));
 
                         if ((ERR_isError(err_code)) != 0)
                         {
@@ -7283,7 +7281,7 @@ namespace ZstdSharp.Unsafe
                     return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
                 }
 
-                ZSTD_storeSeq(&cctx->seqStore, litLength, ip, iend, offCode, matchLength - 3);
+                ZSTD_storeSeq(&cctx->seqStore, litLength, ip, iend, offCode, matchLength);
                 ip += matchLength + litLength;
             }
 
@@ -7326,10 +7324,6 @@ namespace ZstdSharp.Unsafe
             repcodes_s updatedRepcodes;
             uint bytesAdjustment = 0;
             uint finalMatchSplit = 0;
-            uint litLength;
-            uint matchLength;
-            uint rawOffset;
-            uint offCode;
 
             if (cctx->cdict != null)
             {
@@ -7348,10 +7342,11 @@ namespace ZstdSharp.Unsafe
             while (endPosInSequence != 0 && idx < inSeqsSize && finalMatchSplit == 0)
             {
                 ZSTD_Sequence currSeq = inSeqs[idx];
+                uint litLength = currSeq.litLength;
+                uint matchLength = currSeq.matchLength;
+                uint rawOffset = currSeq.offset;
+                uint offCode;
 
-                litLength = currSeq.litLength;
-                matchLength = currSeq.matchLength;
-                rawOffset = currSeq.offset;
                 if (endPosInSequence >= currSeq.litLength + currSeq.matchLength)
                 {
                     if (startPosInSequence >= litLength)
@@ -7409,7 +7404,7 @@ namespace ZstdSharp.Unsafe
                     uint ll0 = (((litLength == 0)) ? 1U : 0U);
 
                     offCode = ZSTD_finalizeOffCode(rawOffset, updatedRepcodes.rep, ll0);
-                    updatedRepcodes = ZSTD_updateRep(updatedRepcodes.rep, offCode, ll0);
+                    ZSTD_updateRep(updatedRepcodes.rep, offCode, ll0);
                 }
 
                 if (cctx->appliedParams.validateSequences != 0)
@@ -7417,7 +7412,7 @@ namespace ZstdSharp.Unsafe
                     seqPos->posInSrc += litLength + matchLength;
 
                     {
-                        nuint err_code = (ZSTD_validateSequence(offCode, matchLength, seqPos->posInSrc, cctx->appliedParams.cParams.windowLog, dictSize, cctx->appliedParams.cParams.minMatch));
+                        nuint err_code = (ZSTD_validateSequence(offCode, matchLength, seqPos->posInSrc, cctx->appliedParams.cParams.windowLog, dictSize));
 
                         if ((ERR_isError(err_code)) != 0)
                         {
@@ -7432,7 +7427,7 @@ namespace ZstdSharp.Unsafe
                     return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
                 }
 
-                ZSTD_storeSeq(&cctx->seqStore, litLength, ip, iend, offCode, matchLength - 3);
+                ZSTD_storeSeq(&cctx->seqStore, litLength, ip, iend, offCode, matchLength);
                 ip += matchLength + litLength;
             }
 
@@ -7473,7 +7468,8 @@ namespace ZstdSharp.Unsafe
 
         /* Compress, block-by-block, all of the sequences given.
          *
-         * Returns the cumulative size of all compressed blocks (including their headers), otherwise a ZSTD error.
+         * Returns the cumulative size of all compressed blocks (including their headers),
+         * otherwise a ZSTD error.
          */
         private static nuint ZSTD_compressSequences_internal(ZSTD_CCtx_s* cctx, void* dst, nuint dstCapacity, ZSTD_Sequence* inSeqs, nuint inSeqsSize, void* src, nuint srcSize)
         {

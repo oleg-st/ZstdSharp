@@ -10,14 +10,14 @@ namespace ZstdSharp.Unsafe
         ******************************************/
         public static uint ZSTD_versionNumber()
         {
-            return (uint)((1 * 100 * 100 + 5 * 100 + 1));
+            return (uint)((1 * 100 * 100 + 5 * 100 + 2));
         }
 
         /*! ZSTD_versionString() :
          *  Return runtime library version, like "1.4.5". Requires v1.3.0+. */
         public static string ZSTD_versionString()
         {
-            return "1.5.1";
+            return "1.5.2";
         }
 
         /*! ZSTD_isError() :

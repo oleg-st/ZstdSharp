@@ -395,7 +395,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static ZSTD_seqSymbol* LL_defaultDTable = GetArrayPointer(new ZSTD_seqSymbol[65]
+        public static readonly ZSTD_seqSymbol* LL_defaultDTable = GetArrayPointer(new ZSTD_seqSymbol[65]
         {
             new ZSTD_seqSymbol
             {
@@ -854,7 +854,7 @@ namespace ZstdSharp.Unsafe
             },
         });
 
-        public static ZSTD_seqSymbol* OF_defaultDTable = GetArrayPointer(new ZSTD_seqSymbol[33]
+        public static readonly ZSTD_seqSymbol* OF_defaultDTable = GetArrayPointer(new ZSTD_seqSymbol[33]
         {
             new ZSTD_seqSymbol
             {
@@ -1089,7 +1089,7 @@ namespace ZstdSharp.Unsafe
             },
         });
 
-        public static ZSTD_seqSymbol* ML_defaultDTable = GetArrayPointer(new ZSTD_seqSymbol[65]
+        public static readonly ZSTD_seqSymbol* ML_defaultDTable = GetArrayPointer(new ZSTD_seqSymbol[65]
         {
             new ZSTD_seqSymbol
             {
@@ -1715,11 +1715,6 @@ namespace ZstdSharp.Unsafe
             ZSTD_buildFSETable_body(dt, normalizedCounter, maxSymbolValue, baseValue, nbAdditionalBits, tableLog, wksp, wkspSize);
         }
 
-        private static void ZSTD_buildFSETable_body_bmi2(ZSTD_seqSymbol* dt, short* normalizedCounter, uint maxSymbolValue, uint* baseValue, byte* nbAdditionalBits, uint tableLog, void* wksp, nuint wkspSize)
-        {
-            ZSTD_buildFSETable_body(dt, normalizedCounter, maxSymbolValue, baseValue, nbAdditionalBits, tableLog, wksp, wkspSize);
-        }
-
         /* ZSTD_buildFSETable() :
          * generate FSE decoding table for one symbol (ll, ml or off)
          * this function must be called with valid parameters only
@@ -1731,12 +1726,6 @@ namespace ZstdSharp.Unsafe
          */
         public static void ZSTD_buildFSETable(ZSTD_seqSymbol* dt, short* normalizedCounter, uint maxSymbolValue, uint* baseValue, byte* nbAdditionalBits, uint tableLog, void* wksp, nuint wkspSize, int bmi2)
         {
-            if (bmi2 != 0)
-            {
-                ZSTD_buildFSETable_body_bmi2(dt, normalizedCounter, maxSymbolValue, baseValue, nbAdditionalBits, tableLog, wksp, wkspSize);
-                return;
-            }
-
             ZSTD_buildFSETable_body_default(dt, normalizedCounter, maxSymbolValue, baseValue, nbAdditionalBits, tableLog, wksp, wkspSize);
         }
 
@@ -3005,38 +2994,13 @@ namespace ZstdSharp.Unsafe
             return ZSTD_decompressSequencesLong_body(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
         }
 
-        private static nuint ZSTD_decompressSequences_bmi2(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset, int frame)
-        {
-            return ZSTD_decompressSequences_body(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
-        }
-
-        private static nuint ZSTD_decompressSequencesSplitLitBuffer_bmi2(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset, int frame)
-        {
-            return ZSTD_decompressSequences_bodySplitLitBuffer(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
-        }
-
-        private static nuint ZSTD_decompressSequencesLong_bmi2(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset, int frame)
-        {
-            return ZSTD_decompressSequencesLong_body(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
-        }
-
         private static nuint ZSTD_decompressSequences(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset, int frame)
         {
-            if ((ZSTD_DCtx_get_bmi2(dctx)) != 0)
-            {
-                return ZSTD_decompressSequences_bmi2(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
-            }
-
             return ZSTD_decompressSequences_default(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
         }
 
         private static nuint ZSTD_decompressSequencesSplitLitBuffer(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset, int frame)
         {
-            if ((ZSTD_DCtx_get_bmi2(dctx)) != 0)
-            {
-                return ZSTD_decompressSequencesSplitLitBuffer_bmi2(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
-            }
-
             return ZSTD_decompressSequencesSplitLitBuffer_default(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
         }
 
@@ -3047,11 +3011,6 @@ namespace ZstdSharp.Unsafe
          * This function will try to mitigate main memory latency through the use of prefetching */
         private static nuint ZSTD_decompressSequencesLong(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset, int frame)
         {
-            if ((ZSTD_DCtx_get_bmi2(dctx)) != 0)
-            {
-                return ZSTD_decompressSequencesLong_bmi2(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
-            }
-
             return ZSTD_decompressSequencesLong_default(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
         }
 
