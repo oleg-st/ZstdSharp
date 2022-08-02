@@ -13,17 +13,18 @@ namespace ZstdSharp
         private readonly byte[] inputBuffer;
         private readonly int inputBufferSize;
         private readonly bool preserveDecompressor;
+        private readonly bool checkEndOfStream;
         private Decompressor decompressor;
         private ZSTD_inBuffer_s input;
         private nuint lastDecompressResult = 0;
 
-        public DecompressionStream(Stream stream, int bufferSize = 0)
-            : this(stream, new Decompressor(), bufferSize)
+        public DecompressionStream(Stream stream, int bufferSize = 0, bool checkEndOfStream = true)
+            : this(stream, new Decompressor(), bufferSize, checkEndOfStream)
         {
             preserveDecompressor = false;
         }
 
-        public DecompressionStream(Stream stream, Decompressor decompressor, int bufferSize = 0)
+        public DecompressionStream(Stream stream, Decompressor decompressor, int bufferSize = 0, bool checkEndOfStream = true)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -37,6 +38,7 @@ namespace ZstdSharp
             innerStream = stream;
             this.decompressor = decompressor;
             preserveDecompressor = true;
+            this.checkEndOfStream = checkEndOfStream;
 
             inputBufferSize = bufferSize > 0 ? bufferSize : (int) Methods.ZSTD_CStreamInSize().EnsureZstdSuccess();
             inputBuffer = ArrayPool<byte>.Shared.Rent(inputBufferSize);
@@ -96,7 +98,7 @@ namespace ZstdSharp
                     int bytesRead;
                     if ((bytesRead = innerStream.Read(inputBuffer, 0, inputBufferSize)) == 0)
                     {
-                        if (lastDecompressResult != 0)
+                        if (checkEndOfStream && lastDecompressResult != 0)
                             throw new EndOfStreamException("Premature end of stream");
 
                         break;
@@ -134,7 +136,7 @@ namespace ZstdSharp
                     if ((bytesRead = await innerStream.ReadAsync(inputBuffer, 0, inputBufferSize, cancellationToken)
                         .ConfigureAwait(false)) == 0)
                     {
-                        if (lastDecompressResult != 0)
+                        if (checkEndOfStream && lastDecompressResult != 0)
                             throw new EndOfStreamException("Premature end of stream");
 
                         break;

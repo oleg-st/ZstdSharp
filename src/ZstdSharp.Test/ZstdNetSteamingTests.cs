@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -182,7 +181,7 @@ namespace ZstdSharp.Test
 
             //NOTE: without ZSTD_endStream call on compression
             var resultStream = new MemoryStream();
-            using (var decompressionStream = new DecompressionStream(tempStream))
+            using (var decompressionStream = new DecompressionStream(tempStream, checkEndOfStream: false))
                 decompressionStream.CopyTo(resultStream);
 
             Assert.True(testBuffer.SequenceEqual(resultStream.ToArray()));

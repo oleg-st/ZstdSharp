@@ -74,7 +74,7 @@ namespace ZstdSharp
 
             try
             {
-                await FlushAsync().ConfigureAwait(false);
+                await FlushInternalAsync(ZSTD_EndDirective.ZSTD_e_end).ConfigureAwait(false);
             }
             finally
             {
@@ -91,7 +91,7 @@ namespace ZstdSharp
             try
             {
                 if (disposing)
-                    Flush();
+                    FlushInternal(ZSTD_EndDirective.ZSTD_e_end);
             }
             finally
             {
@@ -111,23 +111,29 @@ namespace ZstdSharp
         }
 
         public override void Flush()
-            => WriteInternal(null, true);
+            => FlushInternal(ZSTD_EndDirective.ZSTD_e_flush);
 
         public override async Task FlushAsync(CancellationToken cancellationToken)
-            => await WriteInternalAsync(null, true, cancellationToken).ConfigureAwait(false);
+            => await FlushInternalAsync(ZSTD_EndDirective.ZSTD_e_flush, cancellationToken).ConfigureAwait(false);
+
+        private void FlushInternal(ZSTD_EndDirective directive) => WriteInternal(null, directive);
+
+        private async Task FlushInternalAsync(ZSTD_EndDirective directive,
+            CancellationToken cancellationToken = default) =>
+            await WriteInternalAsync(null, directive, cancellationToken).ConfigureAwait(false);
 
         public override void Write(byte[] buffer, int offset, int count)
             => Write(new ReadOnlySpan<byte>(buffer, offset, count));
 
 #if !NETSTANDARD2_0 && !NETFRAMEWORK
         public override void Write(ReadOnlySpan<byte> buffer)
-            => WriteInternal(buffer, false);
+            => WriteInternal(buffer, ZSTD_EndDirective.ZSTD_e_continue);
 #else
         public void Write(ReadOnlySpan<byte> buffer)
-            => WriteInternal(buffer, false);
+            => WriteInternal(buffer, ZSTD_EndDirective.ZSTD_e_continue);
 #endif
 
-        private void WriteInternal(ReadOnlySpan<byte> buffer, bool lastChunk)
+        private void WriteInternal(ReadOnlySpan<byte> buffer, ZSTD_EndDirective directive)
         {
             EnsureNotDisposed();
 
@@ -136,16 +142,15 @@ namespace ZstdSharp
             do
             {
                 output.pos = 0;
-                remaining = CompressStream(ref input, buffer,
-                    lastChunk ? ZSTD_EndDirective.ZSTD_e_end : ZSTD_EndDirective.ZSTD_e_continue);
+                remaining = CompressStream(ref input, buffer, directive);
 
                 var written = (int) output.pos;
                 if (written > 0)
                     innerStream.Write(outputBuffer, 0, written);
-            } while (lastChunk ? remaining > 0 : input.pos < input.size);
+            } while (directive == ZSTD_EndDirective.ZSTD_e_end ? remaining > 0 : input.pos < input.size);
         }
 
-        private async ValueTask WriteInternalAsync(ReadOnlyMemory<byte>? buffer, bool lastChunk,
+        private async ValueTask WriteInternalAsync(ReadOnlyMemory<byte>? buffer, ZSTD_EndDirective directive,
             CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
@@ -155,13 +160,12 @@ namespace ZstdSharp
             do
             {
                 output.pos = 0;
-                remaining = CompressStream(ref input, buffer.HasValue ? buffer.Value.Span : null,
-                    lastChunk ? ZSTD_EndDirective.ZSTD_e_end : ZSTD_EndDirective.ZSTD_e_continue);
+                remaining = CompressStream(ref input, buffer.HasValue ? buffer.Value.Span : null, directive);
 
                 var written = (int) output.pos;
                 if (written > 0)
                     await innerStream.WriteAsync(outputBuffer, 0, written, cancellationToken).ConfigureAwait(false);
-            } while (lastChunk ? remaining > 0 : input.pos < input.size);
+            } while (directive == ZSTD_EndDirective.ZSTD_e_end ? remaining > 0 : input.pos < input.size);
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -170,11 +174,11 @@ namespace ZstdSharp
 #if !NETSTANDARD2_0 && !NETFRAMEWORK
         public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,
             CancellationToken cancellationToken = default)
-            => await WriteInternalAsync(buffer, false, cancellationToken).ConfigureAwait(false);
+            => await WriteInternalAsync(buffer, ZSTD_EndDirective.ZSTD_e_continue, cancellationToken).ConfigureAwait(false);
 #else
         public async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,
             CancellationToken cancellationToken = default)
-            => await WriteInternalAsync(buffer, false, cancellationToken).ConfigureAwait(false);
+            => await WriteInternalAsync(buffer, ZSTD_EndDirective.ZSTD_e_continue, cancellationToken).ConfigureAwait(false);
 #endif
 
         internal unsafe nuint CompressStream(ref ZSTD_inBuffer_s input, ReadOnlySpan<byte> inputBuffer,
