@@ -14,7 +14,7 @@ namespace ZstdSharp
 {
     public static unsafe class UnsafeHelper
     {
-        public static void* PoisonMemory(void* destination, int size)
+        public static void* PoisonMemory(void* destination, ulong size)
         {
             memset(destination, 0xCC, size);
             return destination;
@@ -24,7 +24,7 @@ namespace ZstdSharp
         public static void* malloc(uint size)
         {
 #if DEBUG
-            return PoisonMemory((void*)Marshal.AllocHGlobal((int)size), (int)size);
+            return PoisonMemory((void*)Marshal.AllocHGlobal((int)size), size);
 #else
             return (void*) Marshal.AllocHGlobal((int) size);
 #endif
@@ -34,19 +34,17 @@ namespace ZstdSharp
         public static void* malloc(ulong size)
         {
 #if DEBUG
-            return PoisonMemory((void*)Marshal.AllocHGlobal((int)size), (int)size);
+            return PoisonMemory((void*) Marshal.AllocHGlobal((nint) size), size);
 #else
-            return (void*)Marshal.AllocHGlobal((int)size);
+            return (void*) Marshal.AllocHGlobal((nint) size);
 #endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void* calloc(ulong num, ulong size)
         {
-            int total = (int)(num * size);
-            var destination = (void*)Marshal.AllocHGlobal(total);
-            //Unsafe.InitBlockUnaligned(destination, 0, (uint)total);
-            //Ldloc(nameof(destination));
+            var total = num * size;
+            var destination = (void*) Marshal.AllocHGlobal((nint) total);
             memset(destination, 0, total);
             return destination;
         }
