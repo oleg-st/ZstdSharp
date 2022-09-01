@@ -73,8 +73,9 @@ namespace ZstdSharp
             if (!preserveDecompressor)
             {
                 decompressor.Dispose();
-                decompressor = null;
             }
+            
+            decompressor = null;
 
             ArrayPool<byte>.Shared.Return(inputBuffer);
         }
