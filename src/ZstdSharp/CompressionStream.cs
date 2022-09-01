@@ -104,8 +104,9 @@ namespace ZstdSharp
             if (!preserveCompressor)
             {
                 compressor.Dispose();
-                compressor = null;
             }
+
+            compressor = null;
 
             ArrayPool<byte>.Shared.Return(outputBuffer);
         }
