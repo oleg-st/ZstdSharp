@@ -42,6 +42,12 @@ namespace ZstdSharp
 
         public void LoadDictionary(byte[] dict)
         {
+            var dictReadOnlySpan = new ReadOnlySpan<byte>(dict);
+            this.LoadDictionary(dictReadOnlySpan);
+        }
+
+        public void LoadDictionary(ReadOnlySpan<byte> dict)
+        {
             EnsureNotDisposed();
             if (dict == null)
             {
