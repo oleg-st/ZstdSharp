@@ -1,5 +1,3 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     public enum blockType_e
@@ -7,6 +5,6 @@ namespace ZstdSharp.Unsafe
         bt_raw,
         bt_rle,
         bt_compressed,
-        bt_reserved,
+        bt_reserved
     }
 }

@@ -1,26 +1,17 @@
-using InlineIL;
-using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using static InlineIL.IL.Emit;
+using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
 {
-    public unsafe partial struct HUF_ReadDTableX2_Workspace
+    public unsafe struct HUF_ReadDTableX2_Workspace
     {
         public _rankVal_e__FixedBuffer rankVal;
-
         public fixed uint rankStats[13];
-
         public fixed uint rankStart0[15];
-
         public _sortedSymbol_e__FixedBuffer sortedSymbol;
-
         public fixed byte weightList[256];
-
         public fixed uint calleeWksp[218];
-
-        public unsafe partial struct _rankVal_e__FixedBuffer
+        public unsafe struct _rankVal_e__FixedBuffer
         {
             public rankValCol_t e0;
             public rankValCol_t e1;
@@ -34,44 +25,29 @@ namespace ZstdSharp.Unsafe
             public rankValCol_t e9;
             public rankValCol_t e10;
             public rankValCol_t e11;
-
             public ref rankValCol_t this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + index);
+                get => ref *(RefToPointer<_rankVal_e__FixedBuffer, rankValCol_t>(this) + index);
             }
 
             public ref rankValCol_t this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (nuint)index);
+                get => ref *(RefToPointer<_rankVal_e__FixedBuffer, rankValCol_t>(this) + index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static implicit operator rankValCol_t*(in _rankVal_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                return IL.ReturnPointer<rankValCol_t>();
-            }
-
+            public static implicit operator rankValCol_t*(in _rankVal_e__FixedBuffer t) => RefToPointer<_rankVal_e__FixedBuffer, rankValCol_t>(t);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static rankValCol_t* operator +(in _rankVal_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Ldarg_1();
-                Sizeof<rankValCol_t>();
-                Conv_I();
-                Mul();
-                Add();
-                return IL.ReturnPointer<rankValCol_t>();
-            }
+            public static rankValCol_t* operator +(in _rankVal_e__FixedBuffer t, nuint index) => RefToPointer<_rankVal_e__FixedBuffer, rankValCol_t>(t) + index;
         }
 
-        public unsafe partial struct _sortedSymbol_e__FixedBuffer
+        public unsafe struct _sortedSymbol_e__FixedBuffer
         {
             public sortedSymbol_t e0;
             public sortedSymbol_t e1;
@@ -329,41 +305,26 @@ namespace ZstdSharp.Unsafe
             public sortedSymbol_t e253;
             public sortedSymbol_t e254;
             public sortedSymbol_t e255;
-
             public ref sortedSymbol_t this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + index);
+                get => ref *(RefToPointer<_sortedSymbol_e__FixedBuffer, sortedSymbol_t>(this) + index);
             }
 
             public ref sortedSymbol_t this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (nuint)index);
+                get => ref *(RefToPointer<_sortedSymbol_e__FixedBuffer, sortedSymbol_t>(this) + index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static implicit operator sortedSymbol_t*(in _sortedSymbol_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                return IL.ReturnPointer<sortedSymbol_t>();
-            }
-
+            public static implicit operator sortedSymbol_t*(in _sortedSymbol_e__FixedBuffer t) => RefToPointer<_sortedSymbol_e__FixedBuffer, sortedSymbol_t>(t);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static sortedSymbol_t* operator +(in _sortedSymbol_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Ldarg_1();
-                Sizeof<sortedSymbol_t>();
-                Conv_I();
-                Mul();
-                Add();
-                return IL.ReturnPointer<sortedSymbol_t>();
-            }
+            public static sortedSymbol_t* operator +(in _sortedSymbol_e__FixedBuffer t, nuint index) => RefToPointer<_sortedSymbol_e__FixedBuffer, sortedSymbol_t>(t) + index;
         }
     }
 }

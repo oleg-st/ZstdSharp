@@ -1,28 +1,19 @@
-using InlineIL;
-using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using static InlineIL.IL.Emit;
+using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
 {
-    public unsafe partial struct ldmState_t
+    public unsafe struct ldmState_t
     {
         /* State for the window round buffer management */
         public ZSTD_window_t window;
-
         public ldmEntry_t* hashTable;
-
         public uint loadedDictEnd;
-
         /* Next position in bucket to insert entry */
         public byte* bucketOffsets;
-
         public _splitIndices_e__FixedBuffer splitIndices;
-
         public _matchCandidates_e__FixedBuffer matchCandidates;
-
-        public unsafe partial struct _splitIndices_e__FixedBuffer
+        public unsafe struct _splitIndices_e__FixedBuffer
         {
             public nuint e0;
             public nuint e1;
@@ -88,44 +79,29 @@ namespace ZstdSharp.Unsafe
             public nuint e61;
             public nuint e62;
             public nuint e63;
-
             public ref nuint this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + index);
+                get => ref *(RefToPointer<_splitIndices_e__FixedBuffer, nuint>(this) + index);
             }
 
             public ref nuint this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (nuint)index);
+                get => ref *(RefToPointer<_splitIndices_e__FixedBuffer, nuint>(this) + index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static implicit operator nuint*(in _splitIndices_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                return IL.ReturnPointer<nuint>();
-            }
-
+            public static implicit operator nuint*(in _splitIndices_e__FixedBuffer t) => RefToPointer<_splitIndices_e__FixedBuffer, nuint>(t);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static nuint* operator +(in _splitIndices_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Ldarg_1();
-                Sizeof<nuint>();
-                Conv_I();
-                Mul();
-                Add();
-                return IL.ReturnPointer<nuint>();
-            }
+            public static nuint* operator +(in _splitIndices_e__FixedBuffer t, nuint index) => RefToPointer<_splitIndices_e__FixedBuffer, nuint>(t) + index;
         }
 
-        public unsafe partial struct _matchCandidates_e__FixedBuffer
+        public unsafe struct _matchCandidates_e__FixedBuffer
         {
             public ldmMatchCandidate_t e0;
             public ldmMatchCandidate_t e1;
@@ -191,41 +167,26 @@ namespace ZstdSharp.Unsafe
             public ldmMatchCandidate_t e61;
             public ldmMatchCandidate_t e62;
             public ldmMatchCandidate_t e63;
-
             public ref ldmMatchCandidate_t this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + index);
+                get => ref *(RefToPointer<_matchCandidates_e__FixedBuffer, ldmMatchCandidate_t>(this) + index);
             }
 
             public ref ldmMatchCandidate_t this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (nuint)index);
+                get => ref *(RefToPointer<_matchCandidates_e__FixedBuffer, ldmMatchCandidate_t>(this) + index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static implicit operator ldmMatchCandidate_t*(in _matchCandidates_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                return IL.ReturnPointer<ldmMatchCandidate_t>();
-            }
-
+            public static implicit operator ldmMatchCandidate_t*(in _matchCandidates_e__FixedBuffer t) => RefToPointer<_matchCandidates_e__FixedBuffer, ldmMatchCandidate_t>(t);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static ldmMatchCandidate_t* operator +(in _matchCandidates_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Ldarg_1();
-                Sizeof<ldmMatchCandidate_t>();
-                Conv_I();
-                Mul();
-                Add();
-                return IL.ReturnPointer<ldmMatchCandidate_t>();
-            }
+            public static ldmMatchCandidate_t* operator +(in _matchCandidates_e__FixedBuffer t, nuint index) => RefToPointer<_matchCandidates_e__FixedBuffer, ldmMatchCandidate_t>(t) + index;
         }
     }
 }

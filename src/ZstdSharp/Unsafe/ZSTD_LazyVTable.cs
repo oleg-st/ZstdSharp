@@ -1,5 +1,3 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     /**
@@ -23,13 +21,8 @@ namespace ZstdSharp.Unsafe
      * the single segment loop. It should go in searchMax instead of its own
      * function to avoid having multiple virtual function calls per search.
      */
-    public partial struct ZSTD_LazyVTable
+    public unsafe class ZSTD_LazyVTable
     {
-        public searchMax_f searchMax;
-
-        public ZSTD_LazyVTable(searchMax_f searchMax)
-        {
-            this.searchMax = searchMax;
-        }
+        public delegate* managed<ZSTD_matchState_t*, byte*, byte*, nuint*, nuint> searchMax;
     }
 }

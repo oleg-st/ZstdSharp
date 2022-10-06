@@ -1,5 +1,3 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     public enum ZSTD_nextInputType_e
@@ -9,6 +7,6 @@ namespace ZstdSharp.Unsafe
         ZSTDnit_block,
         ZSTDnit_lastBlock,
         ZSTDnit_checksum,
-        ZSTDnit_skippableFrame,
+        ZSTDnit_skippableFrame
     }
 }

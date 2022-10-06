@@ -1,277 +1,16 @@
-using System;
-using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
+using System.Runtime.CompilerServices;
 
 namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static readonly uint* kInverseProbabilityLog256 = GetArrayPointer(new uint[256]
-        {
-            0,
-            2048,
-            1792,
-            1642,
-            1536,
-            1453,
-            1386,
-            1329,
-            1280,
-            1236,
-            1197,
-            1162,
-            1130,
-            1100,
-            1073,
-            1047,
-            1024,
-            1001,
-            980,
-            960,
-            941,
-            923,
-            906,
-            889,
-            874,
-            859,
-            844,
-            830,
-            817,
-            804,
-            791,
-            779,
-            768,
-            756,
-            745,
-            734,
-            724,
-            714,
-            704,
-            694,
-            685,
-            676,
-            667,
-            658,
-            650,
-            642,
-            633,
-            626,
-            618,
-            610,
-            603,
-            595,
-            588,
-            581,
-            574,
-            567,
-            561,
-            554,
-            548,
-            542,
-            535,
-            529,
-            523,
-            517,
-            512,
-            506,
-            500,
-            495,
-            489,
-            484,
-            478,
-            473,
-            468,
-            463,
-            458,
-            453,
-            448,
-            443,
-            438,
-            434,
-            429,
-            424,
-            420,
-            415,
-            411,
-            407,
-            402,
-            398,
-            394,
-            390,
-            386,
-            382,
-            377,
-            373,
-            370,
-            366,
-            362,
-            358,
-            354,
-            350,
-            347,
-            343,
-            339,
-            336,
-            332,
-            329,
-            325,
-            322,
-            318,
-            315,
-            311,
-            308,
-            305,
-            302,
-            298,
-            295,
-            292,
-            289,
-            286,
-            282,
-            279,
-            276,
-            273,
-            270,
-            267,
-            264,
-            261,
-            258,
-            256,
-            253,
-            250,
-            247,
-            244,
-            241,
-            239,
-            236,
-            233,
-            230,
-            228,
-            225,
-            222,
-            220,
-            217,
-            215,
-            212,
-            209,
-            207,
-            204,
-            202,
-            199,
-            197,
-            194,
-            192,
-            190,
-            187,
-            185,
-            182,
-            180,
-            178,
-            175,
-            173,
-            171,
-            168,
-            166,
-            164,
-            162,
-            159,
-            157,
-            155,
-            153,
-            151,
-            149,
-            146,
-            144,
-            142,
-            140,
-            138,
-            136,
-            134,
-            132,
-            130,
-            128,
-            126,
-            123,
-            121,
-            119,
-            117,
-            115,
-            114,
-            112,
-            110,
-            108,
-            106,
-            104,
-            102,
-            100,
-            98,
-            96,
-            94,
-            93,
-            91,
-            89,
-            87,
-            85,
-            83,
-            82,
-            80,
-            78,
-            76,
-            74,
-            73,
-            71,
-            69,
-            67,
-            66,
-            64,
-            62,
-            61,
-            59,
-            57,
-            55,
-            54,
-            52,
-            50,
-            49,
-            47,
-            46,
-            44,
-            42,
-            41,
-            39,
-            37,
-            36,
-            34,
-            33,
-            31,
-            30,
-            28,
-            26,
-            25,
-            23,
-            22,
-            20,
-            19,
-            17,
-            16,
-            14,
-            13,
-            11,
-            10,
-            8,
-            7,
-            5,
-            4,
-            2,
-            1,
-        });
-
+        public static readonly uint* kInverseProbabilityLog256 = GetArrayPointer(new uint[256] { 0, 2048, 1792, 1642, 1536, 1453, 1386, 1329, 1280, 1236, 1197, 1162, 1130, 1100, 1073, 1047, 1024, 1001, 980, 960, 941, 923, 906, 889, 874, 859, 844, 830, 817, 804, 791, 779, 768, 756, 745, 734, 724, 714, 704, 694, 685, 676, 667, 658, 650, 642, 633, 626, 618, 610, 603, 595, 588, 581, 574, 567, 561, 554, 548, 542, 535, 529, 523, 517, 512, 506, 500, 495, 489, 484, 478, 473, 468, 463, 458, 453, 448, 443, 438, 434, 429, 424, 420, 415, 411, 407, 402, 398, 394, 390, 386, 382, 377, 373, 370, 366, 362, 358, 354, 350, 347, 343, 339, 336, 332, 329, 325, 322, 318, 315, 311, 308, 305, 302, 298, 295, 292, 289, 286, 282, 279, 276, 273, 270, 267, 264, 261, 258, 256, 253, 250, 247, 244, 241, 239, 236, 233, 230, 228, 225, 222, 220, 217, 215, 212, 209, 207, 204, 202, 199, 197, 194, 192, 190, 187, 185, 182, 180, 178, 175, 173, 171, 168, 166, 164, 162, 159, 157, 155, 153, 151, 149, 146, 144, 142, 140, 138, 136, 134, 132, 130, 128, 126, 123, 121, 119, 117, 115, 114, 112, 110, 108, 106, 104, 102, 100, 98, 96, 94, 93, 91, 89, 87, 85, 83, 82, 80, 78, 76, 74, 73, 71, 69, 67, 66, 64, 62, 61, 59, 57, 55, 54, 52, 50, 49, 47, 46, 44, 42, 41, 39, 37, 36, 34, 33, 31, 30, 28, 26, 25, 23, 22, 20, 19, 17, 16, 14, 13, 11, 10, 8, 7, 5, 4, 2, 1 });
         private static uint ZSTD_getFSEMaxSymbolValue(uint* ctable)
         {
-            void* ptr = (void*)ctable;
-            ushort* u16ptr = (ushort*)(ptr);
-            uint maxSymbolValue = MEM_read16((void*)(u16ptr + 1));
-
+            void* ptr = ctable;
+            ushort* u16ptr = (ushort*)ptr;
+            uint maxSymbolValue = MEM_read16(u16ptr + 1);
             return maxSymbolValue;
         }
 
@@ -281,7 +20,7 @@ namespace ZstdSharp.Unsafe
          */
         private static uint ZSTD_useLowProbCount(nuint nbSeq)
         {
-            return ((nbSeq >= 2048) ? 1U : 0U);
+            return nbSeq >= 2048 ? 1U : 0U;
         }
 
         /**
@@ -293,18 +32,15 @@ namespace ZstdSharp.Unsafe
             byte* wksp = stackalloc byte[512];
             short* norm = stackalloc short[53];
             uint tableLog = FSE_optimalTableLog(FSELog, nbSeq, max);
-
-
             {
-                nuint err_code = (FSE_normalizeCount((short*)norm, tableLog, count, nbSeq, max, ZSTD_useLowProbCount(nbSeq)));
-
-                if ((ERR_isError(err_code)) != 0)
+                nuint err_code = FSE_normalizeCount(norm, tableLog, count, nbSeq, max, ZSTD_useLowProbCount(nbSeq));
+                if (ERR_isError(err_code))
                 {
                     return err_code;
                 }
             }
 
-            return FSE_writeNCount((void*)wksp, (nuint)(sizeof(byte) * 512), (short*)norm, max, tableLog);
+            return FSE_writeNCount(wksp, sizeof(byte) * 512, norm, max, tableLog);
         }
 
         /**
@@ -315,17 +51,12 @@ namespace ZstdSharp.Unsafe
         {
             uint cost = 0;
             uint s;
-
             assert(total > 0);
             for (s = 0; s <= max; ++s)
             {
-                uint norm = (uint)((256 * count[s]) / total);
-
+                uint norm = (uint)(256 * count[s] / total);
                 if (count[s] != 0 && norm == 0)
-                {
                     norm = 1;
-                }
-
                 assert(count[s] < total);
                 cost += count[s] * kInverseProbabilityLog256[norm];
             }
@@ -339,34 +70,29 @@ namespace ZstdSharp.Unsafe
          */
         public static nuint ZSTD_fseBitCost(uint* ctable, uint* count, uint max)
         {
-            uint kAccuracyLog = 8;
+            const uint kAccuracyLog = 8;
             nuint cost = 0;
             uint s;
             FSE_CState_t cstate;
-
             FSE_initCState(&cstate, ctable);
             if (ZSTD_getFSEMaxSymbolValue(ctable) < max)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
             }
 
             for (s = 0; s <= max; ++s)
             {
                 uint tableLog = cstate.stateLog;
-                uint badCost = (tableLog + 1) << (int)kAccuracyLog;
+                uint badCost = tableLog + 1 << (int)kAccuracyLog;
                 uint bitCost = FSE_bitCost(cstate.symbolTT, tableLog, s, kAccuracyLog);
-
                 if (count[s] == 0)
-                {
                     continue;
-                }
-
                 if (bitCost >= badCost)
                 {
-                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
                 }
 
-                cost += (nuint)(count[s]) * bitCost;
+                cost += (nuint)count[s] * bitCost;
             }
 
             return cost >> (int)kAccuracyLog;
@@ -382,13 +108,11 @@ namespace ZstdSharp.Unsafe
             uint shift = 8 - accuracyLog;
             nuint cost = 0;
             uint s;
-
             assert(accuracyLog <= 8);
             for (s = 0; s <= max; ++s)
             {
-                uint normAcc = (norm[s] != -1) ? (uint)(norm[s]) : 1;
+                uint normAcc = norm[s] != -1 ? (uint)norm[s] : 1;
                 uint norm256 = normAcc << (int)shift;
-
                 assert(norm256 > 0);
                 assert(norm256 < 256);
                 cost += count[s] * kInverseProbabilityLog256[norm256];
@@ -414,19 +138,19 @@ namespace ZstdSharp.Unsafe
             {
                 if (isDefaultAllowed != default)
                 {
-                    nuint staticFse_nbSeq_max = 1000;
-                    nuint mult = (nuint)(10 - strategy);
-                    nuint baseLog = 3;
-                    nuint dynamicFse_nbSeq_min = (((nuint)(1) << (int)defaultNormLog) * mult) >> (int)baseLog;
-
+                    const nuint staticFse_nbSeq_max = 1000;
+                    nuint mult = (nuint)(10 - (int)strategy);
+                    const nuint baseLog = 3;
+                    /* 28-36 for offset, 56-72 for lengths */
+                    nuint dynamicFse_nbSeq_min = ((nuint)1 << (int)defaultNormLog) * mult >> (int)baseLog;
                     assert(defaultNormLog >= 5 && defaultNormLog <= 6);
                     assert(mult <= 9 && mult >= 7);
-                    if ((*repeatMode == FSE_repeat.FSE_repeat_valid) && (nbSeq < staticFse_nbSeq_max))
+                    if (*repeatMode == FSE_repeat.FSE_repeat_valid && nbSeq < staticFse_nbSeq_max)
                     {
                         return symbolEncodingType_e.set_repeat;
                     }
 
-                    if ((nbSeq < dynamicFse_nbSeq_min) || (mostFrequent < (nbSeq >> (int)(defaultNormLog - 1))))
+                    if (nbSeq < dynamicFse_nbSeq_min || mostFrequent < nbSeq >> (int)(defaultNormLog - 1))
                     {
                         *repeatMode = FSE_repeat.FSE_repeat_none;
                         return symbolEncodingType_e.set_basic;
@@ -435,19 +159,18 @@ namespace ZstdSharp.Unsafe
             }
             else
             {
-                nuint basicCost = isDefaultAllowed != default ? ZSTD_crossEntropyCost(defaultNorm, defaultNormLog, count, max) : (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
-                nuint repeatCost = *repeatMode != FSE_repeat.FSE_repeat_none ? ZSTD_fseBitCost(prevCTable, count, max) : (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+                nuint basicCost = isDefaultAllowed != default ? ZSTD_crossEntropyCost(defaultNorm, defaultNormLog, count, max) : unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
+                nuint repeatCost = *repeatMode != FSE_repeat.FSE_repeat_none ? ZSTD_fseBitCost(prevCTable, count, max) : unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
                 nuint NCountCost = ZSTD_NCountCost(count, max, nbSeq, FSELog);
                 nuint compressedCost = (NCountCost << 3) + ZSTD_entropyCost(count, max, nbSeq);
-
                 if (isDefaultAllowed != default)
                 {
-                    assert((ERR_isError(basicCost)) == 0);
-                    assert(!(*repeatMode == FSE_repeat.FSE_repeat_valid && (ERR_isError(repeatCost)) != 0));
+                    assert(!ERR_isError(basicCost));
+                    assert(!(*repeatMode == FSE_repeat.FSE_repeat_valid && ERR_isError(repeatCost)));
                 }
 
-                assert((ERR_isError(NCountCost)) == 0);
-                assert(compressedCost < (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_maxCode))));
+                assert(!ERR_isError(NCountCost));
+                assert(compressedCost < unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_maxCode)));
                 if (basicCost <= repeatCost && basicCost <= compressedCost)
                 {
                     assert(isDefaultAllowed != default);
@@ -457,7 +180,7 @@ namespace ZstdSharp.Unsafe
 
                 if (repeatCost <= compressedCost)
                 {
-                    assert((ERR_isError(repeatCost)) == 0);
+                    assert(!ERR_isError(repeatCost));
                     return symbolEncodingType_e.set_repeat;
                 }
 
@@ -470,114 +193,89 @@ namespace ZstdSharp.Unsafe
 
         public static nuint ZSTD_buildCTable(void* dst, nuint dstCapacity, uint* nextCTable, uint FSELog, symbolEncodingType_e type, uint* count, uint max, byte* codeTable, nuint nbSeq, short* defaultNorm, uint defaultNormLog, uint defaultMax, uint* prevCTable, nuint prevCTableSize, void* entropyWorkspace, nuint entropyWorkspaceSize)
         {
-            byte* op = (byte*)(dst);
+            byte* op = (byte*)dst;
             byte* oend = op + dstCapacity;
-
             switch (type)
             {
                 case symbolEncodingType_e.set_rle:
-                {
-
                     {
-                        nuint err_code = (FSE_buildCTable_rle(nextCTable, (byte)(max)));
-
-                        if ((ERR_isError(err_code)) != 0)
+                        nuint err_code = FSE_buildCTable_rle(nextCTable, (byte)max);
+                        if (ERR_isError(err_code))
                         {
                             return err_code;
                         }
                     }
-                }
 
-                if (dstCapacity == 0)
-                {
-                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
-                }
+                    if (dstCapacity == 0)
+                    {
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                    }
 
-                *op = codeTable[0];
-                return 1;
+                    *op = codeTable[0];
+                    return 1;
                 case symbolEncodingType_e.set_repeat:
-                {
-                    memcpy((void*)(nextCTable), (void*)(prevCTable), (prevCTableSize));
-                }
-
-                return 0;
+                    memcpy(nextCTable, prevCTable, (uint)prevCTableSize);
+                    return 0;
                 case symbolEncodingType_e.set_basic:
-                {
-
                     {
-                        nuint err_code = (FSE_buildCTable_wksp(nextCTable, defaultNorm, defaultMax, defaultNormLog, entropyWorkspace, entropyWorkspaceSize));
-
-                        if ((ERR_isError(err_code)) != 0)
+                        nuint err_code = FSE_buildCTable_wksp(nextCTable, defaultNorm, defaultMax, defaultNormLog, entropyWorkspace, entropyWorkspaceSize);
+                        if (ERR_isError(err_code))
                         {
                             return err_code;
                         }
                     }
-                }
 
-                return 0;
+                    return 0;
                 case symbolEncodingType_e.set_compressed:
-                {
-                    ZSTD_BuildCTableWksp* wksp = (ZSTD_BuildCTableWksp*)(entropyWorkspace);
-                    nuint nbSeq_1 = nbSeq;
-                    uint tableLog = FSE_optimalTableLog(FSELog, nbSeq, max);
-
-                    if (count[codeTable[nbSeq - 1]] > 1)
                     {
-                        count[codeTable[nbSeq - 1]]--;
-                        nbSeq_1--;
-                    }
-
-                    assert(nbSeq_1 > 1);
-                    assert(entropyWorkspaceSize >= (nuint)(sizeof(ZSTD_BuildCTableWksp)));
-
-                    {
-                        nuint err_code = (FSE_normalizeCount((short*)wksp->norm, tableLog, count, nbSeq_1, max, ZSTD_useLowProbCount(nbSeq_1)));
-
-                        if ((ERR_isError(err_code)) != 0)
+                        ZSTD_BuildCTableWksp* wksp = (ZSTD_BuildCTableWksp*)entropyWorkspace;
+                        nuint nbSeq_1 = nbSeq;
+                        uint tableLog = FSE_optimalTableLog(FSELog, nbSeq, max);
+                        if (count[codeTable[nbSeq - 1]] > 1)
                         {
-                            return err_code;
+                            count[codeTable[nbSeq - 1]]--;
+                            nbSeq_1--;
                         }
-                    }
 
-                    assert(oend >= op);
-
-                    {
-                        nuint NCountSize = FSE_writeNCount((void*)op, (nuint)(oend - op), (short*)wksp->norm, max, tableLog);
-
-
+                        assert(nbSeq_1 > 1);
+                        assert(entropyWorkspaceSize >= (uint)sizeof(ZSTD_BuildCTableWksp));
                         {
-                            nuint err_code = (NCountSize);
-
-                            if ((ERR_isError(err_code)) != 0)
+                            nuint err_code = FSE_normalizeCount(wksp->norm, tableLog, count, nbSeq_1, max, ZSTD_useLowProbCount(nbSeq_1));
+                            if (ERR_isError(err_code))
                             {
                                 return err_code;
                             }
                         }
 
-
+                        assert(oend >= op);
                         {
-                            nuint err_code = (FSE_buildCTable_wksp(nextCTable, (short*)wksp->norm, max, tableLog, (void*)wksp->wksp, (nuint)(1140)));
-
-                            if ((ERR_isError(err_code)) != 0)
+                            /* overflow protected */
+                            nuint NCountSize = FSE_writeNCount(op, (nuint)(oend - op), wksp->norm, max, tableLog);
                             {
-                                return err_code;
+                                nuint err_code = NCountSize;
+                                if (ERR_isError(err_code))
+                                {
+                                    return err_code;
+                                }
                             }
-                        }
 
-                        return NCountSize;
+                            {
+                                nuint err_code = FSE_buildCTable_wksp(nextCTable, wksp->norm, max, tableLog, wksp->wksp, sizeof(uint) * 285);
+                                if (ERR_isError(err_code))
+                                {
+                                    return err_code;
+                                }
+                            }
+
+                            return NCountSize;
+                        }
                     }
-                }
 
                 default:
-                {
                     assert(0 != 0);
-                }
-
-
-                {
-                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
-                }
-
+                    {
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
+                    }
             }
         }
 
@@ -587,10 +285,9 @@ namespace ZstdSharp.Unsafe
             FSE_CState_t stateMatchLength;
             FSE_CState_t stateOffsetBits;
             FSE_CState_t stateLitLength;
-
-            if ((ERR_isError(BIT_initCStream(&blockStream, dst, dstCapacity))) != 0)
+            if (ERR_isError(BIT_initCStream(&blockStream, dst, dstCapacity)))
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
             FSE_initCState2(&stateMatchLength, CTable_MatchLength, mlCodeTable[nbSeq - 1]);
@@ -598,21 +295,14 @@ namespace ZstdSharp.Unsafe
             FSE_initCState2(&stateLitLength, CTable_LitLength, llCodeTable[nbSeq - 1]);
             BIT_addBits(&blockStream, sequences[nbSeq - 1].litLength, LL_bits[llCodeTable[nbSeq - 1]]);
             if (MEM_32bits)
-            {
                 BIT_flushBits(&blockStream);
-            }
-
             BIT_addBits(&blockStream, sequences[nbSeq - 1].mlBase, ML_bits[mlCodeTable[nbSeq - 1]]);
             if (MEM_32bits)
-            {
                 BIT_flushBits(&blockStream);
-            }
-
             if (longOffsets != 0)
             {
                 uint ofBits = ofCodeTable[nbSeq - 1];
-                uint extraBits = ofBits - ((ofBits) < (((uint)(MEM_32bits ? 25 : 57)) - 1) ? (ofBits) : (((uint)(MEM_32bits ? 25 : 57)) - 1));
-
+                uint extraBits = ofBits - (ofBits < (uint)(MEM_32bits ? 25 : 57) - 1 ? ofBits : (uint)(MEM_32bits ? 25 : 57) - 1);
                 if (extraBits != 0)
                 {
                     BIT_addBits(&blockStream, sequences[nbSeq - 1].offBase, extraBits);
@@ -627,10 +317,8 @@ namespace ZstdSharp.Unsafe
             }
 
             BIT_flushBits(&blockStream);
-
             {
                 nuint n;
-
                 for (n = nbSeq - 2; n < nbSeq; n--)
                 {
                     byte llCode = llCodeTable[n];
@@ -639,36 +327,22 @@ namespace ZstdSharp.Unsafe
                     uint llBits = LL_bits[llCode];
                     uint ofBits = ofCode;
                     uint mlBits = ML_bits[mlCode];
-
                     FSE_encodeSymbol(&blockStream, &stateOffsetBits, ofCode);
                     FSE_encodeSymbol(&blockStream, &stateMatchLength, mlCode);
                     if (MEM_32bits)
-                    {
                         BIT_flushBits(&blockStream);
-                    }
-
                     FSE_encodeSymbol(&blockStream, &stateLitLength, llCode);
-                    if (MEM_32bits || (ofBits + mlBits + llBits >= (uint)(64 - 7 - (9 + 9 + 8))))
-                    {
+                    if (MEM_32bits || ofBits + mlBits + llBits >= 64 - 7 - (9 + 9 + 8))
                         BIT_flushBits(&blockStream);
-                    }
-
                     BIT_addBits(&blockStream, sequences[n].litLength, llBits);
-                    if (MEM_32bits && ((llBits + mlBits) > 24))
-                    {
+                    if (MEM_32bits && llBits + mlBits > 24)
                         BIT_flushBits(&blockStream);
-                    }
-
                     BIT_addBits(&blockStream, sequences[n].mlBase, mlBits);
-                    if (MEM_32bits || (ofBits + mlBits + llBits > 56))
-                    {
+                    if (MEM_32bits || ofBits + mlBits + llBits > 56)
                         BIT_flushBits(&blockStream);
-                    }
-
                     if (longOffsets != 0)
                     {
-                        uint extraBits = ofBits - ((ofBits) < (((uint)(MEM_32bits ? 25 : 57)) - 1) ? (ofBits) : (((uint)(MEM_32bits ? 25 : 57)) - 1));
-
+                        uint extraBits = ofBits - (ofBits < (uint)(MEM_32bits ? 25 : 57) - 1 ? ofBits : (uint)(MEM_32bits ? 25 : 57) - 1);
                         if (extraBits != 0)
                         {
                             BIT_addBits(&blockStream, sequences[n].offBase, extraBits);
@@ -689,13 +363,11 @@ namespace ZstdSharp.Unsafe
             FSE_flushCState(&blockStream, &stateMatchLength);
             FSE_flushCState(&blockStream, &stateOffsetBits);
             FSE_flushCState(&blockStream, &stateLitLength);
-
             {
                 nuint streamSize = BIT_closeCStream(&blockStream);
-
                 if (streamSize == 0)
                 {
-                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
                 }
 
                 return streamSize;

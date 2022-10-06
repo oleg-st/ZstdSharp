@@ -1,4 +1,3 @@
-using System;
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
 
@@ -14,28 +13,20 @@ namespace ZstdSharp.Unsafe
             uint mls = cParams->minMatch;
             byte* @base = ms->window.@base;
             byte* ip = @base + ms->nextToUpdate;
-            byte* iend = ((byte*)(end)) - 8;
-            uint fastHashFillStep = 3;
-
+            byte* iend = (byte*)end - 8;
+            const uint fastHashFillStep = 3;
             for (; ip + fastHashFillStep < iend + 2; ip += fastHashFillStep)
             {
                 uint curr = (uint)(ip - @base);
-                nuint hash0 = ZSTD_hashPtr((void*)ip, hBits, mls);
-
+                nuint hash0 = ZSTD_hashPtr(ip, hBits, mls);
                 hashTable[hash0] = curr;
                 if (dtlm == ZSTD_dictTableLoadMethod_e.ZSTD_dtlm_fast)
-                {
                     continue;
-                }
-
-
                 {
                     uint p;
-
                     for (p = 1; p < fastHashFillStep; ++p)
                     {
-                        nuint hash = ZSTD_hashPtr((void*)(ip + p), hBits, mls);
-
+                        nuint hash = ZSTD_hashPtr(ip + p, hBits, mls);
                         if (hashTable[hash] == 0)
                         {
                             hashTable[hash] = curr + p;
@@ -98,9 +89,10 @@ namespace ZstdSharp.Unsafe
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
             uint hlog = cParams->hashLog;
-            nuint stepSize = hasStep != 0 ? (cParams->targetLength + (uint)((cParams->targetLength) == 0 ? 1 : 0) + 1) : 2;
+            /* support stepSize of 0 */
+            nuint stepSize = hasStep != 0 ? cParams->targetLength + (uint)(cParams->targetLength == 0 ? 1 : 0) + 1 : 2;
             byte* @base = ms->window.@base;
-            byte* istart = (byte*)(src);
+            byte* istart = (byte*)src;
             uint endIndex = (uint)((nuint)(istart - @base) + srcSize);
             uint prefixStartIndex = ZSTD_getLowestPrefixIndex(ms, endIndex, cParams->windowLog);
             byte* prefixStart = @base + prefixStartIndex;
@@ -115,36 +107,43 @@ namespace ZstdSharp.Unsafe
             uint rep_offset1 = rep[0];
             uint rep_offset2 = rep[1];
             uint offsetSaved = 0;
+            /* hash for ip0 */
             nuint hash0;
+            /* hash for ip1 */
             nuint hash1;
+            /* match idx for ip0 */
             uint idx;
+            /* src value at match idx */
             uint mval;
             uint offcode;
             byte* match0;
             nuint mLength;
+            /* ip0 and ip1 are always adjacent. The targetLength skipping and
+             * uncompressibility acceleration is applied to every other position,
+             * matching the behavior of #1562. step therefore represents the gap
+             * between pairs of positions, from ip0 to ip2 or ip1 to ip3. */
             nuint step;
             byte* nextStep;
-            nuint kStepIncr = (nuint)((1 << (8 - 1)));
-
-            ip0 += ((ip0 == prefixStart) ? 1 : 0);
-
+            const nuint kStepIncr = 1 << 8 - 1;
+            ip0 += ip0 == prefixStart ? 1 : 0;
             {
                 uint curr = (uint)(ip0 - @base);
                 uint windowLow = ZSTD_getLowestPrefixIndex(ms, curr, cParams->windowLog);
                 uint maxRep = curr - windowLow;
-
                 if (rep_offset2 > maxRep)
                 {
-                    offsetSaved = rep_offset2; rep_offset2 = 0;
+                    offsetSaved = rep_offset2;
+                    rep_offset2 = 0;
                 }
 
                 if (rep_offset1 > maxRep)
                 {
-                    offsetSaved = rep_offset1; rep_offset1 = 0;
+                    offsetSaved = rep_offset1;
+                    rep_offset1 = 0;
                 }
             }
 
-            _start:
+        _start:
             step = stepSize;
             nextStep = ip0 + kStepIncr;
             ip1 = ip0 + 1;
@@ -155,44 +154,46 @@ namespace ZstdSharp.Unsafe
                 goto _cleanup;
             }
 
-            hash0 = ZSTD_hashPtr((void*)ip0, hlog, mls);
-            hash1 = ZSTD_hashPtr((void*)ip1, hlog, mls);
+            hash0 = ZSTD_hashPtr(ip0, hlog, mls);
+            hash1 = ZSTD_hashPtr(ip1, hlog, mls);
             idx = hashTable[hash0];
             do
             {
-                uint rval = MEM_read32((void*)(ip2 - rep_offset1));
-
+                /* load repcode match for ip[2]*/
+                uint rval = MEM_read32(ip2 - rep_offset1);
                 current0 = (uint)(ip0 - @base);
                 hashTable[hash0] = current0;
-                if (((MEM_read32((void*)ip2) == rval) && (rep_offset1 > 0)))
+                if (MEM_read32(ip2) == rval && rep_offset1 > 0)
                 {
                     ip0 = ip2;
                     match0 = ip0 - rep_offset1;
-                    mLength = ((ip0[-1] == match0[-1]) ? 1U : 0U);
+                    mLength = ip0[-1] == match0[-1] ? 1U : 0U;
                     ip0 -= mLength;
                     match0 -= mLength;
-                    assert((1) >= 1); assert((1) <= 3); offcode = (uint)(((1) - 1));
+                    assert(1 >= 1);
+                    assert(1 <= 3);
+                    offcode = 1 - 1;
                     mLength += 4;
                     goto _match;
                 }
 
                 if (idx >= prefixStartIndex)
                 {
-                    mval = MEM_read32((void*)(@base + idx));
+                    mval = MEM_read32(@base + idx);
                 }
                 else
                 {
-                    mval = MEM_read32((void*)ip0) ^ 1;
+                    mval = MEM_read32(ip0) ^ 1;
                 }
 
-                if (MEM_read32((void*)ip0) == mval)
+                if (MEM_read32(ip0) == mval)
                 {
                     goto _offset;
                 }
 
                 idx = hashTable[hash1];
                 hash0 = hash1;
-                hash1 = ZSTD_hashPtr((void*)ip2, hlog, mls);
+                hash1 = ZSTD_hashPtr(ip2, hlog, mls);
                 ip0 = ip1;
                 ip1 = ip2;
                 ip2 = ip3;
@@ -200,21 +201,21 @@ namespace ZstdSharp.Unsafe
                 hashTable[hash0] = current0;
                 if (idx >= prefixStartIndex)
                 {
-                    mval = MEM_read32((void*)(@base + idx));
+                    mval = MEM_read32(@base + idx);
                 }
                 else
                 {
-                    mval = MEM_read32((void*)ip0) ^ 1;
+                    mval = MEM_read32(ip0) ^ 1;
                 }
 
-                if (MEM_read32((void*)ip0) == mval)
+                if (MEM_read32(ip0) == mval)
                 {
                     goto _offset;
                 }
 
                 idx = hashTable[hash1];
                 hash0 = hash1;
-                hash1 = ZSTD_hashPtr((void*)ip2, hlog, mls);
+                hash1 = ZSTD_hashPtr(ip2, hlog, mls);
                 ip0 = ip1;
                 ip1 = ip2;
                 ip2 = ip0 + step;
@@ -222,31 +223,31 @@ namespace ZstdSharp.Unsafe
                 if (ip2 >= nextStep)
                 {
                     step++;
-                    Prefetch0((void*)(ip1 + 64));
-                    Prefetch0((void*)(ip1 + 128));
+                    Prefetch0(ip1 + 64);
+                    Prefetch0(ip1 + 128);
                     nextStep += kStepIncr;
                 }
             }
             while (ip3 < ilimit);
-
-            _cleanup:
+        _cleanup:
             rep[0] = rep_offset1 != 0 ? rep_offset1 : offsetSaved;
             rep[1] = rep_offset2 != 0 ? rep_offset2 : offsetSaved;
             return (nuint)(iend - anchor);
-            _offset:
+        _offset:
             match0 = @base + idx;
             rep_offset2 = rep_offset1;
             rep_offset1 = (uint)(ip0 - match0);
-            assert((rep_offset1) > 0); offcode = (rep_offset1 + (uint)((3 - 1)));
+            assert(rep_offset1 > 0);
+            offcode = rep_offset1 + (3 - 1);
             mLength = 4;
-            while ((((ip0 > anchor) && (match0 > prefixStart))) && (ip0[-1] == match0[-1]))
+            while (ip0 > anchor && match0 > prefixStart && ip0[-1] == match0[-1])
             {
                 ip0--;
                 match0--;
                 mLength++;
             }
 
-            _match:
+        _match:
             mLength += ZSTD_count(ip0 + mLength, match0 + mLength, iend);
             ZSTD_storeSeq(seqStore, (nuint)(ip0 - anchor), anchor, iend, offcode, mLength);
             ip0 += mLength;
@@ -259,25 +260,26 @@ namespace ZstdSharp.Unsafe
             if (ip0 <= ilimit)
             {
                 assert(@base + current0 + 2 > istart);
-                hashTable[ZSTD_hashPtr((void*)(@base + current0 + 2), hlog, mls)] = current0 + 2;
-                hashTable[ZSTD_hashPtr((void*)(ip0 - 2), hlog, mls)] = (uint)(ip0 - 2 - @base);
+                hashTable[ZSTD_hashPtr(@base + current0 + 2, hlog, mls)] = current0 + 2;
+                hashTable[ZSTD_hashPtr(ip0 - 2, hlog, mls)] = (uint)(ip0 - 2 - @base);
                 if (rep_offset2 > 0)
                 {
-                    while ((ip0 <= ilimit) && (MEM_read32((void*)ip0) == MEM_read32((void*)(ip0 - rep_offset2))))
+                    while (ip0 <= ilimit && MEM_read32(ip0) == MEM_read32(ip0 - rep_offset2))
                     {
+                        /* store sequence */
                         nuint rLength = ZSTD_count(ip0 + 4, ip0 + 4 - rep_offset2, iend) + 4;
-
-
                         {
+                            /* swap rep_offset2 <=> rep_offset1 */
                             uint tmpOff = rep_offset2;
-
                             rep_offset2 = rep_offset1;
                             rep_offset1 = tmpOff;
                         }
 
-                        hashTable[ZSTD_hashPtr((void*)ip0, hlog, mls)] = (uint)(ip0 - @base);
+                        hashTable[ZSTD_hashPtr(ip0, hlog, mls)] = (uint)(ip0 - @base);
                         ip0 += rLength;
-                        assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), rLength);
+                        assert(1 >= 1);
+                        assert(1 <= 3);
+                        ZSTD_storeSeq(seqStore, 0, anchor, iend, 1 - 1, rLength);
                         anchor = ip0;
                         continue;
                     }
@@ -330,7 +332,6 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_compressBlock_fast(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
-
             assert(ms->dictMatchState == null);
             if (ms->cParams.targetLength > 1)
             {
@@ -338,24 +339,13 @@ namespace ZstdSharp.Unsafe
                 {
                     default:
                     case 4:
-                    {
                         return ZSTD_compressBlock_fast_noDict_4_1(ms, seqStore, rep, src, srcSize);
-                    }
-
                     case 5:
-                    {
                         return ZSTD_compressBlock_fast_noDict_5_1(ms, seqStore, rep, src, srcSize);
-                    }
-
                     case 6:
-                    {
                         return ZSTD_compressBlock_fast_noDict_6_1(ms, seqStore, rep, src, srcSize);
-                    }
-
                     case 7:
-                    {
                         return ZSTD_compressBlock_fast_noDict_7_1(ms, seqStore, rep, src, srcSize);
-                    }
                 }
             }
             else
@@ -364,24 +354,13 @@ namespace ZstdSharp.Unsafe
                 {
                     default:
                     case 4:
-                    {
                         return ZSTD_compressBlock_fast_noDict_4_0(ms, seqStore, rep, src, srcSize);
-                    }
-
                     case 5:
-                    {
                         return ZSTD_compressBlock_fast_noDict_5_0(ms, seqStore, rep, src, srcSize);
-                    }
-
                     case 6:
-                    {
                         return ZSTD_compressBlock_fast_noDict_6_0(ms, seqStore, rep, src, srcSize);
-                    }
-
                     case 7:
-                    {
                         return ZSTD_compressBlock_fast_noDict_7_0(ms, seqStore, rep, src, srcSize);
-                    }
                 }
             }
         }
@@ -392,9 +371,10 @@ namespace ZstdSharp.Unsafe
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
             uint hlog = cParams->hashLog;
-            uint stepSize = cParams->targetLength + (uint)((cParams->targetLength) == 0 ? 1 : 0);
+            /* support stepSize of 0 */
+            uint stepSize = cParams->targetLength + (uint)(cParams->targetLength == 0 ? 1 : 0);
             byte* @base = ms->window.@base;
-            byte* istart = (byte*)(src);
+            byte* istart = (byte*)src;
             byte* ip = istart;
             byte* anchor = istart;
             uint prefixStartIndex = ms->window.dictLimit;
@@ -413,51 +393,51 @@ namespace ZstdSharp.Unsafe
             uint dictIndexDelta = prefixStartIndex - (uint)(dictEnd - dictBase);
             uint dictAndPrefixLength = (uint)(ip - prefixStart + dictEnd - dictStart);
             uint dictHLog = dictCParams->hashLog;
+            /* if a dictionary is still attached, it necessarily means that
+             * it is within window size. So we just check it. */
             uint maxDistance = 1U << (int)cParams->windowLog;
             uint endIndex = (uint)((nuint)(ip - @base) + srcSize);
-
             assert(endIndex - prefixStartIndex <= maxDistance);
             assert(prefixStartIndex >= (uint)(dictEnd - dictBase));
-            ip += ((dictAndPrefixLength == 0) ? 1 : 0);
+            ip += dictAndPrefixLength == 0 ? 1 : 0;
             assert(offset_1 <= dictAndPrefixLength);
             assert(offset_2 <= dictAndPrefixLength);
             while (ip < ilimit)
             {
                 nuint mLength;
-                nuint h = ZSTD_hashPtr((void*)ip, hlog, mls);
+                nuint h = ZSTD_hashPtr(ip, hlog, mls);
                 uint curr = (uint)(ip - @base);
                 uint matchIndex = hashTable[h];
                 byte* match = @base + matchIndex;
                 uint repIndex = curr + 1 - offset_1;
-                byte* repMatch = (repIndex < prefixStartIndex) ? dictBase + (repIndex - dictIndexDelta) : @base + repIndex;
-
+                byte* repMatch = repIndex < prefixStartIndex ? dictBase + (repIndex - dictIndexDelta) : @base + repIndex;
                 hashTable[h] = curr;
-                if (((uint)((prefixStartIndex - 1) - repIndex) >= 3) && (MEM_read32((void*)repMatch) == MEM_read32((void*)(ip + 1))))
+                if (prefixStartIndex - 1 - repIndex >= 3 && MEM_read32(repMatch) == MEM_read32(ip + 1))
                 {
                     byte* repMatchEnd = repIndex < prefixStartIndex ? dictEnd : iend;
-
                     mLength = ZSTD_count_2segments(ip + 1 + 4, repMatch + 4, iend, repMatchEnd, prefixStart) + 4;
                     ip++;
-                    assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (uint)(((1) - 1)), mLength);
+                    assert(1 >= 1);
+                    assert(1 <= 3);
+                    ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, 1 - 1, mLength);
                 }
-                else if ((matchIndex <= prefixStartIndex))
+                else if (matchIndex <= prefixStartIndex)
                 {
-                    nuint dictHash = ZSTD_hashPtr((void*)ip, dictHLog, mls);
+                    nuint dictHash = ZSTD_hashPtr(ip, dictHLog, mls);
                     uint dictMatchIndex = dictHashTable[dictHash];
                     byte* dictMatch = dictBase + dictMatchIndex;
-
-                    if (dictMatchIndex <= dictStartIndex || MEM_read32((void*)dictMatch) != MEM_read32((void*)ip))
+                    if (dictMatchIndex <= dictStartIndex || MEM_read32(dictMatch) != MEM_read32(ip))
                     {
                         assert(stepSize >= 1);
-                        ip += (ulong)((ip - anchor) >> 8) + stepSize;
+                        ip += (ulong)(ip - anchor >> 8) + stepSize;
                         continue;
                     }
                     else
                     {
-                        uint offset = (uint)(curr - dictMatchIndex - dictIndexDelta);
-
+                        /* found a dict match */
+                        uint offset = curr - dictMatchIndex - dictIndexDelta;
                         mLength = ZSTD_count_2segments(ip + 4, dictMatch + 4, iend, dictEnd, prefixStart) + 4;
-                        while ((((ip > anchor) && (dictMatch > dictStart))) && (ip[-1] == dictMatch[-1]))
+                        while (ip > anchor && dictMatch > dictStart && ip[-1] == dictMatch[-1])
                         {
                             ip--;
                             dictMatch--;
@@ -466,21 +446,22 @@ namespace ZstdSharp.Unsafe
 
                         offset_2 = offset_1;
                         offset_1 = offset;
-                        assert((offset) > 0); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (offset + (uint)((3 - 1))), mLength);
+                        assert(offset > 0);
+                        ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, offset + (3 - 1), mLength);
                     }
                 }
-                else if (MEM_read32((void*)match) != MEM_read32((void*)ip))
+                else if (MEM_read32(match) != MEM_read32(ip))
                 {
                     assert(stepSize >= 1);
-                    ip += (ulong)((ip - anchor) >> 8) + stepSize;
+                    ip += (ulong)(ip - anchor >> 8) + stepSize;
                     continue;
                 }
                 else
                 {
+                    /* found a regular match */
                     uint offset = (uint)(ip - match);
-
                     mLength = ZSTD_count(ip + 4, match + 4, iend) + 4;
-                    while ((((ip > anchor) && (match > prefixStart))) && (ip[-1] == match[-1]))
+                    while (ip > anchor && match > prefixStart && ip[-1] == match[-1])
                     {
                         ip--;
                         match--;
@@ -489,7 +470,8 @@ namespace ZstdSharp.Unsafe
 
                     offset_2 = offset_1;
                     offset_1 = offset;
-                    assert((offset) > 0); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (offset + (uint)((3 - 1))), mLength);
+                    assert(offset > 0);
+                    ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, offset + (3 - 1), mLength);
                 }
 
                 ip += mLength;
@@ -497,24 +479,25 @@ namespace ZstdSharp.Unsafe
                 if (ip <= ilimit)
                 {
                     assert(@base + curr + 2 > istart);
-                    hashTable[ZSTD_hashPtr((void*)(@base + curr + 2), hlog, mls)] = curr + 2;
-                    hashTable[ZSTD_hashPtr((void*)(ip - 2), hlog, mls)] = (uint)(ip - 2 - @base);
+                    hashTable[ZSTD_hashPtr(@base + curr + 2, hlog, mls)] = curr + 2;
+                    hashTable[ZSTD_hashPtr(ip - 2, hlog, mls)] = (uint)(ip - 2 - @base);
                     while (ip <= ilimit)
                     {
                         uint current2 = (uint)(ip - @base);
                         uint repIndex2 = current2 - offset_2;
                         byte* repMatch2 = repIndex2 < prefixStartIndex ? dictBase - dictIndexDelta + repIndex2 : @base + repIndex2;
-
-                        if (((uint)((prefixStartIndex - 1) - (uint)(repIndex2)) >= 3) && (MEM_read32((void*)repMatch2) == MEM_read32((void*)ip)))
+                        if (prefixStartIndex - 1 - repIndex2 >= 3 && MEM_read32(repMatch2) == MEM_read32(ip))
                         {
                             byte* repEnd2 = repIndex2 < prefixStartIndex ? dictEnd : iend;
                             nuint repLength2 = ZSTD_count_2segments(ip + 4, repMatch2 + 4, iend, repEnd2, prefixStart) + 4;
+                            /* swap offset_2 <=> offset_1 */
                             uint tmpOffset = offset_2;
-
                             offset_2 = offset_1;
                             offset_1 = tmpOffset;
-                            assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), repLength2);
-                            hashTable[ZSTD_hashPtr((void*)ip, hlog, mls)] = current2;
+                            assert(1 >= 1);
+                            assert(1 <= 3);
+                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 1 - 1, repLength2);
+                            hashTable[ZSTD_hashPtr(ip, hlog, mls)] = current2;
                             ip += repLength2;
                             anchor = ip;
                             continue;
@@ -553,30 +536,18 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_compressBlock_fast_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
-
             assert(ms->dictMatchState != null);
             switch (mls)
             {
                 default:
                 case 4:
-                {
                     return ZSTD_compressBlock_fast_dictMatchState_4_0(ms, seqStore, rep, src, srcSize);
-                }
-
                 case 5:
-                {
                     return ZSTD_compressBlock_fast_dictMatchState_5_0(ms, seqStore, rep, src, srcSize);
-                }
-
                 case 6:
-                {
                     return ZSTD_compressBlock_fast_dictMatchState_6_0(ms, seqStore, rep, src, srcSize);
-                }
-
                 case 7:
-                {
                     return ZSTD_compressBlock_fast_dictMatchState_7_0(ms, seqStore, rep, src, srcSize);
-                }
             }
         }
 
@@ -585,10 +556,11 @@ namespace ZstdSharp.Unsafe
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
             uint hlog = cParams->hashLog;
-            uint stepSize = cParams->targetLength + (uint)((cParams->targetLength) == 0 ? 1 : 0);
+            /* support stepSize of 0 */
+            uint stepSize = cParams->targetLength + (uint)(cParams->targetLength == 0 ? 1 : 0);
             byte* @base = ms->window.@base;
             byte* dictBase = ms->window.dictBase;
-            byte* istart = (byte*)(src);
+            byte* istart = (byte*)src;
             byte* ip = istart;
             byte* anchor = istart;
             uint endIndex = (uint)((nuint)(istart - @base) + srcSize);
@@ -602,15 +574,11 @@ namespace ZstdSharp.Unsafe
             byte* iend = istart + srcSize;
             byte* ilimit = iend - 8;
             uint offset_1 = rep[0], offset_2 = rep[1];
-
             if (prefixStartIndex == dictStartIndex)
-            {
                 return ZSTD_compressBlock_fast(ms, seqStore, rep, src, srcSize);
-            }
-
             while (ip < ilimit)
             {
-                nuint h = ZSTD_hashPtr((void*)ip, hlog, mls);
+                nuint h = ZSTD_hashPtr(ip, hlog, mls);
                 uint matchIndex = hashTable[h];
                 byte* matchBase = matchIndex < prefixStartIndex ? dictBase : @base;
                 byte* match = matchBase + matchIndex;
@@ -618,35 +586,33 @@ namespace ZstdSharp.Unsafe
                 uint repIndex = curr + 1 - offset_1;
                 byte* repBase = repIndex < prefixStartIndex ? dictBase : @base;
                 byte* repMatch = repBase + repIndex;
-
                 hashTable[h] = curr;
-                if (((((uint)((prefixStartIndex - 1) - repIndex) >= 3) && (offset_1 <= curr + 1 - dictStartIndex))) && (MEM_read32((void*)repMatch) == MEM_read32((void*)(ip + 1))))
+                if (prefixStartIndex - 1 - repIndex >= 3 && offset_1 <= curr + 1 - dictStartIndex && MEM_read32(repMatch) == MEM_read32(ip + 1))
                 {
                     byte* repMatchEnd = repIndex < prefixStartIndex ? dictEnd : iend;
                     nuint rLength = ZSTD_count_2segments(ip + 1 + 4, repMatch + 4, iend, repMatchEnd, prefixStart) + 4;
-
                     ip++;
-                    assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (uint)(((1) - 1)), rLength);
+                    assert(1 >= 1);
+                    assert(1 <= 3);
+                    ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, 1 - 1, rLength);
                     ip += rLength;
                     anchor = ip;
                 }
                 else
                 {
-                    if ((matchIndex < dictStartIndex) || (MEM_read32((void*)match) != MEM_read32((void*)ip)))
+                    if (matchIndex < dictStartIndex || MEM_read32(match) != MEM_read32(ip))
                     {
                         assert(stepSize >= 1);
-                        ip += (ulong)((ip - anchor) >> 8) + stepSize;
+                        ip += (ulong)(ip - anchor >> 8) + stepSize;
                         continue;
                     }
-
 
                     {
                         byte* matchEnd = matchIndex < prefixStartIndex ? dictEnd : iend;
                         byte* lowMatchPtr = matchIndex < prefixStartIndex ? dictStart : prefixStart;
                         uint offset = curr - matchIndex;
                         nuint mLength = ZSTD_count_2segments(ip + 4, match + 4, iend, matchEnd, prefixStart) + 4;
-
-                        while ((((ip > anchor) && (match > lowMatchPtr))) && (ip[-1] == match[-1]))
+                        while (ip > anchor && match > lowMatchPtr && ip[-1] == match[-1])
                         {
                             ip--;
                             match--;
@@ -655,7 +621,8 @@ namespace ZstdSharp.Unsafe
 
                         offset_2 = offset_1;
                         offset_1 = offset;
-                        assert((offset) > 0); ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, (offset + (uint)((3 - 1))), mLength);
+                        assert(offset > 0);
+                        ZSTD_storeSeq(seqStore, (nuint)(ip - anchor), anchor, iend, offset + (3 - 1), mLength);
                         ip += mLength;
                         anchor = ip;
                     }
@@ -663,29 +630,28 @@ namespace ZstdSharp.Unsafe
 
                 if (ip <= ilimit)
                 {
-                    hashTable[ZSTD_hashPtr((void*)(@base + curr + 2), hlog, mls)] = curr + 2;
-                    hashTable[ZSTD_hashPtr((void*)(ip - 2), hlog, mls)] = (uint)(ip - 2 - @base);
+                    hashTable[ZSTD_hashPtr(@base + curr + 2, hlog, mls)] = curr + 2;
+                    hashTable[ZSTD_hashPtr(ip - 2, hlog, mls)] = (uint)(ip - 2 - @base);
                     while (ip <= ilimit)
                     {
                         uint current2 = (uint)(ip - @base);
                         uint repIndex2 = current2 - offset_2;
                         byte* repMatch2 = repIndex2 < prefixStartIndex ? dictBase + repIndex2 : @base + repIndex2;
-
-                        if (((((uint)((prefixStartIndex - 1) - repIndex2) >= 3) && (offset_2 <= curr - dictStartIndex))) && (MEM_read32((void*)repMatch2) == MEM_read32((void*)ip)))
+                        if (prefixStartIndex - 1 - repIndex2 >= 3 && offset_2 <= curr - dictStartIndex && MEM_read32(repMatch2) == MEM_read32(ip))
                         {
                             byte* repEnd2 = repIndex2 < prefixStartIndex ? dictEnd : iend;
                             nuint repLength2 = ZSTD_count_2segments(ip + 4, repMatch2 + 4, iend, repEnd2, prefixStart) + 4;
-
-
                             {
+                                /* swap offset_2 <=> offset_1 */
                                 uint tmpOffset = offset_2;
-
                                 offset_2 = offset_1;
                                 offset_1 = tmpOffset;
                             }
 
-                            assert((1) >= 1); assert((1) <= 3); ZSTD_storeSeq(seqStore, 0, anchor, iend, (uint)(((1) - 1)), repLength2);
-                            hashTable[ZSTD_hashPtr((void*)ip, hlog, mls)] = current2;
+                            assert(1 >= 1);
+                            assert(1 <= 3);
+                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 1 - 1, repLength2);
+                            hashTable[ZSTD_hashPtr(ip, hlog, mls)] = current2;
                             ip += repLength2;
                             anchor = ip;
                             continue;
@@ -724,29 +690,17 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_compressBlock_fast_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
-
             switch (mls)
             {
                 default:
                 case 4:
-                {
                     return ZSTD_compressBlock_fast_extDict_4_0(ms, seqStore, rep, src, srcSize);
-                }
-
                 case 5:
-                {
                     return ZSTD_compressBlock_fast_extDict_5_0(ms, seqStore, rep, src, srcSize);
-                }
-
                 case 6:
-                {
                     return ZSTD_compressBlock_fast_extDict_6_0(ms, seqStore, rep, src, srcSize);
-                }
-
                 case 7:
-                {
                     return ZSTD_compressBlock_fast_extDict_7_0(ms, seqStore, rep, src, srcSize);
-                }
             }
         }
     }

@@ -1,13 +1,9 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
-    public unsafe partial struct ZSTD_customMem
+    public unsafe struct ZSTD_customMem
     {
-        public void* customAlloc;
-
-        public void* customFree;
-
+        public delegate* managed<void*, nuint, void*> customAlloc;
+        public delegate* managed<void*, void*, void> customFree;
         public void* opaque;
     }
 }

@@ -1,18 +1,13 @@
-using InlineIL;
-using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using static InlineIL.IL.Emit;
+using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
 {
-    public partial struct HUF_buildCTable_wksp_tables
+    public struct HUF_buildCTable_wksp_tables
     {
         public _huffNodeTbl_e__FixedBuffer huffNodeTbl;
-
         public _rankPosition_e__FixedBuffer rankPosition;
-
-        public unsafe partial struct _huffNodeTbl_e__FixedBuffer
+        public unsafe struct _huffNodeTbl_e__FixedBuffer
         {
             public nodeElt_s e0;
             public nodeElt_s e1;
@@ -526,44 +521,29 @@ namespace ZstdSharp.Unsafe
             public nodeElt_s e509;
             public nodeElt_s e510;
             public nodeElt_s e511;
-
             public ref nodeElt_s this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + index);
+                get => ref *(RefToPointer<_huffNodeTbl_e__FixedBuffer, nodeElt_s>(this) + index);
             }
 
             public ref nodeElt_s this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (nuint)index);
+                get => ref *(RefToPointer<_huffNodeTbl_e__FixedBuffer, nodeElt_s>(this) + index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static implicit operator nodeElt_s*(in _huffNodeTbl_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                return IL.ReturnPointer<nodeElt_s>();
-            }
-
+            public static implicit operator nodeElt_s*(in _huffNodeTbl_e__FixedBuffer t) => RefToPointer<_huffNodeTbl_e__FixedBuffer, nodeElt_s>(t);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static nodeElt_s* operator +(in _huffNodeTbl_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Ldarg_1();
-                Sizeof<nodeElt_s>();
-                Conv_I();
-                Mul();
-                Add();
-                return IL.ReturnPointer<nodeElt_s>();
-            }
+            public static nodeElt_s* operator +(in _huffNodeTbl_e__FixedBuffer t, nuint index) => RefToPointer<_huffNodeTbl_e__FixedBuffer, nodeElt_s>(t) + index;
         }
 
-        public unsafe partial struct _rankPosition_e__FixedBuffer
+        public unsafe struct _rankPosition_e__FixedBuffer
         {
             public rankPos e0;
             public rankPos e1;
@@ -757,41 +737,26 @@ namespace ZstdSharp.Unsafe
             public rankPos e189;
             public rankPos e190;
             public rankPos e191;
-
             public ref rankPos this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + index);
+                get => ref *(RefToPointer<_rankPosition_e__FixedBuffer, rankPos>(this) + index);
             }
 
             public ref rankPos this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (nuint)index);
+                get => ref *(RefToPointer<_rankPosition_e__FixedBuffer, rankPos>(this) + index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static implicit operator rankPos*(in _rankPosition_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                return IL.ReturnPointer<rankPos>();
-            }
-
+            public static implicit operator rankPos*(in _rankPosition_e__FixedBuffer t) => RefToPointer<_rankPosition_e__FixedBuffer, rankPos>(t);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static rankPos* operator +(in _rankPosition_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Ldarg_1();
-                Sizeof<rankPos>();
-                Conv_I();
-                Mul();
-                Add();
-                return IL.ReturnPointer<rankPos>();
-            }
+            public static rankPos* operator +(in _rankPosition_e__FixedBuffer t, nuint index) => RefToPointer<_rankPosition_e__FixedBuffer, rankPos>(t) + index;
         }
     }
 }

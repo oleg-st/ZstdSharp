@@ -1,6 +1,6 @@
-using System;
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
+using System;
 
 namespace ZstdSharp.Unsafe
 {
@@ -9,7 +9,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_bitWeight(uint stat)
         {
-            return (ZSTD_highbit32(stat + 1) * (uint)((1 << 8)));
+            return ZSTD_highbit32(stat + 1) * (1 << 8);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -17,36 +17,31 @@ namespace ZstdSharp.Unsafe
         {
             uint stat = rawStat + 1;
             uint hb = ZSTD_highbit32(stat);
-            uint BWeight = hb * (uint)((1 << 8));
-            uint FWeight = (stat << 8) >> (int)hb;
+            uint BWeight = hb * (1 << 8);
+            uint FWeight = stat << 8 >> (int)hb;
             uint weight = BWeight + FWeight;
-
             assert(hb + 8 < 31);
             return weight;
         }
 
         private static int ZSTD_compressedLiterals(optState_t* optPtr)
         {
-            return ((optPtr->literalCompressionMode != ZSTD_paramSwitch_e.ZSTD_ps_disable) ? 1 : 0);
+            return optPtr->literalCompressionMode != ZSTD_paramSwitch_e.ZSTD_ps_disable ? 1 : 0;
         }
 
         private static void ZSTD_setBasePrices(optState_t* optPtr, int optLevel)
         {
-            if ((ZSTD_compressedLiterals(optPtr)) != 0)
-            {
-                optPtr->litSumBasePrice = (optLevel != 0 ? ZSTD_fracWeight(optPtr->litSum) : ZSTD_bitWeight(optPtr->litSum));
-            }
-
-            optPtr->litLengthSumBasePrice = (optLevel != 0 ? ZSTD_fracWeight(optPtr->litLengthSum) : ZSTD_bitWeight(optPtr->litLengthSum));
-            optPtr->matchLengthSumBasePrice = (optLevel != 0 ? ZSTD_fracWeight(optPtr->matchLengthSum) : ZSTD_bitWeight(optPtr->matchLengthSum));
-            optPtr->offCodeSumBasePrice = (optLevel != 0 ? ZSTD_fracWeight(optPtr->offCodeSum) : ZSTD_bitWeight(optPtr->offCodeSum));
+            if (ZSTD_compressedLiterals(optPtr) != 0)
+                optPtr->litSumBasePrice = optLevel != 0 ? ZSTD_fracWeight(optPtr->litSum) : ZSTD_bitWeight(optPtr->litSum);
+            optPtr->litLengthSumBasePrice = optLevel != 0 ? ZSTD_fracWeight(optPtr->litLengthSum) : ZSTD_bitWeight(optPtr->litLengthSum);
+            optPtr->matchLengthSumBasePrice = optLevel != 0 ? ZSTD_fracWeight(optPtr->matchLengthSum) : ZSTD_bitWeight(optPtr->matchLengthSum);
+            optPtr->offCodeSumBasePrice = optLevel != 0 ? ZSTD_fracWeight(optPtr->offCodeSum) : ZSTD_bitWeight(optPtr->offCodeSum);
         }
 
         private static uint sum_u32(uint* table, nuint nbElts)
         {
             nuint n;
             uint total = 0;
-
             for (n = 0; n < nbElts; n++)
             {
                 total += table[n];
@@ -58,7 +53,6 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_downscaleStats(uint* table, uint lastEltIndex, uint shift)
         {
             uint s, sum = 0;
-
             assert(shift < 30);
             for (s = 0; s < lastEltIndex + 1; s++)
             {
@@ -76,16 +70,14 @@ namespace ZstdSharp.Unsafe
         {
             uint prevsum = sum_u32(table, lastEltIndex + 1);
             uint factor = prevsum >> (int)logTarget;
-
             assert(logTarget < 30);
             if (factor <= 1)
-            {
                 return prevsum;
-            }
-
             return ZSTD_downscaleStats(table, lastEltIndex, ZSTD_highbit32(factor));
         }
 
+        public static readonly uint* baseLLfreqs = GetArrayPointer(new uint[36] { 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
+        public static readonly uint* baseOFCfreqs = GetArrayPointer(new uint[32] { 6, 2, 1, 1, 2, 3, 4, 4, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
         /* ZSTD_rescaleFreqs() :
          * if first block (detected by optPtr->litLengthSum == 0) : init statistics
          *    take hints from dictionary if there is one
@@ -96,7 +88,6 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_rescaleFreqs(optState_t* optPtr, byte* src, nuint srcSize, int optLevel)
         {
             int compressedLiterals = ZSTD_compressedLiterals(optPtr);
-
             optPtr->priceType = ZSTD_OptPrice_e.zop_dynamic;
             if (optPtr->litLengthSum == 0)
             {
@@ -112,68 +103,59 @@ namespace ZstdSharp.Unsafe
                     if (compressedLiterals != 0)
                     {
                         uint lit;
-
                         assert(optPtr->litFreq != null);
                         optPtr->litSum = 0;
-                        for (lit = 0; lit <= (uint)(((1 << 8) - 1)); lit++)
+                        for (lit = 0; lit <= (1 << 8) - 1; lit++)
                         {
-                            uint scaleLog = 11;
+                            /* scale to 2K */
+                            const uint scaleLog = 11;
                             uint bitCost = HUF_getNbBitsFromCTable((nuint*)optPtr->symbolCosts->huf.CTable, lit);
-
                             assert(bitCost <= scaleLog);
                             optPtr->litFreq[lit] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
                             optPtr->litSum += optPtr->litFreq[lit];
                         }
                     }
 
-
                     {
                         uint ll;
                         FSE_CState_t llstate;
-
-                        FSE_initCState(&llstate, (uint*)optPtr->symbolCosts->fse.litlengthCTable);
+                        FSE_initCState(&llstate, optPtr->symbolCosts->fse.litlengthCTable);
                         optPtr->litLengthSum = 0;
                         for (ll = 0; ll <= 35; ll++)
                         {
-                            uint scaleLog = 10;
+                            /* scale to 1K */
+                            const uint scaleLog = 10;
                             uint bitCost = FSE_getMaxNbBits(llstate.symbolTT, ll);
-
                             assert(bitCost < scaleLog);
                             optPtr->litLengthFreq[ll] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
                             optPtr->litLengthSum += optPtr->litLengthFreq[ll];
                         }
                     }
 
-
                     {
                         uint ml;
                         FSE_CState_t mlstate;
-
-                        FSE_initCState(&mlstate, (uint*)optPtr->symbolCosts->fse.matchlengthCTable);
+                        FSE_initCState(&mlstate, optPtr->symbolCosts->fse.matchlengthCTable);
                         optPtr->matchLengthSum = 0;
                         for (ml = 0; ml <= 52; ml++)
                         {
-                            uint scaleLog = 10;
+                            const uint scaleLog = 10;
                             uint bitCost = FSE_getMaxNbBits(mlstate.symbolTT, ml);
-
                             assert(bitCost < scaleLog);
                             optPtr->matchLengthFreq[ml] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
                             optPtr->matchLengthSum += optPtr->matchLengthFreq[ml];
                         }
                     }
 
-
                     {
                         uint of;
                         FSE_CState_t ofstate;
-
-                        FSE_initCState(&ofstate, (uint*)optPtr->symbolCosts->fse.offcodeCTable);
+                        FSE_initCState(&ofstate, optPtr->symbolCosts->fse.offcodeCTable);
                         optPtr->offCodeSum = 0;
                         for (of = 0; of <= 31; of++)
                         {
-                            uint scaleLog = 10;
+                            const uint scaleLog = 10;
                             uint bitCost = FSE_getMaxNbBits(ofstate.symbolTT, of);
-
                             assert(bitCost < scaleLog);
                             optPtr->offCodeFreq[of] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
                             optPtr->offCodeSum += optPtr->offCodeFreq[of];
@@ -185,47 +167,33 @@ namespace ZstdSharp.Unsafe
                     assert(optPtr->litFreq != null);
                     if (compressedLiterals != 0)
                     {
-                        uint lit = (uint)(((1 << 8) - 1));
-
-                        HIST_count_simple(optPtr->litFreq, &lit, (void*)src, srcSize);
-                        optPtr->litSum = ZSTD_downscaleStats(optPtr->litFreq, (uint)(((1 << 8) - 1)), 8);
+                        uint lit = (1 << 8) - 1;
+                        HIST_count_simple(optPtr->litFreq, &lit, src, srcSize);
+                        optPtr->litSum = ZSTD_downscaleStats(optPtr->litFreq, (1 << 8) - 1, 8);
                     }
-
 
                     {
-
-
-                        memcpy((void*)(optPtr->litLengthFreq), (void*)(baseLLfreqs), ((nuint)(sizeof(uint) * 36)));
-                        optPtr->litLengthSum = sum_u32(baseLLfreqs, (nuint)(35 + 1));
+                        memcpy(optPtr->litLengthFreq, baseLLfreqs, sizeof(uint) * 36);
+                        optPtr->litLengthSum = sum_u32(baseLLfreqs, 35 + 1);
                     }
-
 
                     {
                         uint ml;
-
                         for (ml = 0; ml <= 52; ml++)
-                        {
                             optPtr->matchLengthFreq[ml] = 1;
-                        }
                     }
 
-                    optPtr->matchLengthSum = (uint)(52 + 1);
-
+                    optPtr->matchLengthSum = 52 + 1;
                     {
-
-
-                        memcpy((void*)(optPtr->offCodeFreq), (void*)(baseOFCfreqs), ((nuint)(sizeof(uint) * 32)));
-                        optPtr->offCodeSum = sum_u32(baseOFCfreqs, (nuint)(31 + 1));
+                        memcpy(optPtr->offCodeFreq, baseOFCfreqs, sizeof(uint) * 32);
+                        optPtr->offCodeSum = sum_u32(baseOFCfreqs, 31 + 1);
                     }
                 }
             }
             else
             {
                 if (compressedLiterals != 0)
-                {
-                    optPtr->litSum = ZSTD_scaleStats(optPtr->litFreq, (uint)(((1 << 8) - 1)), 12);
-                }
-
+                    optPtr->litSum = ZSTD_scaleStats(optPtr->litFreq, (1 << 8) - 1, 12);
                 optPtr->litLengthSum = ZSTD_scaleStats(optPtr->litLengthFreq, 35, 11);
                 optPtr->matchLengthSum = ZSTD_scaleStats(optPtr->matchLengthFreq, 52, 11);
                 optPtr->offCodeSum = ZSTD_scaleStats(optPtr->offCodeFreq, 31, 11);
@@ -240,29 +208,18 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_rawLiteralsCost(byte* literals, uint litLength, optState_t* optPtr, int optLevel)
         {
             if (litLength == 0)
-            {
                 return 0;
-            }
-
-            if ((ZSTD_compressedLiterals(optPtr)) == 0)
-            {
-                return (litLength << 3) * (uint)((1 << 8));
-            }
-
+            if (ZSTD_compressedLiterals(optPtr) == 0)
+                return (litLength << 3) * (1 << 8);
             if (optPtr->priceType == ZSTD_OptPrice_e.zop_predef)
-            {
-                return (litLength * 6) * (uint)((1 << 8));
-            }
-
-
+                return litLength * 6 * (1 << 8);
             {
                 uint price = litLength * optPtr->litSumBasePrice;
                 uint u;
-
                 for (u = 0; u < litLength; u++)
                 {
                     assert((optLevel != 0 ? ZSTD_fracWeight(optPtr->litFreq[literals[u]]) : ZSTD_bitWeight(optPtr->litFreq[literals[u]])) <= optPtr->litSumBasePrice);
-                    price -= (optLevel != 0 ? ZSTD_fracWeight(optPtr->litFreq[literals[u]]) : ZSTD_bitWeight(optPtr->litFreq[literals[u]]));
+                    price -= optLevel != 0 ? ZSTD_fracWeight(optPtr->litFreq[literals[u]]) : ZSTD_bitWeight(optPtr->litFreq[literals[u]]);
                 }
 
                 return price;
@@ -273,22 +230,14 @@ namespace ZstdSharp.Unsafe
          * cost of literalLength symbol */
         private static uint ZSTD_litLengthPrice(uint litLength, optState_t* optPtr, int optLevel)
         {
-            assert(litLength <= (uint)((1 << 17)));
+            assert(litLength <= 1 << 17);
             if (optPtr->priceType == ZSTD_OptPrice_e.zop_predef)
-            {
-                return (optLevel != 0 ? ZSTD_fracWeight(litLength) : ZSTD_bitWeight(litLength));
-            }
-
-            if (litLength == (uint)((1 << 17)))
-            {
-                return (uint)((1 << 8)) + ZSTD_litLengthPrice((uint)((1 << 17) - 1), optPtr, optLevel);
-            }
-
-
+                return optLevel != 0 ? ZSTD_fracWeight(litLength) : ZSTD_bitWeight(litLength);
+            if (litLength == 1 << 17)
+                return (1 << 8) + ZSTD_litLengthPrice((1 << 17) - 1, optPtr, optLevel);
             {
                 uint llCode = ZSTD_LLcode(litLength);
-
-                return (uint)((LL_bits[llCode] * (1 << 8))) + optPtr->litLengthSumBasePrice - (optLevel != 0 ? ZSTD_fracWeight(optPtr->litLengthFreq[llCode]) : ZSTD_bitWeight(optPtr->litLengthFreq[llCode]));
+                return (uint)(LL_bits[llCode] * (1 << 8)) + optPtr->litLengthSumBasePrice - (optLevel != 0 ? ZSTD_fracWeight(optPtr->litLengthFreq[llCode]) : ZSTD_bitWeight(optPtr->litLengthFreq[llCode]));
             }
         }
 
@@ -302,29 +251,20 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_getMatchPrice(uint offcode, uint matchLength, optState_t* optPtr, int optLevel)
         {
             uint price;
-            uint offCode = ZSTD_highbit32(((offcode) + 1));
+            uint offCode = ZSTD_highbit32(offcode + 1);
             uint mlBase = matchLength - 3;
-
             assert(matchLength >= 3);
             if (optPtr->priceType == ZSTD_OptPrice_e.zop_predef)
-            {
-                return (optLevel != 0 ? ZSTD_fracWeight(mlBase) : ZSTD_bitWeight(mlBase)) + ((16 + offCode) * (uint)((1 << 8)));
-            }
-
-            price = (offCode * (uint)((1 << 8))) + (optPtr->offCodeSumBasePrice - (optLevel != 0 ? ZSTD_fracWeight(optPtr->offCodeFreq[offCode]) : ZSTD_bitWeight(optPtr->offCodeFreq[offCode])));
-            if ((optLevel < 2) && offCode >= 20)
-            {
-                price += (offCode - 19) * 2 * (uint)((1 << 8));
-            }
-
-
+                return (optLevel != 0 ? ZSTD_fracWeight(mlBase) : ZSTD_bitWeight(mlBase)) + (16 + offCode) * (1 << 8);
+            price = offCode * (1 << 8) + (optPtr->offCodeSumBasePrice - (optLevel != 0 ? ZSTD_fracWeight(optPtr->offCodeFreq[offCode]) : ZSTD_bitWeight(optPtr->offCodeFreq[offCode])));
+            if (optLevel < 2 && offCode >= 20)
+                price += (offCode - 19) * 2 * (1 << 8);
             {
                 uint mlCode = ZSTD_MLcode(mlBase);
-
-                price += (uint)((ML_bits[mlCode] * (1 << 8))) + (optPtr->matchLengthSumBasePrice - (optLevel != 0 ? ZSTD_fracWeight(optPtr->matchLengthFreq[mlCode]) : ZSTD_bitWeight(optPtr->matchLengthFreq[mlCode])));
+                price += (uint)(ML_bits[mlCode] * (1 << 8)) + (optPtr->matchLengthSumBasePrice - (optLevel != 0 ? ZSTD_fracWeight(optPtr->matchLengthFreq[mlCode]) : ZSTD_bitWeight(optPtr->matchLengthFreq[mlCode])));
             }
 
-            price += (uint)((1 << 8) / 5);
+            price += (1 << 8) / 5;
             return price;
         }
 
@@ -332,40 +272,30 @@ namespace ZstdSharp.Unsafe
          * assumption : literals + litLengtn <= iend */
         private static void ZSTD_updateStats(optState_t* optPtr, uint litLength, byte* literals, uint offsetCode, uint matchLength)
         {
-            if ((ZSTD_compressedLiterals(optPtr)) != 0)
+            if (ZSTD_compressedLiterals(optPtr) != 0)
             {
                 uint u;
-
                 for (u = 0; u < litLength; u++)
-                {
                     optPtr->litFreq[literals[u]] += 2;
-                }
-
                 optPtr->litSum += litLength * 2;
             }
 
-
             {
                 uint llCode = ZSTD_LLcode(litLength);
-
                 optPtr->litLengthFreq[llCode]++;
                 optPtr->litLengthSum++;
             }
 
-
             {
-                uint offCode = ZSTD_highbit32(((offsetCode) + 1));
-
+                uint offCode = ZSTD_highbit32(offsetCode + 1);
                 assert(offCode <= 31);
                 optPtr->offCodeFreq[offCode]++;
                 optPtr->offCodeSum++;
             }
 
-
             {
                 uint mlBase = matchLength - 3;
                 uint mlCode = ZSTD_MLcode(mlBase);
-
                 optPtr->matchLengthFreq[mlCode]++;
                 optPtr->matchLengthSum++;
             }
@@ -381,26 +311,17 @@ namespace ZstdSharp.Unsafe
             {
                 default:
                 case 4:
-                {
                     return MEM_read32(memPtr);
-                }
-
                 case 3:
-                {
                     if (BitConverter.IsLittleEndian)
-                    {
                         return MEM_read32(memPtr) << 8;
-                    }
                     else
-                    {
                         return MEM_read32(memPtr) >> 8;
-                    }
-                }
             }
         }
 
         /* Update hashTable3 up to ip (excluded)
-           Assumption : always within prefix (i.e. not within extDict) */
+        Assumption : always within prefix (i.e. not within extDict) */
         private static uint ZSTD_insertAndFindFirstIndexHash3(ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip)
         {
             uint* hashTable3 = ms->hashTable3;
@@ -408,12 +329,11 @@ namespace ZstdSharp.Unsafe
             byte* @base = ms->window.@base;
             uint idx = *nextToUpdate3;
             uint target = (uint)(ip - @base);
-            nuint hash3 = ZSTD_hash3Ptr((void*)ip, hashLog3);
-
+            nuint hash3 = ZSTD_hash3Ptr(ip, hashLog3);
             assert(hashLog3 > 0);
             while (idx < target)
             {
-                hashTable3[ZSTD_hash3Ptr((void*)(@base + idx), hashLog3)] = idx;
+                hashTable3[ZSTD_hash3Ptr(@base + idx, hashLog3)] = idx;
                 idx++;
             }
 
@@ -422,8 +342,8 @@ namespace ZstdSharp.Unsafe
         }
 
         /*-*************************************
-        *  Binary Tree search
-        ***************************************/
+         *  Binary Tree search
+         ***************************************/
         /** ZSTD_insertBt1() : add one or multiple positions to tree.
          * @param ip assumed <= iend-8 .
          * @param target The target of ZSTD_updateTree_internal() - we are filling to this position
@@ -433,7 +353,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
             uint hashLog = cParams->hashLog;
-            nuint h = ZSTD_hashPtr((void*)ip, hashLog, mls);
+            nuint h = ZSTD_hashPtr(ip, hashLog, mls);
             uint* bt = ms->chainTable;
             uint btLog = cParams->chainLog - 1;
             uint btMask = (uint)((1 << (int)btLog) - 1);
@@ -446,26 +366,29 @@ namespace ZstdSharp.Unsafe
             byte* prefixStart = @base + dictLimit;
             byte* match;
             uint curr = (uint)(ip - @base);
-            uint btLow = (uint)(btMask >= curr ? 0 : curr - btMask);
+            uint btLow = btMask >= curr ? 0 : curr - btMask;
             uint* smallerPtr = bt + 2 * (curr & btMask);
             uint* largerPtr = smallerPtr + 1;
+            /* to be nullified at the end */
             uint dummy32;
+            /* windowLow is based on target because
+             * we only need positions that will be in the window at the end of the tree update.
+             */
             uint windowLow = ZSTD_getLowestMatchIndex(ms, target, cParams->windowLog);
             uint matchEndIdx = curr + 8 + 1;
             nuint bestLength = 8;
             uint nbCompares = 1U << (int)cParams->searchLog;
-
             assert(curr <= target);
             assert(ip <= iend - 8);
             hashTable[h] = curr;
             assert(windowLow > 0);
-            for (; nbCompares != 0 && (matchIndex >= windowLow); --nbCompares)
+            for (; nbCompares != 0 && matchIndex >= windowLow; --nbCompares)
             {
                 uint* nextPtr = bt + 2 * (matchIndex & btMask);
-                nuint matchLength = ((commonLengthSmaller) < (commonLengthLarger) ? (commonLengthSmaller) : (commonLengthLarger));
-
+                /* guaranteed minimum nb of common bytes */
+                nuint matchLength = commonLengthSmaller < commonLengthLarger ? commonLengthSmaller : commonLengthLarger;
                 assert(matchIndex < curr);
-                if (extDict == 0 || (matchIndex + matchLength >= dictLimit))
+                if (extDict == 0 || matchIndex + matchLength >= dictLimit)
                 {
                     assert(matchIndex + matchLength >= dictLimit);
                     match = @base + matchIndex;
@@ -476,18 +399,14 @@ namespace ZstdSharp.Unsafe
                     match = dictBase + matchIndex;
                     matchLength += ZSTD_count_2segments(ip + matchLength, match + matchLength, iend, dictEnd, prefixStart);
                     if (matchIndex + matchLength >= dictLimit)
-                    {
                         match = @base + matchIndex;
-                    }
                 }
 
                 if (matchLength > bestLength)
                 {
                     bestLength = matchLength;
                     if (matchLength > matchEndIdx - matchIndex)
-                    {
-                        matchEndIdx = matchIndex + (uint)(matchLength);
-                    }
+                        matchEndIdx = matchIndex + (uint)matchLength;
                 }
 
                 if (ip + matchLength == iend)
@@ -524,17 +443,12 @@ namespace ZstdSharp.Unsafe
             }
 
             *smallerPtr = *largerPtr = 0;
-
             {
                 uint positions = 0;
-
                 if (bestLength > 384)
-                {
-                    positions = (uint)((192) < ((uint)(bestLength - 384)) ? (192) : ((uint)(bestLength - 384)));
-                }
-
+                    positions = 192 < (uint)(bestLength - 384) ? 192 : (uint)(bestLength - 384);
                 assert(matchEndIdx > curr + 8);
-                return ((positions) > (matchEndIdx - (curr + 8)) ? (positions) : (matchEndIdx - (curr + 8)));
+                return positions > matchEndIdx - (curr + 8) ? positions : matchEndIdx - (curr + 8);
             }
         }
 
@@ -544,17 +458,15 @@ namespace ZstdSharp.Unsafe
             byte* @base = ms->window.@base;
             uint target = (uint)(ip - @base);
             uint idx = ms->nextToUpdate;
-
             while (idx < target)
             {
-                uint forward = ZSTD_insertBt1(ms, @base + idx, iend, target, mls, ((dictMode == ZSTD_dictMode_e.ZSTD_extDict) ? 1 : 0));
-
-                assert(idx < (uint)(idx + forward));
+                uint forward = ZSTD_insertBt1(ms, @base + idx, iend, target, mls, dictMode == ZSTD_dictMode_e.ZSTD_extDict ? 1 : 0);
+                assert(idx < idx + forward);
                 idx += forward;
             }
 
-            assert((nuint)(ip - @base) <= (nuint)(unchecked((uint)(-1))));
-            assert((nuint)(iend - @base) <= (nuint)(unchecked((uint)(-1))));
+            assert((nuint)(ip - @base) <= unchecked((uint)-1));
+            assert((nuint)(iend - @base) <= unchecked((uint)-1));
             ms->nextToUpdate = target;
         }
 
@@ -568,13 +480,13 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_insertBtAndGetAllMatches(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iLimit, ZSTD_dictMode_e dictMode, uint* rep, uint ll0, uint lengthToBeat, uint mls)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
-            uint sufficient_len = ((cParams->targetLength) < (uint)(((1 << 12) - 1)) ? (cParams->targetLength) : ((1 << 12) - 1));
+            uint sufficient_len = cParams->targetLength < (1 << 12) - 1 ? cParams->targetLength : (1 << 12) - 1;
             byte* @base = ms->window.@base;
             uint curr = (uint)(ip - @base);
             uint hashLog = cParams->hashLog;
-            uint minMatch = (uint)((mls == 3) ? 3 : 4);
+            uint minMatch = (uint)(mls == 3 ? 3 : 4);
             uint* hashTable = ms->hashTable;
-            nuint h = ZSTD_hashPtr((void*)ip, hashLog, mls);
+            nuint h = ZSTD_hashPtr(ip, hashLog, mls);
             uint matchIndex = hashTable[h];
             uint* bt = ms->chainTable;
             uint btLog = cParams->chainLog - 1;
@@ -584,12 +496,14 @@ namespace ZstdSharp.Unsafe
             uint dictLimit = ms->window.dictLimit;
             byte* dictEnd = dictBase + dictLimit;
             byte* prefixStart = @base + dictLimit;
-            uint btLow = (uint)((btMask >= curr) ? 0 : curr - btMask);
+            uint btLow = btMask >= curr ? 0 : curr - btMask;
             uint windowLow = ZSTD_getLowestMatchIndex(ms, curr, cParams->windowLog);
             uint matchLow = windowLow != 0 ? windowLow : 1;
             uint* smallerPtr = bt + 2 * (curr & btMask);
             uint* largerPtr = bt + 2 * (curr & btMask) + 1;
+            /* farthest referenced position of any match => detects repetitive patterns */
             uint matchEndIdx = curr + 8 + 1;
+            /* to be nullified at the end */
             uint dummy32;
             uint mnum = 0;
             uint nbCompares = 1U << (int)cParams->searchLog;
@@ -605,50 +519,47 @@ namespace ZstdSharp.Unsafe
             uint dmsBtMask = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? (1U << (int)dmsBtLog) - 1 : 0;
             uint dmsBtLow = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && dmsBtMask < dmsHighLimit - dmsLowLimit ? dmsHighLimit - dmsBtMask : dmsLowLimit;
             nuint bestLength = lengthToBeat - 1;
-
             assert(ll0 <= 1);
-
             {
                 uint lastR = 3 + ll0;
                 uint repCode;
-
                 for (repCode = ll0; repCode < lastR; repCode++)
                 {
-                    uint repOffset = (repCode == 3) ? (rep[0] - 1) : rep[repCode];
+                    uint repOffset = repCode == 3 ? rep[0] - 1 : rep[repCode];
                     uint repIndex = curr - repOffset;
                     uint repLen = 0;
-
                     assert(curr >= dictLimit);
                     if (repOffset - 1 < curr - dictLimit)
                     {
-                        if (((repIndex >= windowLow) && (ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)(ip - repOffset), minMatch))))
+                        if (repIndex >= windowLow && ZSTD_readMINMATCH(ip, minMatch) == ZSTD_readMINMATCH(ip - repOffset, minMatch))
                         {
-                            repLen = (uint)(ZSTD_count(ip + minMatch, ip + minMatch - repOffset, iLimit)) + minMatch;
+                            repLen = (uint)ZSTD_count(ip + minMatch, ip + minMatch - repOffset, iLimit) + minMatch;
                         }
                     }
                     else
                     {
                         byte* repMatch = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? dmsBase + repIndex - dmsIndexDelta : dictBase + repIndex;
-
                         assert(curr >= windowLow);
-                        if (dictMode == ZSTD_dictMode_e.ZSTD_extDict && ((((repOffset - 1) < curr - windowLow) && (((uint)((dictLimit - 1) - repIndex) >= 3)))) && (ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)repMatch, minMatch)))
+                        if (dictMode == ZSTD_dictMode_e.ZSTD_extDict && repOffset - 1 < curr - windowLow && dictLimit - 1 - repIndex >= 3 && ZSTD_readMINMATCH(ip, minMatch) == ZSTD_readMINMATCH(repMatch, minMatch))
                         {
-                            repLen = (uint)(ZSTD_count_2segments(ip + minMatch, repMatch + minMatch, iLimit, dictEnd, prefixStart)) + minMatch;
+                            repLen = (uint)ZSTD_count_2segments(ip + minMatch, repMatch + minMatch, iLimit, dictEnd, prefixStart) + minMatch;
                         }
 
-                        if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && ((((repOffset - 1) < curr - (dmsLowLimit + dmsIndexDelta)) && ((uint)((dictLimit - 1) - repIndex) >= 3))) && (ZSTD_readMINMATCH((void*)ip, minMatch) == ZSTD_readMINMATCH((void*)repMatch, minMatch)))
+                        if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && repOffset - 1 < curr - (dmsLowLimit + dmsIndexDelta) && dictLimit - 1 - repIndex >= 3 && ZSTD_readMINMATCH(ip, minMatch) == ZSTD_readMINMATCH(repMatch, minMatch))
                         {
-                            repLen = (uint)(ZSTD_count_2segments(ip + minMatch, repMatch + minMatch, iLimit, dmsEnd, prefixStart)) + minMatch;
+                            repLen = (uint)ZSTD_count_2segments(ip + minMatch, repMatch + minMatch, iLimit, dmsEnd, prefixStart) + minMatch;
                         }
                     }
 
                     if (repLen > bestLength)
                     {
                         bestLength = repLen;
-                        assert((repCode - ll0 + 1) >= 1); assert((repCode - ll0 + 1) <= 3); matches[mnum].off = ((repCode - ll0 + 1) - 1);
-                        matches[mnum].len = (uint)(repLen);
+                        assert(repCode - ll0 + 1 >= 1);
+                        assert(repCode - ll0 + 1 <= 3);
+                        matches[mnum].off = repCode - ll0 + 1 - 1;
+                        matches[mnum].len = repLen;
                         mnum++;
-                        if (((repLen > sufficient_len) || (ip + repLen == iLimit)))
+                        if (repLen > sufficient_len || ip + repLen == iLimit)
                         {
                             return mnum;
                         }
@@ -656,24 +567,20 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            if ((mls == 3) && (bestLength < mls))
+            if (mls == 3 && bestLength < mls)
             {
                 uint matchIndex3 = ZSTD_insertAndFindFirstIndexHash3(ms, nextToUpdate3, ip);
-
-                if (((matchIndex3 >= matchLow) && (curr - matchIndex3 < (uint)((1 << 18)))))
+                if (matchIndex3 >= matchLow && curr - matchIndex3 < 1 << 18)
                 {
                     nuint mlen;
-
-                    if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) || (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState) || (matchIndex3 >= dictLimit))
+                    if (dictMode == ZSTD_dictMode_e.ZSTD_noDict || dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState || matchIndex3 >= dictLimit)
                     {
                         byte* match = @base + matchIndex3;
-
                         mlen = ZSTD_count(ip, match, iLimit);
                     }
                     else
                     {
                         byte* match = dictBase + matchIndex3;
-
                         mlen = ZSTD_count_2segments(ip, match, iLimit, dictEnd, prefixStart);
                     }
 
@@ -682,10 +589,11 @@ namespace ZstdSharp.Unsafe
                         bestLength = mlen;
                         assert(curr > matchIndex3);
                         assert(mnum == 0);
-                        assert((curr - matchIndex3) > 0); matches[0].off = (curr - matchIndex3 + (uint)((3 - 1)));
-                        matches[0].len = (uint)(mlen);
+                        assert(curr - matchIndex3 > 0);
+                        matches[0].off = curr - matchIndex3 + (3 - 1);
+                        matches[0].len = (uint)mlen;
                         mnum = 1;
-                        if (((mlen > sufficient_len) || (ip + mlen == iLimit)))
+                        if (mlen > sufficient_len || ip + mlen == iLimit)
                         {
                             ms->nextToUpdate = curr + 1;
                             return 1;
@@ -695,54 +603,44 @@ namespace ZstdSharp.Unsafe
             }
 
             hashTable[h] = curr;
-            for (; nbCompares != 0 && (matchIndex >= matchLow); --nbCompares)
+            for (; nbCompares != 0 && matchIndex >= matchLow; --nbCompares)
             {
                 uint* nextPtr = bt + 2 * (matchIndex & btMask);
                 byte* match;
-                nuint matchLength = ((commonLengthSmaller) < (commonLengthLarger) ? (commonLengthSmaller) : (commonLengthLarger));
-
+                /* guaranteed minimum nb of common bytes */
+                nuint matchLength = commonLengthSmaller < commonLengthLarger ? commonLengthSmaller : commonLengthLarger;
                 assert(curr > matchIndex);
-                if ((dictMode == ZSTD_dictMode_e.ZSTD_noDict) || (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState) || (matchIndex + matchLength >= dictLimit))
+                if (dictMode == ZSTD_dictMode_e.ZSTD_noDict || dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState || matchIndex + matchLength >= dictLimit)
                 {
                     assert(matchIndex + matchLength >= dictLimit);
                     match = @base + matchIndex;
                     if (matchIndex >= dictLimit)
-                    {
-                        assert(memcmp((void*)match, (void*)ip, matchLength) == 0);
-                    }
-
+                        assert(memcmp(match, ip, matchLength) == 0);
                     matchLength += ZSTD_count(ip + matchLength, match + matchLength, iLimit);
                 }
                 else
                 {
                     match = dictBase + matchIndex;
-                    assert(memcmp((void*)match, (void*)ip, matchLength) == 0);
+                    assert(memcmp(match, ip, matchLength) == 0);
                     matchLength += ZSTD_count_2segments(ip + matchLength, match + matchLength, iLimit, dictEnd, prefixStart);
                     if (matchIndex + matchLength >= dictLimit)
-                    {
                         match = @base + matchIndex;
-                    }
                 }
 
                 if (matchLength > bestLength)
                 {
                     assert(matchEndIdx > matchIndex);
                     if (matchLength > matchEndIdx - matchIndex)
-                    {
-                        matchEndIdx = matchIndex + (uint)(matchLength);
-                    }
-
+                        matchEndIdx = matchIndex + (uint)matchLength;
                     bestLength = matchLength;
-                    assert((curr - matchIndex) > 0); matches[mnum].off = (curr - matchIndex + (uint)((3 - 1)));
-                    matches[mnum].len = (uint)(matchLength);
+                    assert(curr - matchIndex > 0);
+                    matches[mnum].off = curr - matchIndex + (3 - 1);
+                    matches[mnum].len = (uint)matchLength;
                     mnum++;
-                    if (((matchLength > (uint)((1 << 12))) || (ip + matchLength == iLimit)))
+                    if (matchLength > 1 << 12 || ip + matchLength == iLimit)
                     {
                         if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState)
-                        {
                             nbCompares = 0;
-                        }
-
                         break;
                     }
                 }
@@ -776,39 +674,33 @@ namespace ZstdSharp.Unsafe
             }
 
             *smallerPtr = *largerPtr = 0;
-            assert(nbCompares <= (1U << (((int)((nuint)(sizeof(nuint)) == 4 ? 30 : 31)) - 1)));
+            assert(nbCompares <= 1U << (sizeof(nuint) == 4 ? 30 : 31) - 1);
             if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && nbCompares != 0)
             {
-                nuint dmsH = ZSTD_hashPtr((void*)ip, dmsHashLog, mls);
+                nuint dmsH = ZSTD_hashPtr(ip, dmsHashLog, mls);
                 uint dictMatchIndex = dms->hashTable[dmsH];
                 uint* dmsBt = dms->chainTable;
-
                 commonLengthSmaller = commonLengthLarger = 0;
-                for (; nbCompares != 0 && (dictMatchIndex > dmsLowLimit); --nbCompares)
+                for (; nbCompares != 0 && dictMatchIndex > dmsLowLimit; --nbCompares)
                 {
                     uint* nextPtr = dmsBt + 2 * (dictMatchIndex & dmsBtMask);
-                    nuint matchLength = ((commonLengthSmaller) < (commonLengthLarger) ? (commonLengthSmaller) : (commonLengthLarger));
+                    /* guaranteed minimum nb of common bytes */
+                    nuint matchLength = commonLengthSmaller < commonLengthLarger ? commonLengthSmaller : commonLengthLarger;
                     byte* match = dmsBase + dictMatchIndex;
-
                     matchLength += ZSTD_count_2segments(ip + matchLength, match + matchLength, iLimit, dmsEnd, prefixStart);
                     if (dictMatchIndex + matchLength >= dmsHighLimit)
-                    {
                         match = @base + dictMatchIndex + dmsIndexDelta;
-                    }
-
                     if (matchLength > bestLength)
                     {
                         matchIndex = dictMatchIndex + dmsIndexDelta;
                         if (matchLength > matchEndIdx - matchIndex)
-                        {
-                            matchEndIdx = matchIndex + (uint)(matchLength);
-                        }
-
+                            matchEndIdx = matchIndex + (uint)matchLength;
                         bestLength = matchLength;
-                        assert((curr - matchIndex) > 0); matches[mnum].off = (curr - matchIndex + (uint)((3 - 1)));
-                        matches[mnum].len = (uint)(matchLength);
+                        assert(curr - matchIndex > 0);
+                        matches[mnum].off = curr - matchIndex + (3 - 1);
+                        matches[mnum].len = (uint)matchLength;
                         mnum++;
-                        if (((matchLength > (uint)((1 << 12))) || (ip + matchLength == iLimit)))
+                        if (matchLength > 1 << 12 || ip + matchLength == iLimit)
                         {
                             break;
                         }
@@ -840,12 +732,9 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_btGetAllMatches_internal(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat, ZSTD_dictMode_e dictMode, uint mls)
         {
-            assert((uint)(((3) > (((ms->cParams.minMatch) < (6) ? (ms->cParams.minMatch) : (6))) ? (3) : (((ms->cParams.minMatch) < (6) ? (ms->cParams.minMatch) : (6))))) == mls);
+            assert((3 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 3 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) == mls);
             if (ip < ms->window.@base + ms->nextToUpdate)
-            {
                 return 0;
-            }
-
             ZSTD_updateTree_internal(ms, ip, iHighLimit, mls, dictMode);
             return ZSTD_insertBtAndGetAllMatches(matches, ms, nextToUpdate3, ip, iHighLimit, dictMode, rep, ll0, lengthToBeat, mls);
         }
@@ -910,14 +799,13 @@ namespace ZstdSharp.Unsafe
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_dictMatchState, 6);
         }
 
-        private static ZSTD_getAllMatchesFn ZSTD_selectBtGetAllMatches(ZSTD_matchState_t* ms, ZSTD_dictMode_e dictMode)
+        public static delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[][] getAllMatchesFns = new delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[3][] { new delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[4] { &ZSTD_btGetAllMatches_noDict_3, &ZSTD_btGetAllMatches_noDict_4, &ZSTD_btGetAllMatches_noDict_5, &ZSTD_btGetAllMatches_noDict_6 }, new delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[4] { &ZSTD_btGetAllMatches_extDict_3, &ZSTD_btGetAllMatches_extDict_4, &ZSTD_btGetAllMatches_extDict_5, &ZSTD_btGetAllMatches_extDict_6 }, new delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[4] { &ZSTD_btGetAllMatches_dictMatchState_3, &ZSTD_btGetAllMatches_dictMatchState_4, &ZSTD_btGetAllMatches_dictMatchState_5, &ZSTD_btGetAllMatches_dictMatchState_6 } };
+        private static delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint> ZSTD_selectBtGetAllMatches(ZSTD_matchState_t* ms, ZSTD_dictMode_e dictMode)
         {
-
-            uint mls = (uint)(((3) > (((ms->cParams.minMatch) < (6) ? (ms->cParams.minMatch) : (6))) ? (3) : (((ms->cParams.minMatch) < (6) ? (ms->cParams.minMatch) : (6)))));
-
-            assert((uint)(dictMode) < 3);
+            uint mls = 3 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 3 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
+            assert((uint)dictMode < 3);
             assert(mls - 3 < 4);
-            return getAllMatchesFns[(int)(dictMode)][mls - 3];
+            return getAllMatchesFns[(int)dictMode][mls - 3];
         }
 
         /* ZSTD_optLdm_skipRawSeqStoreBytes():
@@ -927,11 +815,9 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_optLdm_skipRawSeqStoreBytes(rawSeqStore_t* rawSeqStore, nuint nbBytes)
         {
             uint currPos = (uint)(rawSeqStore->posInSequence + nbBytes);
-
             while (currPos != 0 && rawSeqStore->pos < rawSeqStore->size)
             {
                 rawSeq currSeq = rawSeqStore->seq[rawSeqStore->pos];
-
                 if (currPos >= currSeq.litLength + currSeq.matchLength)
                 {
                     currPos -= currSeq.litLength + currSeq.matchLength;
@@ -960,7 +846,6 @@ namespace ZstdSharp.Unsafe
             uint currBlockEndPos;
             uint literalsBytesRemaining;
             uint matchBytesRemaining;
-
             if (optLdm->seqStore.size == 0 || optLdm->seqStore.pos >= optLdm->seqStore.size)
             {
                 optLdm->startPosInBlock = 0xffffffff;
@@ -971,8 +856,8 @@ namespace ZstdSharp.Unsafe
             currSeq = optLdm->seqStore.seq[optLdm->seqStore.pos];
             assert(optLdm->seqStore.posInSequence <= currSeq.litLength + currSeq.matchLength);
             currBlockEndPos = currPosInBlock + blockBytesRemaining;
-            literalsBytesRemaining = (optLdm->seqStore.posInSequence < currSeq.litLength) ? currSeq.litLength - (uint)(optLdm->seqStore.posInSequence) : 0;
-            matchBytesRemaining = (literalsBytesRemaining == 0) ? currSeq.matchLength - ((uint)(optLdm->seqStore.posInSequence) - currSeq.litLength) : currSeq.matchLength;
+            literalsBytesRemaining = optLdm->seqStore.posInSequence < currSeq.litLength ? currSeq.litLength - (uint)optLdm->seqStore.posInSequence : 0;
+            matchBytesRemaining = literalsBytesRemaining == 0 ? currSeq.matchLength - ((uint)optLdm->seqStore.posInSequence - currSeq.litLength) : currSeq.matchLength;
             if (literalsBytesRemaining >= blockBytesRemaining)
             {
                 optLdm->startPosInBlock = 0xffffffff;
@@ -1003,17 +888,17 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_optLdm_maybeAddMatch(ZSTD_match_t* matches, uint* nbMatches, ZSTD_optLdm_t* optLdm, uint currPosInBlock)
         {
             uint posDiff = currPosInBlock - optLdm->startPosInBlock;
+            /* Note: ZSTD_match_t actually contains offCode and matchLength (before subtracting MINMATCH) */
             uint candidateMatchLength = optLdm->endPosInBlock - optLdm->startPosInBlock - posDiff;
-
             if (currPosInBlock < optLdm->startPosInBlock || currPosInBlock >= optLdm->endPosInBlock || candidateMatchLength < 3)
             {
                 return;
             }
 
-            if (*nbMatches == 0 || ((candidateMatchLength > matches[*nbMatches - 1].len) && *nbMatches < (uint)((1 << 12))))
+            if (*nbMatches == 0 || candidateMatchLength > matches[*nbMatches - 1].len && *nbMatches < 1 << 12)
             {
-                assert((optLdm->offset) > 0); uint candidateOffCode = (optLdm->offset + (uint)((3 - 1)));
-
+                assert(optLdm->offset > 0);
+                uint candidateOffCode = optLdm->offset + (3 - 1);
                 matches[*nbMatches].len = candidateMatchLength;
                 matches[*nbMatches].off = candidateOffCode;
                 (*nbMatches)++;
@@ -1034,8 +919,11 @@ namespace ZstdSharp.Unsafe
             {
                 if (currPosInBlock > optLdm->endPosInBlock)
                 {
+                    /* The position at which ZSTD_optLdm_processMatchCandidate() is called is not necessarily
+                     * at the end of a match from the ldm seq store, and will often be some bytes
+                     * over beyond matchEndPosInBlock. As such, we need to correct for these "overshoots"
+                     */
                     uint posOvershoot = currPosInBlock - optLdm->endPosInBlock;
-
                     ZSTD_optLdm_skipRawSeqStoreBytes(&optLdm->seqStore, posOvershoot);
                 }
 
@@ -1046,8 +934,8 @@ namespace ZstdSharp.Unsafe
         }
 
         /*-*******************************
-        *  Optimal parser
-        *********************************/
+         *  Optimal parser
+         *********************************/
         private static uint ZSTD_totalLen(ZSTD_optimal_t sol)
         {
             return sol.litlen + sol.mlen;
@@ -1057,7 +945,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_compressBlock_opt_generic(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, int optLevel, ZSTD_dictMode_e dictMode)
         {
             optState_t* optStatePtr = &ms->opt;
-            byte* istart = (byte*)(src);
+            byte* istart = (byte*)src;
             byte* ip = istart;
             byte* anchor = istart;
             byte* iend = istart + srcSize;
@@ -1065,32 +953,28 @@ namespace ZstdSharp.Unsafe
             byte* @base = ms->window.@base;
             byte* prefixStart = @base + ms->window.dictLimit;
             ZSTD_compressionParameters* cParams = &ms->cParams;
-            ZSTD_getAllMatchesFn getAllMatches = ZSTD_selectBtGetAllMatches(ms, dictMode);
-            uint sufficient_len = ((cParams->targetLength) < (uint)(((1 << 12) - 1)) ? (cParams->targetLength) : ((1 << 12) - 1));
-            uint minMatch = (uint)((cParams->minMatch == 3) ? 3 : 4);
+            delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint> getAllMatches = ZSTD_selectBtGetAllMatches(ms, dictMode);
+            uint sufficient_len = cParams->targetLength < (1 << 12) - 1 ? cParams->targetLength : (1 << 12) - 1;
+            uint minMatch = (uint)(cParams->minMatch == 3 ? 3 : 4);
             uint nextToUpdate3 = ms->nextToUpdate;
             ZSTD_optimal_t* opt = optStatePtr->priceTable;
             ZSTD_match_t* matches = optStatePtr->matchTable;
             ZSTD_optimal_t lastSequence;
             SkipInit(out lastSequence);
             ZSTD_optLdm_t optLdm;
-
             optLdm.seqStore = ms->ldmSeqStore != null ? *ms->ldmSeqStore : kNullRawSeqStore;
             optLdm.endPosInBlock = optLdm.startPosInBlock = optLdm.offset = 0;
             ZSTD_opt_getNextMatchAndUpdateSeqStore(&optLdm, (uint)(ip - istart), (uint)(iend - ip));
             assert(optLevel <= 2);
-            ZSTD_rescaleFreqs(optStatePtr, (byte*)(src), srcSize, optLevel);
-            ip += ((ip == prefixStart) ? 1 : 0);
+            ZSTD_rescaleFreqs(optStatePtr, (byte*)src, srcSize, optLevel);
+            ip += ip == prefixStart ? 1 : 0;
             while (ip < ilimit)
             {
                 uint cur, last_pos = 0;
-
-
                 {
                     uint litlen = (uint)(ip - anchor);
-                    uint ll0 = (litlen == 0 ? 1U : 0U);
+                    uint ll0 = litlen == 0 ? 1U : 0U;
                     uint nbMatches = getAllMatches(matches, ms, &nextToUpdate3, ip, iend, rep, ll0, minMatch);
-
                     ZSTD_optLdm_processMatchCandidate(&optLdm, matches, &nbMatches, (uint)(ip - istart), (uint)(iend - ip));
                     if (nbMatches == 0)
                     {
@@ -1098,24 +982,18 @@ namespace ZstdSharp.Unsafe
                         continue;
                     }
 
-
                     {
                         uint i;
-
                         for (i = 0; i < 3; i++)
-                        {
                             opt[0].rep[i] = rep[i];
-                        }
                     }
 
                     opt[0].mlen = 0;
                     opt[0].litlen = litlen;
-                    opt[0].price = (int)(ZSTD_litLengthPrice(litlen, optStatePtr, optLevel));
-
+                    opt[0].price = (int)ZSTD_litLengthPrice(litlen, optStatePtr, optLevel);
                     {
                         uint maxML = matches[nbMatches - 1].len;
                         uint maxOffcode = matches[nbMatches - 1].off;
-
                         if (maxML > sufficient_len)
                         {
                             lastSequence.litlen = litlen;
@@ -1128,31 +1006,27 @@ namespace ZstdSharp.Unsafe
                     }
 
                     assert(opt[0].price >= 0);
-
                     {
-                        uint literalsPrice = (uint)(opt[0].price) + ZSTD_litLengthPrice(0, optStatePtr, optLevel);
+                        uint literalsPrice = (uint)opt[0].price + ZSTD_litLengthPrice(0, optStatePtr, optLevel);
                         uint pos;
                         uint matchNb;
-
                         for (pos = 1; pos < minMatch; pos++)
                         {
-                            opt[pos].price = (1 << 30);
+                            opt[pos].price = 1 << 30;
                         }
 
                         for (matchNb = 0; matchNb < nbMatches; matchNb++)
                         {
                             uint offcode = matches[matchNb].off;
                             uint end = matches[matchNb].len;
-
                             for (; pos <= end; pos++)
                             {
                                 uint matchPrice = ZSTD_getMatchPrice(offcode, pos, optStatePtr, optLevel);
                                 uint sequencePrice = literalsPrice + matchPrice;
-
                                 opt[pos].mlen = pos;
                                 opt[pos].off = offcode;
                                 opt[pos].litlen = litlen;
-                                opt[pos].price = (int)(sequencePrice);
+                                opt[pos].price = (int)sequencePrice;
                             }
                         }
 
@@ -1163,13 +1037,10 @@ namespace ZstdSharp.Unsafe
                 for (cur = 1; cur <= last_pos; cur++)
                 {
                     byte* inr = ip + cur;
-
-                    assert(cur < (uint)((1 << 12)));
-
+                    assert(cur < 1 << 12);
                     {
-                        uint litlen = (opt[cur - 1].mlen == 0) ? opt[cur - 1].litlen + 1 : 1;
-                        int price = opt[cur - 1].price + (int)(ZSTD_rawLiteralsCost(ip + cur - 1, 1, optStatePtr, optLevel)) + (int)(ZSTD_litLengthPrice(litlen, optStatePtr, optLevel)) - (int)(ZSTD_litLengthPrice(litlen - 1, optStatePtr, optLevel));
-
+                        uint litlen = opt[cur - 1].mlen == 0 ? opt[cur - 1].litlen + 1 : 1;
+                        int price = opt[cur - 1].price + (int)ZSTD_rawLiteralsCost(ip + cur - 1, 1, optStatePtr, optLevel) + (int)ZSTD_litLengthPrice(litlen, optStatePtr, optLevel) - (int)ZSTD_litLengthPrice(litlen - 1, optStatePtr, optLevel);
                         assert(price < 1000000000);
                         if (price <= opt[cur].price)
                         {
@@ -1178,71 +1049,54 @@ namespace ZstdSharp.Unsafe
                             opt[cur].litlen = litlen;
                             opt[cur].price = price;
                         }
-                        else
-                        {
-                        }
                     }
 
                     assert(cur >= opt[cur].mlen);
                     if (opt[cur].mlen != 0)
                     {
                         uint prev = cur - opt[cur].mlen;
-                        repcodes_s newReps = ZSTD_newRep(opt[prev].rep, opt[cur].off, ((opt[cur].litlen == 0) ? 1U : 0U));
-
-                        memcpy((void*)((opt[cur].rep)), (void*)(&newReps), ((nuint)(sizeof(repcodes_s))));
+                        repcodes_s newReps = ZSTD_newRep(opt[prev].rep, opt[cur].off, opt[cur].litlen == 0 ? 1U : 0U);
+                        memcpy(opt[cur].rep, &newReps, (uint)sizeof(repcodes_s));
                     }
                     else
                     {
-                        memcpy((void*)((opt[cur].rep)), (void*)((opt[cur - 1].rep)), ((nuint)(sizeof(repcodes_s))));
+                        memcpy(opt[cur].rep, opt[cur - 1].rep, (uint)sizeof(repcodes_s));
                     }
 
                     if (inr > ilimit)
-                    {
                         continue;
-                    }
-
                     if (cur == last_pos)
-                    {
                         break;
-                    }
-
-                    if ((optLevel == 0) && (opt[cur + 1].price <= opt[cur].price + ((1 << 8) / 2)))
+                    if (optLevel == 0 && opt[cur + 1].price <= opt[cur].price + (1 << 8) / 2)
                     {
                         continue;
                     }
 
                     assert(opt[cur].price >= 0);
-
                     {
-                        uint ll0 = (((opt[cur].mlen != 0)) ? 1U : 0U);
-                        uint litlen = (opt[cur].mlen == 0) ? opt[cur].litlen : 0;
-                        uint previousPrice = (uint)(opt[cur].price);
+                        uint ll0 = opt[cur].mlen != 0 ? 1U : 0U;
+                        uint litlen = opt[cur].mlen == 0 ? opt[cur].litlen : 0;
+                        uint previousPrice = (uint)opt[cur].price;
                         uint basePrice = previousPrice + ZSTD_litLengthPrice(0, optStatePtr, optLevel);
                         uint nbMatches = getAllMatches(matches, ms, &nextToUpdate3, inr, iend, opt[cur].rep, ll0, minMatch);
                         uint matchNb;
-
                         ZSTD_optLdm_processMatchCandidate(&optLdm, matches, &nbMatches, (uint)(inr - istart), (uint)(iend - inr));
                         if (nbMatches == 0)
                         {
                             continue;
                         }
 
-
                         {
                             uint maxML = matches[nbMatches - 1].len;
-
-                            if ((maxML > sufficient_len) || (cur + maxML >= (uint)((1 << 12))))
+                            if (maxML > sufficient_len || cur + maxML >= 1 << 12)
                             {
                                 lastSequence.mlen = maxML;
                                 lastSequence.off = matches[nbMatches - 1].off;
                                 lastSequence.litlen = litlen;
-                                cur -= (opt[cur].mlen == 0) ? opt[cur].litlen : 0;
+                                cur -= opt[cur].mlen == 0 ? opt[cur].litlen : 0;
                                 last_pos = cur + ZSTD_totalLen(lastSequence);
-                                if (cur > (uint)((1 << 12)))
-                                {
+                                if (cur > 1 << 12)
                                     cur = 0;
-                                }
-
                                 goto _shortestPath;
                             }
                         }
@@ -1251,19 +1105,17 @@ namespace ZstdSharp.Unsafe
                         {
                             uint offset = matches[matchNb].off;
                             uint lastML = matches[matchNb].len;
-                            uint startML = (matchNb > 0) ? matches[matchNb - 1].len + 1 : minMatch;
+                            uint startML = matchNb > 0 ? matches[matchNb - 1].len + 1 : minMatch;
                             uint mlen;
-
                             for (mlen = lastML; mlen >= startML; mlen--)
                             {
                                 uint pos = cur + mlen;
-                                int price = (int)(basePrice) + (int)(ZSTD_getMatchPrice(offset, mlen, optStatePtr, optLevel));
-
-                                if ((pos > last_pos) || (price < opt[pos].price))
+                                int price = (int)basePrice + (int)ZSTD_getMatchPrice(offset, mlen, optStatePtr, optLevel);
+                                if (pos > last_pos || price < opt[pos].price)
                                 {
                                     while (last_pos < pos)
                                     {
-                                        opt[last_pos + 1].price = (1 << 30);
+                                        opt[last_pos + 1].price = 1 << 30;
                                         last_pos++;
                                     }
 
@@ -1275,9 +1127,7 @@ namespace ZstdSharp.Unsafe
                                 else
                                 {
                                     if (optLevel == 0)
-                                    {
                                         break;
-                                    }
                                 }
                             }
                         }
@@ -1286,48 +1136,41 @@ namespace ZstdSharp.Unsafe
 
                 lastSequence = opt[last_pos];
                 cur = last_pos > ZSTD_totalLen(lastSequence) ? last_pos - ZSTD_totalLen(lastSequence) : 0;
-                assert(cur < (uint)((1 << 12)));
-                _shortestPath:
+                assert(cur < 1 << 12);
+            _shortestPath:
                 assert(opt[0].mlen == 0);
                 if (lastSequence.mlen != 0)
                 {
-                    repcodes_s reps = ZSTD_newRep(opt[cur].rep, lastSequence.off, ((lastSequence.litlen == 0) ? 1U : 0U));
-
-                    memcpy((void*)(rep), (void*)(&reps), ((nuint)(sizeof(repcodes_s))));
+                    repcodes_s reps = ZSTD_newRep(opt[cur].rep, lastSequence.off, lastSequence.litlen == 0 ? 1U : 0U);
+                    memcpy(rep, &reps, (uint)sizeof(repcodes_s));
                 }
                 else
                 {
-                    memcpy((void*)(rep), (void*)((opt[cur].rep)), ((nuint)(sizeof(repcodes_s))));
+                    memcpy(rep, opt[cur].rep, (uint)sizeof(repcodes_s));
                 }
-
 
                 {
                     uint storeEnd = cur + 1;
                     uint storeStart = storeEnd;
                     uint seqPos = cur;
-
-                    assert(storeEnd < (uint)((1 << 12)));
+                    assert(storeEnd < 1 << 12);
                     opt[storeEnd] = lastSequence;
                     while (seqPos > 0)
                     {
                         uint backDist = ZSTD_totalLen(opt[seqPos]);
-
                         storeStart--;
                         opt[storeStart] = opt[seqPos];
-                        seqPos = (seqPos > backDist) ? seqPos - backDist : 0;
+                        seqPos = seqPos > backDist ? seqPos - backDist : 0;
                     }
-
 
                     {
                         uint storePos;
-
                         for (storePos = storeStart; storePos <= storeEnd; storePos++)
                         {
                             uint llen = opt[storePos].litlen;
                             uint mlen = opt[storePos].mlen;
                             uint offCode = opt[storePos].off;
                             uint advance = llen + mlen;
-
                             if (mlen == 0)
                             {
                                 assert(storePos == storeEnd);
@@ -1372,9 +1215,9 @@ namespace ZstdSharp.Unsafe
          */
         private static void ZSTD_initStats_ultra(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
+            /* updated rep codes will sink here */
             uint* tmpRep = stackalloc uint[3];
-
-            memcpy((void*)(tmpRep), (void*)(rep), ((nuint)(sizeof(uint) * 3)));
+            memcpy(tmpRep, rep, sizeof(uint) * 3);
             assert(ms->opt.litLengthSum == 0);
             assert(seqStore->sequences == seqStore->sequencesStart);
             assert(ms->window.dictLimit == ms->window.lowLimit);
@@ -1382,7 +1225,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_compressBlock_opt2(ms, seqStore, tmpRep, src, srcSize, ZSTD_dictMode_e.ZSTD_noDict);
             ZSTD_resetSeqStore(seqStore);
             ms->window.@base -= srcSize;
-            ms->window.dictLimit += (uint)(srcSize);
+            ms->window.dictLimit += (uint)srcSize;
             ms->window.lowLimit = ms->window.dictLimit;
             ms->nextToUpdate = ms->window.dictLimit;
         }
@@ -1394,10 +1237,9 @@ namespace ZstdSharp.Unsafe
 
         public static nuint ZSTD_compressBlock_btultra2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
-            uint curr = (uint)((byte*)(src) - ms->window.@base);
-
-            assert(srcSize <= (uint)((1 << 17)));
-            if ((ms->opt.litLengthSum == 0) && (seqStore->sequences == seqStore->sequencesStart) && (ms->window.dictLimit == ms->window.lowLimit) && (curr == ms->window.dictLimit) && (srcSize > 1024))
+            uint curr = (uint)((byte*)src - ms->window.@base);
+            assert(srcSize <= 1 << 17);
+            if (ms->opt.litLengthSum == 0 && seqStore->sequences == seqStore->sequencesStart && ms->window.dictLimit == ms->window.lowLimit && curr == ms->window.dictLimit && srcSize > 1024)
             {
                 ZSTD_initStats_ultra(ms, seqStore, rep, src, srcSize);
             }

@@ -1,4 +1,3 @@
-using System;
 using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
@@ -6,8 +5,8 @@ namespace ZstdSharp.Unsafe
     public static unsafe partial class Methods
     {
         /*-*************************************
-        * Hash Functions
-        ***************************************/
+         * Hash Functions
+         ***************************************/
         /**
          * Hash the d-byte value pointed to by p and mod 2^f into the frequency vector
          */
@@ -21,68 +20,10 @@ namespace ZstdSharp.Unsafe
             return ZSTD_hash8Ptr(p, f);
         }
 
-        public static readonly FASTCOVER_accel_t* FASTCOVER_defaultAccelParameters = GetArrayPointer(new FASTCOVER_accel_t[11]
-        {
-            new FASTCOVER_accel_t
-            {
-                finalize = 100,
-                skip = 0,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 100,
-                skip = 0,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 50,
-                skip = 1,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 34,
-                skip = 2,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 25,
-                skip = 3,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 20,
-                skip = 4,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 17,
-                skip = 5,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 14,
-                skip = 6,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 13,
-                skip = 7,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 11,
-                skip = 8,
-            },
-            new FASTCOVER_accel_t
-            {
-                finalize = 10,
-                skip = 9,
-            },
-        });
-
+        public static readonly FASTCOVER_accel_t* FASTCOVER_defaultAccelParameters = GetArrayPointer(new FASTCOVER_accel_t[11] { new FASTCOVER_accel_t { finalize = 100, skip = 0 }, new FASTCOVER_accel_t { finalize = 100, skip = 0 }, new FASTCOVER_accel_t { finalize = 50, skip = 1 }, new FASTCOVER_accel_t { finalize = 34, skip = 2 }, new FASTCOVER_accel_t { finalize = 25, skip = 3 }, new FASTCOVER_accel_t { finalize = 20, skip = 4 }, new FASTCOVER_accel_t { finalize = 17, skip = 5 }, new FASTCOVER_accel_t { finalize = 14, skip = 6 }, new FASTCOVER_accel_t { finalize = 13, skip = 7 }, new FASTCOVER_accel_t { finalize = 11, skip = 8 }, new FASTCOVER_accel_t { finalize = 10, skip = 9 } });
         /*-*************************************
-        *  Helper functions
-        ***************************************/
+         *  Helper functions
+         ***************************************/
         /**
          * Selects the best segment in an epoch.
          * Segments of are scored according to the function:
@@ -96,25 +37,21 @@ namespace ZstdSharp.Unsafe
          */
         private static COVER_segment_t FASTCOVER_selectSegment(FASTCOVER_ctx_t* ctx, uint* freqs, uint begin, uint end, ZDICT_cover_params_t parameters, ushort* segmentFreqs)
         {
+            /* Constants */
             uint k = parameters.k;
             uint d = parameters.d;
             uint f = ctx->f;
             uint dmersInK = k - d + 1;
-            COVER_segment_t bestSegment = new COVER_segment_t
-            {
-                begin = 0,
-                end = 0,
-                score = 0,
-            };
+            /* Try each segment (activeSegment) and save the best (bestSegment) */
+            COVER_segment_t bestSegment = new COVER_segment_t { begin = 0, end = 0, score = 0 };
             COVER_segment_t activeSegment;
-
             activeSegment.begin = begin;
             activeSegment.end = begin;
             activeSegment.score = 0;
             while (activeSegment.end < end)
             {
-                nuint idx = FASTCOVER_hashPtrToIndex((void*)(ctx->samples + activeSegment.end), f, d);
-
+                /* Get hash value of current dmer */
+                nuint idx = FASTCOVER_hashPtrToIndex(ctx->samples + activeSegment.end, f, d);
                 if (segmentFreqs[idx] == 0)
                 {
                     activeSegment.score += freqs[idx];
@@ -124,8 +61,8 @@ namespace ZstdSharp.Unsafe
                 segmentFreqs[idx] += 1;
                 if (activeSegment.end - activeSegment.begin == dmersInK + 1)
                 {
-                    nuint delIndex = FASTCOVER_hashPtrToIndex((void*)(ctx->samples + activeSegment.begin), f, d);
-
+                    /* Get hash value of the dmer to be eliminated from active segment */
+                    nuint delIndex = FASTCOVER_hashPtrToIndex(ctx->samples + activeSegment.begin, f, d);
                     segmentFreqs[delIndex] -= 1;
                     if (segmentFreqs[delIndex] == 0)
                     {
@@ -143,20 +80,17 @@ namespace ZstdSharp.Unsafe
 
             while (activeSegment.begin < end)
             {
-                nuint delIndex = FASTCOVER_hashPtrToIndex((void*)(ctx->samples + activeSegment.begin), f, d);
-
+                nuint delIndex = FASTCOVER_hashPtrToIndex(ctx->samples + activeSegment.begin, f, d);
                 segmentFreqs[delIndex] -= 1;
                 activeSegment.begin += 1;
             }
 
-
             {
+                /*  Zero the frequency of hash value of each dmer covered by the chosen segment. */
                 uint pos;
-
                 for (pos = bestSegment.begin; pos != bestSegment.end; ++pos)
                 {
-                    nuint i = FASTCOVER_hashPtrToIndex((void*)(ctx->samples + pos), f, d);
-
+                    nuint i = FASTCOVER_hashPtrToIndex(ctx->samples + pos, f, d);
                     freqs[i] = 0;
                 }
             }
@@ -210,13 +144,10 @@ namespace ZstdSharp.Unsafe
         private static void FASTCOVER_ctx_destroy(FASTCOVER_ctx_t* ctx)
         {
             if (ctx == null)
-            {
                 return;
-            }
-
-            free((void*)ctx->freqs);
+            free(ctx->freqs);
             ctx->freqs = null;
-            free((void*)ctx->offsets);
+            free(ctx->offsets);
             ctx->offsets = null;
         }
 
@@ -228,20 +159,18 @@ namespace ZstdSharp.Unsafe
             uint f = ctx->f;
             uint d = ctx->d;
             uint skip = ctx->accelParams.skip;
-            uint readLength = ((d) > (8) ? (d) : (8));
+            uint readLength = d > 8 ? d : 8;
             nuint i;
-
             assert(ctx->nbTrainSamples >= 5);
             assert(ctx->nbTrainSamples <= ctx->nbSamples);
             for (i = 0; i < ctx->nbTrainSamples; i++)
             {
+                /* start of current dmer */
                 nuint start = ctx->offsets[i];
                 nuint currSampleEnd = ctx->offsets[i + 1];
-
                 while (start + readLength <= currSampleEnd)
                 {
-                    nuint dmerIndex = FASTCOVER_hashPtrToIndex((void*)(ctx->samples + start), f, d);
-
+                    nuint dmerIndex = FASTCOVER_hashPtrToIndex(ctx->samples + start, f, d);
                     freqs[dmerIndex]++;
                     start = start + skip + 1;
                 }
@@ -257,49 +186,47 @@ namespace ZstdSharp.Unsafe
          */
         private static nuint FASTCOVER_ctx_init(FASTCOVER_ctx_t* ctx, void* samplesBuffer, nuint* samplesSizes, uint nbSamples, uint d, double splitPoint, uint f, FASTCOVER_accel_t accelParams)
         {
-            byte* samples = (byte*)(samplesBuffer);
+            byte* samples = (byte*)samplesBuffer;
             nuint totalSamplesSize = COVER_sum(samplesSizes, nbSamples);
-            uint nbTrainSamples = splitPoint < 1.0 ? (uint)((double)(nbSamples) * splitPoint) : nbSamples;
-            uint nbTestSamples = splitPoint < 1.0 ? nbSamples - nbTrainSamples : nbSamples;
-            nuint trainingSamplesSize = splitPoint < 1.0 ? COVER_sum(samplesSizes, nbTrainSamples) : totalSamplesSize;
-            nuint testSamplesSize = splitPoint < 1.0 ? COVER_sum(samplesSizes + nbTrainSamples, nbTestSamples) : totalSamplesSize;
-
-            if (totalSamplesSize < ((d) > ((nuint)(sizeof(ulong))) ? (d) : ((nuint)(sizeof(ulong)))) || totalSamplesSize >= (nuint)((nuint)(sizeof(nuint)) == 8 ? (unchecked((uint)(-1))) : ((uint)(1) * (1U << 30))))
+            /* Split samples into testing and training sets */
+            uint nbTrainSamples = splitPoint < 1 ? (uint)(nbSamples * splitPoint) : nbSamples;
+            uint nbTestSamples = splitPoint < 1 ? nbSamples - nbTrainSamples : nbSamples;
+            nuint trainingSamplesSize = splitPoint < 1 ? COVER_sum(samplesSizes, nbTrainSamples) : totalSamplesSize;
+            nuint testSamplesSize = splitPoint < 1 ? COVER_sum(samplesSizes + nbTrainSamples, nbTestSamples) : totalSamplesSize;
+            if (totalSamplesSize < (d > sizeof(ulong) ? d : sizeof(ulong)) || totalSamplesSize >= (sizeof(nuint) == 8 ? unchecked((uint)-1) : 1 * (1U << 30)))
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
             if (nbTrainSamples < 5)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
             if (nbTestSamples < 1)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
-            memset((void*)ctx, 0, (nuint)(sizeof(FASTCOVER_ctx_t)));
+            memset(ctx, 0, (uint)sizeof(FASTCOVER_ctx_t));
             ctx->samples = samples;
             ctx->samplesSizes = samplesSizes;
             ctx->nbSamples = nbSamples;
             ctx->nbTrainSamples = nbTrainSamples;
             ctx->nbTestSamples = nbTestSamples;
-            ctx->nbDmers = trainingSamplesSize - ((d) > ((nuint)(sizeof(ulong))) ? (d) : ((nuint)(sizeof(ulong)))) + 1;
+            ctx->nbDmers = trainingSamplesSize - (d > sizeof(ulong) ? d : sizeof(ulong)) + 1;
             ctx->d = d;
             ctx->f = f;
             ctx->accelParams = accelParams;
-            ctx->offsets = (nuint*)(calloc((nbSamples + 1), (nuint)(sizeof(nuint))));
+            ctx->offsets = (nuint*)calloc(nbSamples + 1, (ulong)sizeof(nuint));
             if (ctx->offsets == null)
             {
                 FASTCOVER_ctx_destroy(ctx);
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
             }
-
 
             {
                 uint i;
-
                 ctx->offsets[0] = 0;
                 assert(nbSamples >= 5);
                 for (i = 1; i <= nbSamples; ++i)
@@ -308,11 +235,11 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            ctx->freqs = (uint*)(calloc((nuint)((ulong)(1) << (int)f), (nuint)(sizeof(uint))));
+            ctx->freqs = (uint*)calloc((ulong)1 << (int)f, sizeof(uint));
             if (ctx->freqs == null)
             {
                 FASTCOVER_ctx_destroy(ctx);
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
             }
 
             FASTCOVER_computeFrequency(ctx->freqs, ctx);
@@ -324,20 +251,20 @@ namespace ZstdSharp.Unsafe
          */
         private static nuint FASTCOVER_buildDictionary(FASTCOVER_ctx_t* ctx, uint* freqs, void* dictBuffer, nuint dictBufferCapacity, ZDICT_cover_params_t parameters, ushort* segmentFreqs)
         {
-            byte* dict = (byte*)(dictBuffer);
+            byte* dict = (byte*)dictBuffer;
             nuint tail = dictBufferCapacity;
-            COVER_epoch_info_t epochs = COVER_computeEpochs((uint)(dictBufferCapacity), (uint)(ctx->nbDmers), parameters.k, 1);
-            nuint maxZeroScoreRun = 10;
+            /* Divide the data into epochs. We will select one segment from each epoch. */
+            COVER_epoch_info_t epochs = COVER_computeEpochs((uint)dictBufferCapacity, (uint)ctx->nbDmers, parameters.k, 1);
+            const nuint maxZeroScoreRun = 10;
             nuint zeroScoreRun = 0;
             nuint epoch;
-
-            for (epoch = 0; tail > 0; epoch = (nuint)((epoch + 1) % epochs.num))
+            for (epoch = 0; tail > 0; epoch = (epoch + 1) % epochs.num)
             {
                 uint epochBegin = (uint)(epoch * epochs.size);
                 uint epochEnd = epochBegin + epochs.size;
                 nuint segmentSize;
+                /* Select a segment */
                 COVER_segment_t segment = FASTCOVER_selectSegment(ctx, freqs, epochBegin, epochEnd, parameters, segmentFreqs);
-
                 if (segment.score == 0)
                 {
                     if (++zeroScoreRun >= maxZeroScoreRun)
@@ -349,14 +276,14 @@ namespace ZstdSharp.Unsafe
                 }
 
                 zeroScoreRun = 0;
-                segmentSize = ((segment.end - segment.begin + parameters.d - 1) < (tail) ? (segment.end - segment.begin + parameters.d - 1) : (tail));
+                segmentSize = segment.end - segment.begin + parameters.d - 1 < tail ? segment.end - segment.begin + parameters.d - 1 : tail;
                 if (segmentSize < parameters.d)
                 {
                     break;
                 }
 
                 tail -= segmentSize;
-                memcpy((void*)(dict + tail), (void*)(ctx->samples + segment.begin), segmentSize);
+                memcpy(dict + tail, ctx->samples + segment.begin, (uint)segmentSize);
             }
 
             return tail;
@@ -369,41 +296,41 @@ namespace ZstdSharp.Unsafe
          */
         private static void FASTCOVER_tryParameters(void* opaque)
         {
-            FASTCOVER_tryParameters_data_s* data = (FASTCOVER_tryParameters_data_s*)(opaque);
+            /* Save parameters as local variables */
+            FASTCOVER_tryParameters_data_s* data = (FASTCOVER_tryParameters_data_s*)opaque;
             FASTCOVER_ctx_t* ctx = data->ctx;
             ZDICT_cover_params_t parameters = data->parameters;
             nuint dictBufferCapacity = data->dictBufferCapacity;
-            nuint totalCompressedSize = (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
-            ushort* segmentFreqs = (ushort*)(calloc((nuint)((ulong)(1) << (int)ctx->f), (nuint)(2)));
-            byte* dict = (byte*)(malloc(dictBufferCapacity));
-            COVER_dictSelection selection = COVER_dictSelectionError((unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC))));
-            uint* freqs = (uint*)(malloc((nuint)(((ulong)(1) << (int)ctx->f) * (nuint)(4))));
-
+            nuint totalCompressedSize = unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
+            /* Initialize array to keep track of frequency of dmer within activeSegment */
+            ushort* segmentFreqs = (ushort*)calloc((ulong)1 << (int)ctx->f, sizeof(ushort));
+            /* Allocate space for hash table, dict, and freqs */
+            byte* dict = (byte*)malloc(dictBufferCapacity);
+            COVER_dictSelection selection = COVER_dictSelectionError(unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+            uint* freqs = (uint*)malloc(((ulong)1 << (int)ctx->f) * sizeof(uint));
             if (segmentFreqs == null || dict == null || freqs == null)
             {
                 goto _cleanup;
             }
 
-            memcpy((void*)freqs, (void*)ctx->freqs, (nuint)(((ulong)(1) << (int)ctx->f) * (nuint)(sizeof(uint))));
-
+            memcpy(freqs, ctx->freqs, (uint)(((ulong)1 << (int)ctx->f) * sizeof(uint)));
             {
-                nuint tail = FASTCOVER_buildDictionary(ctx, freqs, (void*)dict, dictBufferCapacity, parameters, segmentFreqs);
+                nuint tail = FASTCOVER_buildDictionary(ctx, freqs, dict, dictBufferCapacity, parameters, segmentFreqs);
                 uint nbFinalizeSamples = (uint)(ctx->nbTrainSamples * ctx->accelParams.finalize / 100);
-
                 selection = COVER_selectDict(dict + tail, dictBufferCapacity, dictBufferCapacity - tail, ctx->samples, ctx->samplesSizes, nbFinalizeSamples, ctx->nbTrainSamples, ctx->nbSamples, parameters, ctx->offsets, totalCompressedSize);
-                if ((COVER_dictSelectionIsError(selection)) != 0)
+                if (COVER_dictSelectionIsError(selection) != 0)
                 {
                     goto _cleanup;
                 }
             }
 
-            _cleanup:
-            free((void*)dict);
+        _cleanup:
+            free(dict);
             COVER_best_finish(data->best, parameters, selection);
-            free((void*)data);
-            free((void*)segmentFreqs);
+            free(data);
+            free(segmentFreqs);
             COVER_dictSelectionFree(selection);
-            free((void*)freqs);
+            free(freqs);
         }
 
         private static void FASTCOVER_convertToCoverParams(ZDICT_fastCover_params_t fastCoverParams, ZDICT_cover_params_t* coverParams)
@@ -448,58 +375,53 @@ namespace ZstdSharp.Unsafe
          */
         public static nuint ZDICT_trainFromBuffer_fastCover(void* dictBuffer, nuint dictBufferCapacity, void* samplesBuffer, nuint* samplesSizes, uint nbSamples, ZDICT_fastCover_params_t parameters)
         {
-            byte* dict = (byte*)(dictBuffer);
+            byte* dict = (byte*)dictBuffer;
             FASTCOVER_ctx_t ctx;
             ZDICT_cover_params_t coverParams;
             FASTCOVER_accel_t accelParams;
-
-            g_displayLevel = (int)(parameters.zParams.notificationLevel);
-            parameters.splitPoint = 1.0;
-            parameters.f = (uint)(parameters.f == 0 ? 20 : parameters.f);
-            parameters.accel = (uint)(parameters.accel == 0 ? 1 : parameters.accel);
-            memset((void*)&coverParams, 0, (nuint)(sizeof(ZDICT_cover_params_t)));
+            g_displayLevel = (int)parameters.zParams.notificationLevel;
+            parameters.splitPoint = 1;
+            parameters.f = parameters.f == 0 ? 20 : parameters.f;
+            parameters.accel = parameters.accel == 0 ? 1 : parameters.accel;
+            memset(&coverParams, 0, (uint)sizeof(ZDICT_cover_params_t));
             FASTCOVER_convertToCoverParams(parameters, &coverParams);
-            if ((FASTCOVER_checkParameters(coverParams, dictBufferCapacity, parameters.f, parameters.accel)) == 0)
+            if (FASTCOVER_checkParameters(coverParams, dictBufferCapacity, parameters.f, parameters.accel) == 0)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound));
             }
 
             if (nbSamples == 0)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
             if (dictBufferCapacity < 256)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
             accelParams = FASTCOVER_defaultAccelParameters[parameters.accel];
-
             {
                 nuint initVal = FASTCOVER_ctx_init(&ctx, samplesBuffer, samplesSizes, nbSamples, coverParams.d, parameters.splitPoint, parameters.f, accelParams);
-
-                if ((ERR_isError(initVal)) != 0)
+                if (ERR_isError(initVal))
                 {
                     return initVal;
                 }
             }
 
             COVER_warnOnSmallCorpus(dictBufferCapacity, ctx.nbDmers, g_displayLevel);
-
             {
-                ushort* segmentFreqs = (ushort*)(calloc((nuint)((ulong)(1) << (int)parameters.f), (nuint)(2)));
+                /* Initialize array to keep track of frequency of dmer within activeSegment */
+                ushort* segmentFreqs = (ushort*)calloc((ulong)1 << (int)parameters.f, sizeof(ushort));
                 nuint tail = FASTCOVER_buildDictionary(&ctx, ctx.freqs, dictBuffer, dictBufferCapacity, coverParams, segmentFreqs);
                 uint nbFinalizeSamples = (uint)(ctx.nbTrainSamples * ctx.accelParams.finalize / 100);
-                nuint dictionarySize = ZDICT_finalizeDictionary((void*)dict, dictBufferCapacity, (void*)(dict + tail), dictBufferCapacity - tail, samplesBuffer, samplesSizes, nbFinalizeSamples, coverParams.zParams);
-
-                if ((ERR_isError(dictionarySize)) == 0)
+                nuint dictionarySize = ZDICT_finalizeDictionary(dict, dictBufferCapacity, dict + tail, dictBufferCapacity - tail, samplesBuffer, samplesSizes, nbFinalizeSamples, coverParams.zParams);
+                if (!ERR_isError(dictionarySize))
                 {
-        ;
                 }
 
                 FASTCOVER_ctx_destroy(&ctx);
-                free((void*)segmentFreqs);
+                free(segmentFreqs);
                 return dictionarySize;
             }
         }
@@ -526,110 +448,74 @@ namespace ZstdSharp.Unsafe
         {
             ZDICT_cover_params_t coverParams;
             FASTCOVER_accel_t accelParams;
+            /* constants */
             uint nbThreads = parameters->nbThreads;
-            double splitPoint = parameters->splitPoint <= 0.0 ? 0.75 : parameters->splitPoint;
-            uint kMinD = (uint)(parameters->d == 0 ? 6 : parameters->d);
-            uint kMaxD = (uint)(parameters->d == 0 ? 8 : parameters->d);
-            uint kMinK = (uint)(parameters->k == 0 ? 50 : parameters->k);
-            uint kMaxK = (uint)(parameters->k == 0 ? 2000 : parameters->k);
-            uint kSteps = (uint)(parameters->steps == 0 ? 40 : parameters->steps);
-            uint kStepSize = (((kMaxK - kMinK) / kSteps) > (1) ? ((kMaxK - kMinK) / kSteps) : (1));
+            double splitPoint = parameters->splitPoint <= 0 ? 0.75 : parameters->splitPoint;
+            uint kMinD = parameters->d == 0 ? 6 : parameters->d;
+            uint kMaxD = parameters->d == 0 ? 8 : parameters->d;
+            uint kMinK = parameters->k == 0 ? 50 : parameters->k;
+            uint kMaxK = parameters->k == 0 ? 2000 : parameters->k;
+            uint kSteps = parameters->steps == 0 ? 40 : parameters->steps;
+            uint kStepSize = (kMaxK - kMinK) / kSteps > 1 ? (kMaxK - kMinK) / kSteps : 1;
             uint kIterations = (1 + (kMaxD - kMinD) / 2) * (1 + (kMaxK - kMinK) / kStepSize);
-            uint f = (uint)(parameters->f == 0 ? 20 : parameters->f);
-            uint accel = (uint)(parameters->accel == 0 ? 1 : parameters->accel);
-            uint shrinkDict = 0;
-            int displayLevel = (int)(parameters->zParams.notificationLevel);
+            uint f = parameters->f == 0 ? 20 : parameters->f;
+            uint accel = parameters->accel == 0 ? 1 : parameters->accel;
+            const uint shrinkDict = 0;
+            /* Local variables */
+            int displayLevel = (int)parameters->zParams.notificationLevel;
             uint iteration = 1;
             uint d;
             uint k;
             COVER_best_s best;
+            void* pool = null;
             int warned = 0;
-
             if (splitPoint <= 0 || splitPoint > 1)
             {
-                if (displayLevel >= 1)
-                {
-        ;
-                }
-
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound));
             }
 
             if (accel == 0 || accel > 10)
             {
-                if (displayLevel >= 1)
-                {
-        ;
-                }
-
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound));
             }
 
             if (kMinK < kMaxD || kMaxK < kMinK)
             {
-                if (displayLevel >= 1)
-                {
-        ;
-                }
-
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound));
             }
 
             if (nbSamples == 0)
             {
-                if (displayLevel >= 1)
-                {
-        ;
-                }
-
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
             if (dictBufferCapacity < 256)
             {
-                if (displayLevel >= 1)
-                {
-        ;
-                }
-
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
             if (nbThreads > 1)
             {
-                throw new NotImplementedException("Multiple threads are not supported");
+                pool = null;
+                if (pool == null)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                }
             }
 
             COVER_best_init(&best);
-            memset((void*)&coverParams, 0, (nuint)(sizeof(ZDICT_cover_params_t)));
+            memset(&coverParams, 0, (uint)sizeof(ZDICT_cover_params_t));
             FASTCOVER_convertToCoverParams(*parameters, &coverParams);
             accelParams = FASTCOVER_defaultAccelParameters[accel];
             g_displayLevel = displayLevel == 0 ? 0 : displayLevel - 1;
-            if (displayLevel >= 2)
-            {
-        ;
-            }
-
             for (d = kMinD; d <= kMaxD; d += 2)
             {
+                /* Initialize the context for this value of d */
                 FASTCOVER_ctx_t ctx;
-
-                if (displayLevel >= 3)
-                {
-        ;
-                }
-
-
                 {
                     nuint initVal = FASTCOVER_ctx_init(&ctx, samplesBuffer, samplesSizes, nbSamples, d, splitPoint, f, accelParams);
-
-                    if ((ERR_isError(initVal)) != 0)
+                    if (ERR_isError(initVal))
                     {
-                        if (displayLevel >= 1)
-                        {
-        ;
-                        }
-
                         COVER_best_destroy(&best);
                         return initVal;
                     }
@@ -643,23 +529,13 @@ namespace ZstdSharp.Unsafe
 
                 for (k = kMinK; k <= kMaxK; k += kStepSize)
                 {
-                    FASTCOVER_tryParameters_data_s* data = (FASTCOVER_tryParameters_data_s*)(malloc((nuint)(sizeof(FASTCOVER_tryParameters_data_s))));
-
-                    if (displayLevel >= 3)
-                    {
-        ;
-                    }
-
+                    /* Prepare the arguments */
+                    FASTCOVER_tryParameters_data_s* data = (FASTCOVER_tryParameters_data_s*)malloc((ulong)sizeof(FASTCOVER_tryParameters_data_s));
                     if (data == null)
                     {
-                        if (displayLevel >= 1)
-                        {
-        ;
-                        }
-
                         COVER_best_destroy(&best);
                         FASTCOVER_ctx_destroy(&ctx);
-                        return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation)));
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
                     }
 
                     data->ctx = &ctx;
@@ -671,15 +547,18 @@ namespace ZstdSharp.Unsafe
                     data->parameters.splitPoint = splitPoint;
                     data->parameters.steps = kSteps;
                     data->parameters.shrinkDict = shrinkDict;
-                    data->parameters.zParams.notificationLevel = (uint)(g_displayLevel);
-                    if ((FASTCOVER_checkParameters(data->parameters, dictBufferCapacity, data->ctx->f, accel)) == 0)
+                    data->parameters.zParams.notificationLevel = (uint)g_displayLevel;
+                    if (FASTCOVER_checkParameters(data->parameters, dictBufferCapacity, data->ctx->f, accel) == 0)
                     {
-                        free((void*)data);
+                        free(data);
                         continue;
                     }
 
                     COVER_best_start(&best);
-                    FASTCOVER_tryParameters((void*)data);
+                    if (!(pool != null))
+                    {
+                        FASTCOVER_tryParameters(data);
+                    }
 
                     ++iteration;
                 }
@@ -688,25 +567,17 @@ namespace ZstdSharp.Unsafe
                 FASTCOVER_ctx_destroy(&ctx);
             }
 
-            if (displayLevel >= 2)
-            {
-        ;
-            }
-
-
             {
                 nuint dictSize = best.dictSize;
-
-                if ((ERR_isError(best.compressedSize)) != 0)
+                if (ERR_isError(best.compressedSize))
                 {
                     nuint compressedSize = best.compressedSize;
-
                     COVER_best_destroy(&best);
                     return compressedSize;
                 }
 
                 FASTCOVER_convertToFastCoverParams(best.parameters, parameters, f, accel);
-                memcpy(dictBuffer, best.dict, dictSize);
+                memcpy(dictBuffer, best.dict, (uint)dictSize);
                 COVER_best_destroy(&best);
                 return dictSize;
             }

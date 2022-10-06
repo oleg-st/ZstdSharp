@@ -1,5 +1,3 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     /*!
@@ -14,23 +12,18 @@ namespace ZstdSharp.Unsafe
      * Do not access the members of this struct directly.
      * @see XXH64_state_s, XXH3_state_s
      */
-    public unsafe partial struct XXH32_state_s
+    public unsafe struct XXH32_state_s
     {
         /*!< Total length hashed, modulo 2^32 */
         public uint total_len_32;
-
         /*!< Whether the hash is >= 16 (handles @ref total_len_32 overflow) */
         public uint large_len;
-
         /*!< Accumulator lanes */
         public fixed uint v[4];
-
         /*!< Internal buffer for partial reads. Treated as unsigned char[16]. */
         public fixed uint mem32[4];
-
         /*!< Amount of data in @ref mem32 */
         public uint memsize;
-
         /*!< Reserved field. Do not read nor write to it. */
         public uint reserved;
     }

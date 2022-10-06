@@ -1,18 +1,13 @@
-using InlineIL;
-using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using static InlineIL.IL.Emit;
+using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
 {
-    public partial struct ZSTD_hufCTables_t
+    public unsafe struct ZSTD_hufCTables_t
     {
         public _CTable_e__FixedBuffer CTable;
-
         public HUF_repeat repeatMode;
-
-        public unsafe partial struct _CTable_e__FixedBuffer
+        public unsafe struct _CTable_e__FixedBuffer
         {
             public nuint e0;
             public nuint e1;
@@ -271,41 +266,26 @@ namespace ZstdSharp.Unsafe
             public nuint e254;
             public nuint e255;
             public nuint e256;
-
             public ref nuint this[nuint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + index);
+                get => ref *(RefToPointer<_CTable_e__FixedBuffer, nuint>(this) + index);
             }
 
             public ref nuint this[nint index]
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 [InlineMethod.Inline]
-                get => ref *(this + (nuint)index);
+                get => ref *(RefToPointer<_CTable_e__FixedBuffer, nuint>(this) + index);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static implicit operator nuint*(in _CTable_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                return IL.ReturnPointer<nuint>();
-            }
-
+            public static implicit operator nuint*(in _CTable_e__FixedBuffer t) => RefToPointer<_CTable_e__FixedBuffer, nuint>(t);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             [InlineMethod.Inline]
-            public static nuint* operator +(in _CTable_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Ldarg_1();
-                Sizeof<nuint>();
-                Conv_I();
-                Mul();
-                Add();
-                return IL.ReturnPointer<nuint>();
-            }
+            public static nuint* operator +(in _CTable_e__FixedBuffer t, nuint index) => RefToPointer<_CTable_e__FixedBuffer, nuint>(t) + index;
         }
     }
 }

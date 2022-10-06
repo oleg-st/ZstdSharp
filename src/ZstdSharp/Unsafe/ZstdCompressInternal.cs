@@ -1,40 +1,30 @@
-using System;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
+using System;
+using System.Numerics;
 
 namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static readonly rawSeqStore_t kNullRawSeqStore = new rawSeqStore_t
-        {
-            seq = (rawSeq*)null,
-            pos = 0,
-            posInSequence = 0,
-            size = 0,
-            capacity = 0,
-        };
-
+        public static readonly rawSeqStore_t kNullRawSeqStore = new rawSeqStore_t { seq = null, pos = 0, posInSequence = 0, size = 0, capacity = 0 };
+        public static readonly byte* LL_Code = GetArrayPointer(new byte[64] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24 });
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_LLcode(uint litLength)
         {
-
-            uint LL_deltaCode = 19;
-
-            return (litLength > 63) ? ZSTD_highbit32(litLength) + LL_deltaCode : LL_Code[litLength];
+            const uint LL_deltaCode = 19;
+            return litLength > 63 ? ZSTD_highbit32(litLength) + LL_deltaCode : LL_Code[litLength];
         }
 
+        public static readonly byte* ML_Code = GetArrayPointer(new byte[128] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 32, 33, 33, 34, 34, 35, 35, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 38, 38, 38, 38, 39, 39, 39, 39, 39, 39, 39, 39, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42 });
         /* ZSTD_MLcode() :
          * note : mlBase = matchLength - MINMATCH;
          *        because it's the format it's stored in seqStore->sequences */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_MLcode(uint mlBase)
         {
-
-            uint ML_deltaCode = 36;
-
-            return (mlBase > 127) ? ZSTD_highbit32(mlBase) + ML_deltaCode : ML_Code[mlBase];
+            const uint ML_deltaCode = 36;
+            return mlBase > 127 ? ZSTD_highbit32(mlBase) + ML_deltaCode : ML_Code[mlBase];
         }
 
         /* ZSTD_cParam_withinBounds:
@@ -44,22 +34,12 @@ namespace ZstdSharp.Unsafe
         private static int ZSTD_cParam_withinBounds(ZSTD_cParameter cParam, int value)
         {
             ZSTD_bounds bounds = ZSTD_cParam_getBounds(cParam);
-
-            if ((ERR_isError(bounds.error)) != 0)
-            {
+            if (ERR_isError(bounds.error))
                 return 0;
-            }
-
             if (value < bounds.lowerBound)
-            {
                 return 0;
-            }
-
             if (value > bounds.upperBound)
-            {
                 return 0;
-            }
-
             return 1;
         }
 
@@ -69,30 +49,28 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_noCompressBlock(void* dst, nuint dstCapacity, void* src, nuint srcSize, uint lastBlock)
         {
-            uint cBlockHeader24 = lastBlock + (((uint)(blockType_e.bt_raw)) << 1) + (uint)(srcSize << 3);
-
+            uint cBlockHeader24 = lastBlock + ((uint)blockType_e.bt_raw << 1) + (uint)(srcSize << 3);
             if (srcSize + ZSTD_blockHeaderSize > dstCapacity)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
             MEM_writeLE24(dst, cBlockHeader24);
-            memcpy((void*)(((byte*)(dst) + ZSTD_blockHeaderSize)), (src), (srcSize));
+            memcpy((byte*)dst + ZSTD_blockHeaderSize, src, (uint)srcSize);
             return ZSTD_blockHeaderSize + srcSize;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_rleCompressBlock(void* dst, nuint dstCapacity, byte src, nuint srcSize, uint lastBlock)
         {
-            byte* op = (byte*)(dst);
-            uint cBlockHeader = lastBlock + (((uint)(blockType_e.bt_rle)) << 1) + (uint)(srcSize << 3);
-
+            byte* op = (byte*)dst;
+            uint cBlockHeader = lastBlock + ((uint)blockType_e.bt_rle << 1) + (uint)(srcSize << 3);
             if (dstCapacity < 4)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
-            MEM_writeLE24((void*)op, cBlockHeader);
+            MEM_writeLE24(op, cBlockHeader);
             op[3] = src;
             return 4;
         }
@@ -104,9 +82,8 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_minGain(nuint srcSize, ZSTD_strategy strat)
         {
-            uint minlog = (strat >= ZSTD_strategy.ZSTD_btultra) ? (uint)(strat) - 1 : 6;
-
-            assert((ZSTD_cParam_withinBounds(ZSTD_cParameter.ZSTD_c_strategy, (int)strat)) != 0);
+            uint minlog = strat >= ZSTD_strategy.ZSTD_btultra ? (uint)strat - 1 : 6;
+            assert(ZSTD_cParam_withinBounds(ZSTD_cParameter.ZSTD_c_strategy, (int)strat) != 0);
             return (srcSize >> (int)minlog) + 2;
         }
 
@@ -116,27 +93,14 @@ namespace ZstdSharp.Unsafe
             switch (cctxParams->literalCompressionMode)
             {
                 case ZSTD_paramSwitch_e.ZSTD_ps_enable:
-                {
                     return 0;
-                }
-
                 case ZSTD_paramSwitch_e.ZSTD_ps_disable:
-                {
                     return 1;
-                }
-
                 default:
-                {
                     assert(0 != 0);
-                }
-
-                ;
-
-                goto case ZSTD_paramSwitch_e.ZSTD_ps_auto;
+                    goto case ZSTD_paramSwitch_e.ZSTD_ps_auto;
                 case ZSTD_paramSwitch_e.ZSTD_ps_auto:
-                {
-                    return (((cctxParams->cParams.strategy == ZSTD_strategy.ZSTD_fast) && (cctxParams->cParams.targetLength > 0)) ? 1 : 0);
-                }
+                    return cctxParams->cParams.strategy == ZSTD_strategy.ZSTD_fast && cctxParams->cParams.targetLength > 0 ? 1 : 0;
             }
         }
 
@@ -150,15 +114,13 @@ namespace ZstdSharp.Unsafe
             assert(iend > ilimit_w);
             if (ip <= ilimit_w)
             {
-                ZSTD_wildcopy((void*)op, (void*)ip, (nint)(ilimit_w - ip), ZSTD_overlap_e.ZSTD_no_overlap);
+                ZSTD_wildcopy(op, ip, (nint)(ilimit_w - ip), ZSTD_overlap_e.ZSTD_no_overlap);
                 op += ilimit_w - ip;
                 ip = ilimit_w;
             }
 
             while (ip < iend)
-            {
                 *op++ = *ip++;
-            }
         }
 
         /*! ZSTD_storeSeq() :
@@ -166,25 +128,24 @@ namespace ZstdSharp.Unsafe
          *  @offBase_minus1 : Users should use employ macros STORE_REPCODE_X and STORE_OFFSET().
          *  @matchLength : must be >= MINMATCH
          *  Allowed to overread literals up to litLimit.
-        */
+         */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
         private static void ZSTD_storeSeq(seqStore_t* seqStorePtr, nuint litLength, byte* literals, byte* litLimit, uint offBase_minus1, nuint matchLength)
         {
             byte* litLimit_w = litLimit - 32;
             byte* litEnd = literals + litLength;
-
             assert((nuint)(seqStorePtr->sequences - seqStorePtr->sequencesStart) < seqStorePtr->maxNbSeq);
-            assert(seqStorePtr->maxNbLit <= (uint)(128 * (1 << 10)));
+            assert(seqStorePtr->maxNbLit <= 128 * (1 << 10));
             assert(seqStorePtr->lit + litLength <= seqStorePtr->litStart + seqStorePtr->maxNbLit);
             assert(literals + litLength <= litLimit);
             if (litEnd <= litLimit_w)
             {
                 assert(32 >= 16);
-                ZSTD_copy16((void*)seqStorePtr->lit, (void*)literals);
+                ZSTD_copy16(seqStorePtr->lit, literals);
                 if (litLength > 16)
                 {
-                    ZSTD_wildcopy((void*)(seqStorePtr->lit + 16), (void*)(literals + 16), (nint)(litLength) - 16, ZSTD_overlap_e.ZSTD_no_overlap);
+                    ZSTD_wildcopy(seqStorePtr->lit + 16, literals + 16, (nint)litLength - 16, ZSTD_overlap_e.ZSTD_no_overlap);
                 }
             }
             else
@@ -200,13 +161,11 @@ namespace ZstdSharp.Unsafe
                 seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
             }
 
-            seqStorePtr->sequences[0].litLength = (ushort)(litLength);
-            seqStorePtr->sequences[0].offBase = ((offBase_minus1) + 1);
+            seqStorePtr->sequences[0].litLength = (ushort)litLength;
+            seqStorePtr->sequences[0].offBase = offBase_minus1 + 1;
             assert(matchLength >= 3);
-
             {
                 nuint mlBase = matchLength - 3;
-
                 if (mlBase > 0xFFFF)
                 {
                     assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
@@ -214,7 +173,7 @@ namespace ZstdSharp.Unsafe
                     seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
                 }
 
-                seqStorePtr->sequences[0].mlBase = (ushort)(mlBase);
+                seqStorePtr->sequences[0].mlBase = (ushort)mlBase;
             }
 
             seqStorePtr->sequences++;
@@ -227,26 +186,23 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_updateRep(uint* rep, uint offBase_minus1, uint ll0)
         {
-            if (((offBase_minus1) > (uint)((3 - 1))))
+            if (offBase_minus1 > 3 - 1)
             {
                 rep[2] = rep[1];
                 rep[1] = rep[0];
-                assert(((offBase_minus1) > (uint)((3 - 1)))); rep[0] = ((offBase_minus1) - (uint)((3 - 1)));
+                assert(offBase_minus1 > 3 - 1);
+                rep[0] = offBase_minus1 - (3 - 1);
             }
             else
             {
-                assert(((offBase_minus1) <= (uint)((3 - 1)))); uint repCode = ((offBase_minus1) + 1) - 1 + ll0;
-
+                assert(offBase_minus1 <= 3 - 1);
+                uint repCode = offBase_minus1 + 1 - 1 + ll0;
                 if (repCode > 0)
                 {
-                    uint currentOffset = (repCode == 3) ? (rep[0] - 1) : rep[repCode];
-
-                    rep[2] = (repCode >= 2) ? rep[1] : rep[2];
+                    uint currentOffset = repCode == 3 ? rep[0] - 1 : rep[repCode];
+                    rep[2] = repCode >= 2 ? rep[1] : rep[2];
                     rep[1] = rep[0];
                     rep[0] = currentOffset;
-                }
-                else
-                {
                 }
             }
         }
@@ -255,15 +211,14 @@ namespace ZstdSharp.Unsafe
         private static repcodes_s ZSTD_newRep(uint* rep, uint offBase_minus1, uint ll0)
         {
             repcodes_s newReps;
-
-            memcpy((void*)(&newReps), (void*)(rep), ((nuint)(sizeof(repcodes_s))));
+            memcpy(&newReps, rep, (uint)sizeof(repcodes_s));
             ZSTD_updateRep(newReps.rep, offBase_minus1, ll0);
             return newReps;
         }
 
         /*-*************************************
-        *  Match length counter
-        ***************************************/
+         *  Match length counter
+         ***************************************/
         [InlineMethod.Inline]
         private static uint ZSTD_NbCommonBytes(nuint val)
         {
@@ -280,30 +235,24 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_count(byte* pIn, byte* pMatch, byte* pInLimit)
         {
             byte* pStart = pIn;
-            byte* pInLoopLimit = pInLimit - ((nuint)(sizeof(nuint)) - 1);
-
+            byte* pInLoopLimit = pInLimit - (sizeof(nuint) - 1);
             if (pIn < pInLoopLimit)
             {
-
                 {
-                    nuint diff = MEM_readST((void*)pMatch) ^ MEM_readST((void*)pIn);
-
+                    nuint diff = MEM_readST(pMatch) ^ MEM_readST(pIn);
                     if (diff != 0)
-                    {
                         return ZSTD_NbCommonBytes(diff);
-                    }
                 }
 
-                pIn += (nuint)(sizeof(nuint));
-                pMatch += (nuint)(sizeof(nuint));
+                pIn += sizeof(nuint);
+                pMatch += sizeof(nuint);
                 while (pIn < pInLoopLimit)
                 {
-                    nuint diff = MEM_readST((void*)pMatch) ^ MEM_readST((void*)pIn);
-
+                    nuint diff = MEM_readST(pMatch) ^ MEM_readST(pIn);
                     if (diff == 0)
                     {
-                        pIn += (nuint)(sizeof(nuint));
-                        pMatch += (nuint)(sizeof(nuint));
+                        pIn += sizeof(nuint);
+                        pMatch += sizeof(nuint);
                         continue;
                     }
 
@@ -312,23 +261,20 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            if (MEM_64bits && (pIn < (pInLimit - 3)) && (MEM_read32((void*)pMatch) == MEM_read32((void*)pIn)))
+            if (MEM_64bits && pIn < pInLimit - 3 && MEM_read32(pMatch) == MEM_read32(pIn))
             {
                 pIn += 4;
                 pMatch += 4;
             }
 
-            if ((pIn < (pInLimit - 1)) && (MEM_read16((void*)pMatch) == MEM_read16((void*)pIn)))
+            if (pIn < pInLimit - 1 && MEM_read16(pMatch) == MEM_read16(pIn))
             {
                 pIn += 2;
                 pMatch += 2;
             }
 
-            if ((pIn < pInLimit) && (*pMatch == *pIn))
-            {
+            if (pIn < pInLimit && *pMatch == *pIn)
                 pIn++;
-            }
-
             return (nuint)(pIn - pStart);
         }
 
@@ -339,23 +285,18 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_count_2segments(byte* ip, byte* match, byte* iEnd, byte* mEnd, byte* iStart)
         {
-            byte* vEnd = ((ip + (mEnd - match)) < (iEnd) ? (ip + (mEnd - match)) : (iEnd));
+            byte* vEnd = ip + (mEnd - match) < iEnd ? ip + (mEnd - match) : iEnd;
             nuint matchLength = ZSTD_count(ip, match, vEnd);
-
             if (match + matchLength != mEnd)
-            {
                 return matchLength;
-            }
-
             return matchLength + ZSTD_count(ip + matchLength, iStart, iEnd);
         }
 
         public const uint prime3bytes = 506832829U;
-
         [InlineMethod.Inline]
         private static uint ZSTD_hash3(uint u, uint h)
         {
-            return ((u << (32 - 24)) * prime3bytes) >> (int)(32 - h);
+            return (u << 32 - 24) * prime3bytes >> (int)(32 - h);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -366,11 +307,10 @@ namespace ZstdSharp.Unsafe
         }
 
         public const uint prime4bytes = 2654435761U;
-
         [InlineMethod.Inline]
         private static uint ZSTD_hash4(uint u, uint h)
         {
-            return (u * prime4bytes) >> (int)(32 - h);
+            return u * prime4bytes >> (int)(32 - h);
         }
 
         [InlineMethod.Inline]
@@ -380,11 +320,10 @@ namespace ZstdSharp.Unsafe
         }
 
         public const ulong prime5bytes = 889523592379UL;
-
         [InlineMethod.Inline]
         private static nuint ZSTD_hash5(ulong u, uint h)
         {
-            return (nuint)(((u << (64 - 40)) * prime5bytes) >> (int)(64 - h));
+            return (nuint)((u << 64 - 40) * prime5bytes >> (int)(64 - h));
         }
 
         [InlineMethod.Inline]
@@ -394,11 +333,10 @@ namespace ZstdSharp.Unsafe
         }
 
         public const ulong prime6bytes = 227718039650203UL;
-
         [InlineMethod.Inline]
         private static nuint ZSTD_hash6(ulong u, uint h)
         {
-            return (nuint)(((u << (64 - 48)) * prime6bytes) >> (int)(64 - h));
+            return (nuint)((u << 64 - 48) * prime6bytes >> (int)(64 - h));
         }
 
         [InlineMethod.Inline]
@@ -408,11 +346,10 @@ namespace ZstdSharp.Unsafe
         }
 
         public const ulong prime7bytes = 58295818150454627UL;
-
         [InlineMethod.Inline]
         private static nuint ZSTD_hash7(ulong u, uint h)
         {
-            return (nuint)(((u << (64 - 56)) * prime7bytes) >> (int)(64 - h));
+            return (nuint)((u << 64 - 56) * prime7bytes >> (int)(64 - h));
         }
 
         [InlineMethod.Inline]
@@ -422,11 +359,10 @@ namespace ZstdSharp.Unsafe
         }
 
         public const ulong prime8bytes = 0xCF1BBCDCB7A56463UL;
-
         [InlineMethod.Inline]
         private static nuint ZSTD_hash8(ulong u, uint h)
         {
-            return (nuint)(((u) * prime8bytes) >> (int)(64 - h));
+            return (nuint)(u * prime8bytes >> (int)(64 - h));
         }
 
         [InlineMethod.Inline]
@@ -455,14 +391,10 @@ namespace ZstdSharp.Unsafe
         private static ulong ZSTD_ipow(ulong @base, ulong exponent)
         {
             ulong power = 1;
-
             while (exponent != 0)
             {
                 if ((exponent & 1) != 0)
-                {
                     power *= @base;
-                }
-
                 exponent >>= 1;
                 @base *= @base;
             }
@@ -475,9 +407,8 @@ namespace ZstdSharp.Unsafe
          */
         private static ulong ZSTD_rollingHash_append(ulong hash, void* buf, nuint size)
         {
-            byte* istart = (byte*)(buf);
+            byte* istart = (byte*)buf;
             nuint pos;
-
             for (pos = 0; pos < size; ++pos)
             {
                 hash *= prime8bytes;
@@ -512,7 +443,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong ZSTD_rollingHash_rotate(ulong hash, byte toRemove, byte toAdd, ulong primePower)
         {
-            hash -= (uint)((toRemove + 10)) * primePower;
+            hash -= (uint)(toRemove + 10) * primePower;
             hash *= prime8bytes;
             hash += (ulong)(toAdd + 10);
             return hash;
@@ -526,8 +457,7 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_window_clear(ZSTD_window_t* window)
         {
             nuint endT = (nuint)(window->nextSrc - window->@base);
-            uint end = (uint)(endT);
-
+            uint end = (uint)endT;
             window->lowLimit = end;
             window->dictLimit = end;
         }
@@ -535,7 +465,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_window_isEmpty(ZSTD_window_t window)
         {
-            return ((window.dictLimit == 2 && window.lowLimit == 2 && (window.nextSrc - window.@base) == 2) ? 1U : 0U);
+            return window.dictLimit == 2 && window.lowLimit == 2 && window.nextSrc - window.@base == 2 ? 1U : 0U;
         }
 
         /**
@@ -545,7 +475,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_window_hasExtDict(ZSTD_window_t window)
         {
-            return ((window.lowLimit < window.dictLimit) ? 1U : 0U);
+            return window.lowLimit < window.dictLimit ? 1U : 0U;
         }
 
         /**
@@ -556,7 +486,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ZSTD_dictMode_e ZSTD_matchState_dictMode(ZSTD_matchState_t* ms)
         {
-            return (ZSTD_window_hasExtDict(ms->window)) != 0 ? ZSTD_dictMode_e.ZSTD_extDict : ms->dictMatchState != null ? (ms->dictMatchState->dedicatedDictSearch != 0 ? ZSTD_dictMode_e.ZSTD_dedicatedDictSearch : ZSTD_dictMode_e.ZSTD_dictMatchState) : ZSTD_dictMode_e.ZSTD_noDict;
+            return ZSTD_window_hasExtDict(ms->window) != 0 ? ZSTD_dictMode_e.ZSTD_extDict : ms->dictMatchState != null ? ms->dictMatchState->dedicatedDictSearch != 0 ? ZSTD_dictMode_e.ZSTD_dedicatedDictSearch : ZSTD_dictMode_e.ZSTD_dictMatchState : ZSTD_dictMode_e.ZSTD_noDict;
         }
 
         /**
@@ -568,14 +498,21 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_window_canOverflowCorrect(ZSTD_window_t window, uint cycleLog, uint maxDist, uint loadedDictEnd, void* src)
         {
             uint cycleSize = 1U << (int)cycleLog;
-            uint curr = (uint)((byte*)(src) - window.@base);
-            uint minIndexToOverflowCorrect = cycleSize + ((maxDist) > (cycleSize) ? (maxDist) : (cycleSize)) + 2;
+            uint curr = (uint)((byte*)src - window.@base);
+            uint minIndexToOverflowCorrect = cycleSize + (maxDist > cycleSize ? maxDist : cycleSize) + 2;
+            /* Adjust the min index to backoff the overflow correction frequency,
+             * so we don't waste too much CPU in overflow correction. If this
+             * computation overflows we don't really care, we just need to make
+             * sure it is at least minIndexToOverflowCorrect.
+             */
             uint adjustment = window.nbOverflowCorrections + 1;
-            uint adjustedIndex = ((minIndexToOverflowCorrect * adjustment) > (minIndexToOverflowCorrect) ? (minIndexToOverflowCorrect * adjustment) : (minIndexToOverflowCorrect));
-            uint indexLargeEnough = ((curr > adjustedIndex) ? 1U : 0U);
-            uint dictionaryInvalidated = ((curr > maxDist + loadedDictEnd) ? 1U : 0U);
-
-            return ((indexLargeEnough != 0 && dictionaryInvalidated != 0) ? 1U : 0U);
+            uint adjustedIndex = minIndexToOverflowCorrect * adjustment > minIndexToOverflowCorrect ? minIndexToOverflowCorrect * adjustment : minIndexToOverflowCorrect;
+            uint indexLargeEnough = curr > adjustedIndex ? 1U : 0U;
+            /* Only overflow correct early if the dictionary is invalidated already,
+             * so we don't hurt compression ratio.
+             */
+            uint dictionaryInvalidated = curr > maxDist + loadedDictEnd ? 1U : 0U;
+            return indexLargeEnough != 0 && dictionaryInvalidated != 0 ? 1U : 0U;
         }
 
         /**
@@ -586,10 +523,8 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_window_needOverflowCorrection(ZSTD_window_t window, uint cycleLog, uint maxDist, uint loadedDictEnd, void* src, void* srcEnd)
         {
-            uint curr = (uint)((byte*)(srcEnd) - window.@base);
-
-            ;
-            return ((curr > ((3U << 29) + (1U << ((int)((nuint)(sizeof(nuint)) == 4 ? 30 : 31))))) ? 1U : 0U);
+            uint curr = (uint)((byte*)srcEnd - window.@base);
+            return curr > (3U << 29) + (1U << (sizeof(nuint) == 4 ? 30 : 31)) ? 1U : 0U;
         }
 
         /**
@@ -604,20 +539,38 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_window_correctOverflow(ZSTD_window_t* window, uint cycleLog, uint maxDist, void* src)
         {
+            /* preemptive overflow correction:
+             * 1. correction is large enough:
+             *    lowLimit > (3<<29) ==> current > 3<<29 + 1<<windowLog
+             *    1<<windowLog <= newCurrent < 1<<chainLog + 1<<windowLog
+             *
+             *    current - newCurrent
+             *    > (3<<29 + 1<<windowLog) - (1<<windowLog + 1<<chainLog)
+             *    > (3<<29) - (1<<chainLog)
+             *    > (3<<29) - (1<<30)             (NOTE: chainLog <= 30)
+             *    > 1<<29
+             *
+             * 2. (ip+ZSTD_CHUNKSIZE_MAX - cctx->base) doesn't overflow:
+             *    After correction, current is less than (1<<chainLog + 1<<windowLog).
+             *    In 64-bit mode we are safe, because we have 64-bit ptrdiff_t.
+             *    In 32-bit mode we are safe, because (chainLog <= 29), so
+             *    ip+ZSTD_CHUNKSIZE_MAX - cctx->base < 1<<32.
+             * 3. (cctx->lowLimit + 1<<windowLog) < 1<<32:
+             *    windowLog <= 31 ==> 3<<29 + 1<<windowLog < 7<<29 < 1<<32.
+             */
             uint cycleSize = 1U << (int)cycleLog;
             uint cycleMask = cycleSize - 1;
-            uint curr = (uint)((byte*)(src) - window->@base);
+            uint curr = (uint)((byte*)src - window->@base);
             uint currentCycle = curr & cycleMask;
-            uint currentCycleCorrection = currentCycle < 2 ? ((cycleSize) > (2) ? (cycleSize) : (2)) : 0;
-            uint newCurrent = currentCycle + currentCycleCorrection + ((maxDist) > (cycleSize) ? (maxDist) : (cycleSize));
+            /* Ensure newCurrent - maxDist >= ZSTD_WINDOW_START_INDEX. */
+            uint currentCycleCorrection = currentCycle < 2 ? cycleSize > 2 ? cycleSize : 2 : 0;
+            uint newCurrent = currentCycle + currentCycleCorrection + (maxDist > cycleSize ? maxDist : cycleSize);
             uint correction = curr - newCurrent;
-
-            assert((maxDist & (maxDist - 1)) == 0);
+            assert((maxDist & maxDist - 1) == 0);
             assert((curr & cycleMask) == (newCurrent & cycleMask));
             assert(curr > newCurrent);
-            if (0 == 0)
             {
-                assert(correction > (uint)(1 << 28));
+                assert(correction > 1 << 28);
             }
 
             window->@base += correction;
@@ -674,32 +627,22 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_window_enforceMaxDist(ZSTD_window_t* window, void* blockEnd, uint maxDist, uint* loadedDictEndPtr, ZSTD_matchState_t** dictMatchStatePtr)
         {
-            uint blockEndIdx = (uint)((byte*)(blockEnd) - window->@base);
-            uint loadedDictEnd = (loadedDictEndPtr != null) ? *loadedDictEndPtr : 0;
-
+            uint blockEndIdx = (uint)((byte*)blockEnd - window->@base);
+            uint loadedDictEnd = loadedDictEndPtr != null ? *loadedDictEndPtr : 0;
             if (blockEndIdx > maxDist + loadedDictEnd)
             {
                 uint newLowLimit = blockEndIdx - maxDist;
-
                 if (window->lowLimit < newLowLimit)
-                {
                     window->lowLimit = newLowLimit;
-                }
-
                 if (window->dictLimit < window->lowLimit)
                 {
                     window->dictLimit = window->lowLimit;
                 }
 
                 if (loadedDictEndPtr != null)
-                {
                     *loadedDictEndPtr = 0;
-                }
-
                 if (dictMatchStatePtr != null)
-                {
                     *dictMatchStatePtr = null;
-                }
             }
         }
 
@@ -714,33 +657,25 @@ namespace ZstdSharp.Unsafe
         {
             assert(loadedDictEndPtr != null);
             assert(dictMatchStatePtr != null);
-
             {
-                uint blockEndIdx = (uint)((byte*)(blockEnd) - window->@base);
+                uint blockEndIdx = (uint)((byte*)blockEnd - window->@base);
                 uint loadedDictEnd = *loadedDictEndPtr;
-
                 assert(blockEndIdx >= loadedDictEnd);
                 if (blockEndIdx > loadedDictEnd + maxDist)
                 {
                     *loadedDictEndPtr = 0;
                     *dictMatchStatePtr = null;
                 }
-                else
-                {
-                    if (*loadedDictEndPtr != 0)
-                    {
-        ;
-                    }
-                }
             }
         }
 
+        public static readonly byte* stringToByte_20_00 = GetArrayPointer(new byte[] { 32, 0 });
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_window_init(ZSTD_window_t* window)
         {
-            memset((void*)(window), (0), ((nuint)(sizeof(ZSTD_window_t))));
-            window->@base = (byte*)emptyWindowString;
-            window->dictBase = (byte*)emptyWindowString;
+            memset(window, 0, (uint)sizeof(ZSTD_window_t));
+            window->@base = stringToByte_20_00;
+            window->dictBase = stringToByte_20_00;
             window->dictLimit = 2;
             window->lowLimit = 2;
             window->nextSrc = window->@base + 2;
@@ -757,39 +692,31 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_window_update(ZSTD_window_t* window, void* src, nuint srcSize, int forceNonContiguous)
         {
-            byte* ip = (byte*)(src);
+            byte* ip = (byte*)src;
             uint contiguous = 1;
-
             if (srcSize == 0)
-            {
                 return contiguous;
-            }
-
             assert(window->@base != null);
             assert(window->dictBase != null);
             if (src != window->nextSrc || forceNonContiguous != 0)
             {
+                /* not contiguous */
                 nuint distanceFromBase = (nuint)(window->nextSrc - window->@base);
-
                 window->lowLimit = window->dictLimit;
-                assert(distanceFromBase == (nuint)((uint)(distanceFromBase)));
-                window->dictLimit = (uint)(distanceFromBase);
+                assert(distanceFromBase == (uint)distanceFromBase);
+                window->dictLimit = (uint)distanceFromBase;
                 window->dictBase = window->@base;
                 window->@base = ip - distanceFromBase;
                 if (window->dictLimit - window->lowLimit < 8)
-                {
                     window->lowLimit = window->dictLimit;
-                }
-
                 contiguous = 0;
             }
 
             window->nextSrc = ip + srcSize;
-            if (((ip + srcSize > window->dictBase + window->lowLimit) && (ip < window->dictBase + window->dictLimit)))
+            if (ip + srcSize > window->dictBase + window->lowLimit && ip < window->dictBase + window->dictLimit)
             {
-                nint highInputIdx = (nint)((ip + srcSize) - window->dictBase);
-                uint lowLimitMax = (highInputIdx > (nint)(window->dictLimit)) ? window->dictLimit : (uint)(highInputIdx);
-
+                nint highInputIdx = (nint)(ip + srcSize - window->dictBase);
+                uint lowLimitMax = highInputIdx > (nint)window->dictLimit ? window->dictLimit : (uint)highInputIdx;
                 window->lowLimit = lowLimitMax;
             }
 
@@ -804,10 +731,13 @@ namespace ZstdSharp.Unsafe
         {
             uint maxDistance = 1U << (int)windowLog;
             uint lowestValid = ms->window.lowLimit;
-            uint withinWindow = (curr - lowestValid > maxDistance) ? curr - maxDistance : lowestValid;
-            uint isDictionary = (((ms->loadedDictEnd != 0)) ? 1U : 0U);
+            uint withinWindow = curr - lowestValid > maxDistance ? curr - maxDistance : lowestValid;
+            uint isDictionary = ms->loadedDictEnd != 0 ? 1U : 0U;
+            /* When using a dictionary the entire dictionary is valid if a single byte of the dictionary
+             * is within the window. We invalidate the dictionary (and set loadedDictEnd to 0) when it isn't
+             * valid for the entire block. So this check is sufficient to find the lowest valid match index.
+             */
             uint matchLowest = isDictionary != 0 ? lowestValid : withinWindow;
-
             return matchLowest;
         }
 
@@ -819,10 +749,12 @@ namespace ZstdSharp.Unsafe
         {
             uint maxDistance = 1U << (int)windowLog;
             uint lowestValid = ms->window.dictLimit;
-            uint withinWindow = (curr - lowestValid > maxDistance) ? curr - maxDistance : lowestValid;
-            uint isDictionary = (((ms->loadedDictEnd != 0)) ? 1U : 0U);
+            uint withinWindow = curr - lowestValid > maxDistance ? curr - maxDistance : lowestValid;
+            uint isDictionary = ms->loadedDictEnd != 0 ? 1U : 0U;
+            /* When computing the lowest prefix index we need to take the dictionary into account to handle
+             * the edge case where the dictionary and the source are contiguous in memory.
+             */
             uint matchLowest = isDictionary != 0 ? lowestValid : withinWindow;
-
             return matchLowest;
         }
     }

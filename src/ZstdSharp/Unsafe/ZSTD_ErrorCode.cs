@@ -1,7 +1,19 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
+    /*-*********************************************
+     *  Error codes list
+     *-*********************************************
+     *  Error codes _values_ are pinned down since v1.3.1 only.
+     *  Therefore, don't rely on values if you may link to any version < v1.3.1.
+     *
+     *  Only values < 100 are considered stable.
+     *
+     *  note 1 : this API shall be used with static linking only.
+     *           dynamic linking is not yet officially supported.
+     *  note 2 : Prefer relying on the enum than on its value whenever possible
+     *           This is the only supported way to use the error list < v1.3.1
+     *  note 3 : ZSTD_isError() is always correct, whatever the library version.
+     **********************************************/
     public enum ZSTD_ErrorCode
     {
         ZSTD_error_no_error = 0,
@@ -27,10 +39,15 @@ namespace ZstdSharp.Unsafe
         ZSTD_error_dstSize_tooSmall = 70,
         ZSTD_error_srcSize_wrong = 72,
         ZSTD_error_dstBuffer_null = 74,
+        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_frameIndex_tooLarge = 100,
+        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_seekableIO = 102,
+        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_dstBuffer_wrong = 104,
+        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_srcBuffer_wrong = 105,
-        ZSTD_error_maxCode = 120,
+        /* never EVER use this value directly, it can change in future versions! Use ZSTD_isError() instead */
+        ZSTD_error_maxCode = 120
     }
 }

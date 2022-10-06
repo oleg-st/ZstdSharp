@@ -1,8 +1,6 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
-    public partial struct sortedSymbol_t
+    public struct sortedSymbol_t
     {
         public byte symbol;
     }

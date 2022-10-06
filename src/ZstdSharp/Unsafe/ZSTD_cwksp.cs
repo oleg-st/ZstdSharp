@@ -1,5 +1,3 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     /**
@@ -86,26 +84,17 @@ namespace ZstdSharp.Unsafe
      *
      * Attempts to reserve objects of different types out of order will fail.
      */
-    public unsafe partial struct ZSTD_cwksp
+    public unsafe struct ZSTD_cwksp
     {
         public void* workspace;
-
         public void* workspaceEnd;
-
         public void* objectEnd;
-
         public void* tableEnd;
-
         public void* tableValidEnd;
-
         public void* allocStart;
-
         public byte allocFailed;
-
         public int workspaceOversizedDuration;
-
         public ZSTD_cwksp_alloc_phase_e phase;
-
         public ZSTD_cwksp_static_alloc_e isStatic;
     }
 }

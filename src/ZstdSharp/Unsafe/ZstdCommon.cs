@@ -1,4 +1,3 @@
-using System;
 using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
@@ -6,11 +5,11 @@ namespace ZstdSharp.Unsafe
     public static unsafe partial class Methods
     {
         /*-****************************************
-        *  Version
-        ******************************************/
+         *  Version
+         ******************************************/
         public static uint ZSTD_versionNumber()
         {
-            return (uint)((1 * 100 * 100 + 5 * 100 + 2));
+            return 1 * 100 * 100 + 5 * 100 + 2;
         }
 
         /*! ZSTD_versionString() :
@@ -25,7 +24,7 @@ namespace ZstdSharp.Unsafe
          *  symbol is required for external callers */
         public static uint ZSTD_isError(nuint code)
         {
-            return ERR_isError(code);
+            return ERR_isError(code) ? 1U : 0U;
         }
 
         /*! ZSTD_getErrorName() :
@@ -50,15 +49,12 @@ namespace ZstdSharp.Unsafe
         }
 
         /*=**************************************************************
-        *  Custom allocator
-        ****************************************************************/
+         *  Custom allocator
+         ****************************************************************/
         public static void* ZSTD_customMalloc(nuint size, ZSTD_customMem customMem)
         {
             if (customMem.customAlloc != null)
-            {
-                throw new NotImplementedException("customMem is not implemented");
-            }
-
+                return customMem.customAlloc(customMem.opaque, size);
             return malloc(size);
         }
 
@@ -66,10 +62,14 @@ namespace ZstdSharp.Unsafe
         {
             if (customMem.customAlloc != null)
             {
-                throw new NotImplementedException("customMem is not implemented");
+                /* calloc implemented as malloc+memset;
+                 * not as efficient as calloc, but next best guess for custom malloc */
+                void* ptr = customMem.customAlloc(customMem.opaque, size);
+                memset(ptr, 0, (uint)size);
+                return ptr;
             }
 
-            return calloc((1), (size));
+            return calloc(1, size);
         }
 
         public static void ZSTD_customFree(void* ptr, ZSTD_customMem customMem)
@@ -77,13 +77,9 @@ namespace ZstdSharp.Unsafe
             if (ptr != null)
             {
                 if (customMem.customFree != null)
-                {
-                    throw new NotImplementedException("customMem is not implemented");
-                }
+                    customMem.customFree(customMem.opaque, ptr);
                 else
-                {
-                    free((ptr));
-                }
+                    free(ptr);
             }
         }
     }

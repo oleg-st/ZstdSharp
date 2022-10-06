@@ -1,4 +1,3 @@
-using System;
 using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
@@ -6,7 +5,6 @@ namespace ZstdSharp.Unsafe
     public static unsafe partial class Methods
     {
         public static int g_displayLevel = 0;
-
         /**
          * Returns the sum of the sample sizes.
          */
@@ -14,7 +12,6 @@ namespace ZstdSharp.Unsafe
         {
             nuint sum = 0;
             uint i;
-
             for (i = 0; i < nbSamples; ++i)
             {
                 sum += samplesSizes[i];
@@ -28,18 +25,11 @@ namespace ZstdSharp.Unsafe
          */
         public static void COVER_warnOnSmallCorpus(nuint maxDictSize, nuint nbDmers, int displayLevel)
         {
-            double ratio = (double)(nbDmers) / maxDictSize;
-
+            double ratio = (double)nbDmers / maxDictSize;
             if (ratio >= 10)
             {
                 return;
             }
-
-            if (displayLevel >= 1)
-            {
-        ;
-            }
-
         }
 
         /**
@@ -59,8 +49,7 @@ namespace ZstdSharp.Unsafe
         {
             uint minEpochSize = k * 10;
             COVER_epoch_info_t epochs;
-
-            epochs.num = (uint)((1) > (maxDictSize / k / passes) ? (1) : (maxDictSize / k / passes));
+            epochs.num = 1 > maxDictSize / k / passes ? 1 : maxDictSize / k / passes;
             epochs.size = nbDmers / epochs.num;
             if (epochs.size >= minEpochSize)
             {
@@ -68,7 +57,7 @@ namespace ZstdSharp.Unsafe
                 return epochs;
             }
 
-            epochs.size = ((minEpochSize) < (nbDmers) ? (minEpochSize) : (nbDmers));
+            epochs.size = minEpochSize < nbDmers ? minEpochSize : nbDmers;
             epochs.num = nbDmers / epochs.size;
             assert(epochs.size * epochs.num <= nbDmers);
             return epochs;
@@ -79,21 +68,20 @@ namespace ZstdSharp.Unsafe
          */
         public static nuint COVER_checkTotalCompressedSize(ZDICT_cover_params_t parameters, nuint* samplesSizes, byte* samples, nuint* offsets, nuint nbTrainSamples, nuint nbSamples, byte* dict, nuint dictBufferCapacity)
         {
-            nuint totalCompressedSize = (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+            nuint totalCompressedSize = unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
+            /* Pointers */
             ZSTD_CCtx_s* cctx;
             ZSTD_CDict_s* cdict;
             void* dst;
+            /* Local variables */
             nuint dstCapacity;
             nuint i;
-
-
             {
                 nuint maxSampleSize = 0;
-
-                i = parameters.splitPoint < 1.0 ? nbTrainSamples : 0;
+                i = parameters.splitPoint < 1 ? nbTrainSamples : 0;
                 for (; i < nbSamples; ++i)
                 {
-                    maxSampleSize = ((samplesSizes[i]) > (maxSampleSize) ? (samplesSizes[i]) : (maxSampleSize));
+                    maxSampleSize = samplesSizes[i] > maxSampleSize ? samplesSizes[i] : maxSampleSize;
                 }
 
                 dstCapacity = ZSTD_compressBound(maxSampleSize);
@@ -101,19 +89,18 @@ namespace ZstdSharp.Unsafe
             }
 
             cctx = ZSTD_createCCtx();
-            cdict = ZSTD_createCDict((void*)dict, dictBufferCapacity, parameters.zParams.compressionLevel);
+            cdict = ZSTD_createCDict(dict, dictBufferCapacity, parameters.zParams.compressionLevel);
             if (dst == null || cctx == null || cdict == null)
             {
                 goto _compressCleanup;
             }
 
             totalCompressedSize = dictBufferCapacity;
-            i = parameters.splitPoint < 1.0 ? nbTrainSamples : 0;
+            i = parameters.splitPoint < 1 ? nbTrainSamples : 0;
             for (; i < nbSamples; ++i)
             {
-                nuint size = ZSTD_compress_usingCDict(cctx, dst, dstCapacity, (void*)(samples + offsets[i]), samplesSizes[i], cdict);
-
-                if ((ERR_isError(size)) != 0)
+                nuint size = ZSTD_compress_usingCDict(cctx, dst, dstCapacity, samples + offsets[i], samplesSizes[i], cdict);
+                if (ERR_isError(size))
                 {
                     totalCompressedSize = size;
                     goto _compressCleanup;
@@ -122,7 +109,7 @@ namespace ZstdSharp.Unsafe
                 totalCompressedSize += size;
             }
 
-            _compressCleanup:
+        _compressCleanup:
             ZSTD_freeCCtx(cctx);
             ZSTD_freeCDict(cdict);
             if (dst != null)
@@ -139,17 +126,12 @@ namespace ZstdSharp.Unsafe
         public static void COVER_best_init(COVER_best_s* best)
         {
             if (best == null)
-            {
                 return;
-            }
-
-
-
             best->liveJobs = 0;
             best->dict = null;
             best->dictSize = 0;
             best->compressedSize = unchecked((nuint)(-1));
-            memset((void*)&best->parameters, 0, (nuint)(sizeof(ZDICT_cover_params_t)));
+            memset(&best->parameters, 0, (uint)sizeof(ZDICT_cover_params_t));
         }
 
         /**
@@ -162,13 +144,9 @@ namespace ZstdSharp.Unsafe
                 return;
             }
 
-
             while (best->liveJobs != 0)
             {
-
             }
-
-
         }
 
         /**
@@ -186,9 +164,6 @@ namespace ZstdSharp.Unsafe
             {
                 free(best->dict);
             }
-
-
-
         }
 
         /**
@@ -202,9 +177,7 @@ namespace ZstdSharp.Unsafe
                 return;
             }
 
-
             ++best->liveJobs;
-
         }
 
         /**
@@ -214,20 +187,16 @@ namespace ZstdSharp.Unsafe
          */
         public static void COVER_best_finish(COVER_best_s* best, ZDICT_cover_params_t parameters, COVER_dictSelection selection)
         {
-            void* dict = (void*)selection.dictContent;
+            void* dict = selection.dictContent;
             nuint compressedSize = selection.totalCompressedSize;
             nuint dictSize = selection.dictSize;
-
             if (best == null)
             {
                 return;
             }
 
-
             {
                 nuint liveJobs;
-
-
                 --best->liveJobs;
                 liveJobs = best->liveJobs;
                 if (compressedSize < best->compressedSize)
@@ -242,45 +211,30 @@ namespace ZstdSharp.Unsafe
                         best->dict = malloc(dictSize);
                         if (best->dict == null)
                         {
-                            best->compressedSize = (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+                            best->compressedSize = unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
                             best->dictSize = 0;
-
-
                             return;
                         }
                     }
 
                     if (dict != null)
                     {
-                        memcpy(best->dict, dict, dictSize);
+                        memcpy(best->dict, dict, (uint)dictSize);
                         best->dictSize = dictSize;
                         best->parameters = parameters;
                         best->compressedSize = compressedSize;
                     }
                 }
-
-                if (liveJobs == 0)
-                {
-
-                }
-
-
             }
         }
 
         /**
-          * Error function for COVER_selectDict function. Returns a struct where
-          * return.totalCompressedSize is a ZSTD error.
-          */
+         * Error function for COVER_selectDict function. Returns a struct where
+         * return.totalCompressedSize is a ZSTD error.
+         */
         public static COVER_dictSelection COVER_dictSelectionError(nuint error)
         {
-            COVER_dictSelection selection = new COVER_dictSelection
-            {
-                dictContent = (byte*)null,
-                dictSize = 0,
-                totalCompressedSize = error,
-            };
-
+            COVER_dictSelection selection = new COVER_dictSelection { dictContent = null, dictSize = 0, totalCompressedSize = error };
             return selection;
         }
 
@@ -290,7 +244,7 @@ namespace ZstdSharp.Unsafe
          */
         public static uint COVER_dictSelectionIsError(COVER_dictSelection selection)
         {
-            return ((((ERR_isError(selection.totalCompressedSize)) != 0 || selection.dictContent == null)) ? 1U : 0U);
+            return ERR_isError(selection.totalCompressedSize) || selection.dictContent == null ? 1U : 0U;
         }
 
         /**
@@ -299,7 +253,7 @@ namespace ZstdSharp.Unsafe
          */
         public static void COVER_dictSelectionFree(COVER_dictSelection selection)
         {
-            free((void*)selection.dictContent);
+            free(selection.dictContent);
         }
 
         /**
@@ -313,44 +267,37 @@ namespace ZstdSharp.Unsafe
             nuint largestDict = 0;
             nuint largestCompressed = 0;
             byte* customDictContentEnd = customDictContent + dictContentSize;
-            byte* largestDictbuffer = (byte*)(malloc(dictBufferCapacity));
-            byte* candidateDictBuffer = (byte*)(malloc(dictBufferCapacity));
-            double regressionTolerance = ((double)(@params.shrinkDictMaxRegression) / 100.0) + 1.00;
-
+            byte* largestDictbuffer = (byte*)malloc(dictBufferCapacity);
+            byte* candidateDictBuffer = (byte*)malloc(dictBufferCapacity);
+            double regressionTolerance = (double)@params.shrinkDictMaxRegression / 100 + 1;
             if (largestDictbuffer == null || candidateDictBuffer == null)
             {
-                free((void*)largestDictbuffer);
-                free((void*)candidateDictBuffer);
+                free(largestDictbuffer);
+                free(candidateDictBuffer);
                 return COVER_dictSelectionError(dictContentSize);
             }
 
-            memcpy((void*)largestDictbuffer, (void*)customDictContent, dictContentSize);
-            dictContentSize = ZDICT_finalizeDictionary((void*)largestDictbuffer, dictBufferCapacity, (void*)customDictContent, dictContentSize, (void*)samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
-            if ((ZDICT_isError(dictContentSize)) != 0)
+            memcpy(largestDictbuffer, customDictContent, (uint)dictContentSize);
+            dictContentSize = ZDICT_finalizeDictionary(largestDictbuffer, dictBufferCapacity, customDictContent, dictContentSize, samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
+            if (ZDICT_isError(dictContentSize) != 0)
             {
-                free((void*)largestDictbuffer);
-                free((void*)candidateDictBuffer);
+                free(largestDictbuffer);
+                free(candidateDictBuffer);
                 return COVER_dictSelectionError(dictContentSize);
             }
 
             totalCompressedSize = COVER_checkTotalCompressedSize(@params, samplesSizes, samplesBuffer, offsets, nbCheckSamples, nbSamples, largestDictbuffer, dictContentSize);
-            if ((ERR_isError(totalCompressedSize)) != 0)
+            if (ERR_isError(totalCompressedSize))
             {
-                free((void*)largestDictbuffer);
-                free((void*)candidateDictBuffer);
+                free(largestDictbuffer);
+                free(candidateDictBuffer);
                 return COVER_dictSelectionError(totalCompressedSize);
             }
 
             if (@params.shrinkDict == 0)
             {
-                COVER_dictSelection selection = new COVER_dictSelection
-                {
-                    dictContent = largestDictbuffer,
-                    dictSize = dictContentSize,
-                    totalCompressedSize = totalCompressedSize,
-                };
-
-                free((void*)candidateDictBuffer);
+                COVER_dictSelection selection = new COVER_dictSelection { dictContent = largestDictbuffer, dictSize = dictContentSize, totalCompressedSize = totalCompressedSize };
+                free(candidateDictBuffer);
                 return selection;
             }
 
@@ -359,33 +306,27 @@ namespace ZstdSharp.Unsafe
             dictContentSize = 256;
             while (dictContentSize < largestDict)
             {
-                memcpy((void*)candidateDictBuffer, (void*)largestDictbuffer, largestDict);
-                dictContentSize = ZDICT_finalizeDictionary((void*)candidateDictBuffer, dictBufferCapacity, (void*)(customDictContentEnd - dictContentSize), dictContentSize, (void*)samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
-                if ((ZDICT_isError(dictContentSize)) != 0)
+                memcpy(candidateDictBuffer, largestDictbuffer, (uint)largestDict);
+                dictContentSize = ZDICT_finalizeDictionary(candidateDictBuffer, dictBufferCapacity, customDictContentEnd - dictContentSize, dictContentSize, samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
+                if (ZDICT_isError(dictContentSize) != 0)
                 {
-                    free((void*)largestDictbuffer);
-                    free((void*)candidateDictBuffer);
+                    free(largestDictbuffer);
+                    free(candidateDictBuffer);
                     return COVER_dictSelectionError(dictContentSize);
                 }
 
                 totalCompressedSize = COVER_checkTotalCompressedSize(@params, samplesSizes, samplesBuffer, offsets, nbCheckSamples, nbSamples, candidateDictBuffer, dictContentSize);
-                if ((ERR_isError(totalCompressedSize)) != 0)
+                if (ERR_isError(totalCompressedSize))
                 {
-                    free((void*)largestDictbuffer);
-                    free((void*)candidateDictBuffer);
+                    free(largestDictbuffer);
+                    free(candidateDictBuffer);
                     return COVER_dictSelectionError(totalCompressedSize);
                 }
 
                 if (totalCompressedSize <= largestCompressed * regressionTolerance)
                 {
-                    COVER_dictSelection selection = new COVER_dictSelection
-                    {
-                        dictContent = candidateDictBuffer,
-                        dictSize = dictContentSize,
-                        totalCompressedSize = totalCompressedSize,
-                    };
-
-                    free((void*)largestDictbuffer);
+                    COVER_dictSelection selection = new COVER_dictSelection { dictContent = candidateDictBuffer, dictSize = dictContentSize, totalCompressedSize = totalCompressedSize };
+                    free(largestDictbuffer);
                     return selection;
                 }
 
@@ -394,16 +335,9 @@ namespace ZstdSharp.Unsafe
 
             dictContentSize = largestDict;
             totalCompressedSize = largestCompressed;
-
             {
-                COVER_dictSelection selection = new COVER_dictSelection
-                {
-                    dictContent = largestDictbuffer,
-                    dictSize = dictContentSize,
-                    totalCompressedSize = totalCompressedSize,
-                };
-
-                free((void*)candidateDictBuffer);
+                COVER_dictSelection selection = new COVER_dictSelection { dictContent = largestDictbuffer, dictSize = dictContentSize, totalCompressedSize = totalCompressedSize };
+                free(candidateDictBuffer);
                 return selection;
             }
         }

@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
+using InlineIL;
 using static InlineIL.IL.Emit;
 // ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo
@@ -16,7 +15,7 @@ namespace ZstdSharp
     {
         public static void* PoisonMemory(void* destination, ulong size)
         {
-            memset(destination, 0xCC, size);
+            memset(destination, 0xCC, (uint) size);
             return destination;
         }
 
@@ -44,95 +43,35 @@ namespace ZstdSharp
         public static void* calloc(ulong num, ulong size)
         {
             var total = num * size;
+            assert(total <= uint.MaxValue);
             var destination = (void*) Marshal.AllocHGlobal((nint) total);
-            memset(destination, 0, total);
+            memset(destination, 0, (uint) total);
             return destination;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
+        public static void memcpy(void* destination, void* source, uint size)
+            => System.Runtime.CompilerServices.Unsafe.CopyBlockUnaligned(destination, source, size);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
+        public static void memset(void* memPtr, byte val, uint size)
+            => System.Runtime.CompilerServices.Unsafe.InitBlockUnaligned(memPtr, val, size);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void free(void* ptr)
         {
-            Marshal.FreeHGlobal((IntPtr)ptr);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void* memcpy(void* destination, void* source, ulong size)
-        {
-            Ldarg(nameof(destination));
-            Ldarg(nameof(source));
-            Ldarg(nameof(size));
-            Unaligned(1);
-            Cpblk();
-            return destination;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void* memcpy(void* destination, void* source, uint size)
-        {
-            Ldarg(nameof(destination));
-            Ldarg(nameof(source));
-            Ldarg(nameof(size));
-            Unaligned(1);
-            Cpblk();
-            return destination;
-        }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void* memcpy(void* destination, void* source, int size)
-        {
-            Ldarg(nameof(destination));
-            Ldarg(nameof(source));
-            Ldarg(nameof(size));
-            Unaligned(1);
-            Cpblk();
-            return destination;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void memset(void* memPtr, int val, uint size)
-        {
-            Ldarg(nameof(memPtr));
-            Ldarg(nameof(val));
-            Ldarg(nameof(size));
-            Unaligned(1);
-            Initblk();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void memset(void* memPtr, int val, int size)
-        {
-            Ldarg(nameof(memPtr));
-            Ldarg(nameof(val));
-            Ldarg(nameof(size));
-            Unaligned(1);
-            Initblk();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void memset(void* memPtr, int val, ulong size)
-        {
-            //Unsafe.InitBlockUnaligned(memPtr, (byte)val, (uint)size);
-            Ldarg(nameof(memPtr));
-            Ldarg(nameof(val));
-            Ldarg(nameof(size));
-            Unaligned(1);
-            Initblk();
+            Marshal.FreeHGlobal((IntPtr) ptr);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* GetArrayPointer<T>(T[] array) where T : unmanaged
         {
-            var size = (uint)(sizeof(T) * array.Length);
-            var destination = (T*)malloc(size);
+            var size = (uint) (sizeof(T) * array.Length);
+            var destination = (T*) malloc(size);
             fixed (void* source = &array[0])
-                memcpy(destination, source, size);
+                System.Runtime.CompilerServices.Unsafe.CopyBlockUnaligned(destination, source, size);
 
             return destination;
         }
@@ -147,15 +86,7 @@ namespace ZstdSharp
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void memmove(void* destination, void* source, ulong size)
-        {
-            Buffer.MemoryCopy(source, destination, size, size);
-        }
-
-#if NET
-        public static bool IsBmi2Supported => System.Runtime.Intrinsics.X86.Bmi2.IsSupported;
-#else
-        public static bool IsBmi2Supported => false;
-#endif
+            => Buffer.MemoryCopy(source, destination, size, size);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
@@ -184,8 +115,8 @@ namespace ZstdSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int memcmp(void* buf1, void* buf2, ulong size)
         {
-            var p1 = (byte*)buf1;
-            var p2 = (byte*)buf2;
+            var p1 = (byte*) buf1;
+            var p2 = (byte*) buf2;
 
             while (size > 0)
             {
@@ -194,8 +125,10 @@ namespace ZstdSharp
                 {
                     return diff;
                 }
+
                 size--;
             }
+
             return 0;
         }
 
@@ -203,8 +136,26 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         public static void SkipInit<T>(out T value)
         {
+            /* 
+             * Can be rewritten with
+             * System.Runtime.CompilerServices.Unsafe.SkipInit(out value);
+             * in .NET 5+
+             */
             Ret();
-            throw InlineIL.IL.Unreachable();
+            throw IL.Unreachable();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
+        public static TTo* RefToPointer<TFrom, TTo>(in TFrom t) where TTo : unmanaged
+        {
+            /*
+             * Can be rewritten with
+             * (TTo*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref System.Runtime.CompilerServices.Unsafe.AsRef(t));
+             * but unfortunately reduces inlining
+             */
+            Ldarg_0();
+            return IL.ReturnPointer<TTo>();
         }
     }
 }

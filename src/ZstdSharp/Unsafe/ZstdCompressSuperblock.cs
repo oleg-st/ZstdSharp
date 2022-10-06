@@ -1,4 +1,3 @@
-using System;
 using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
@@ -27,89 +26,80 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_compressSubBlock_literal(nuint* hufTable, ZSTD_hufCTablesMetadata_t* hufMetadata, byte* literals, nuint litSize, void* dst, nuint dstSize, int bmi2, int writeEntropy, int* entropyWritten)
         {
             nuint header = (nuint)(writeEntropy != 0 ? 200 : 0);
-            nuint lhSize = (nuint)(3 + ((litSize >= ((uint)(1 * (1 << 10)) - header)) ? 1 : 0) + ((litSize >= ((uint)(16 * (1 << 10)) - header)) ? 1 : 0));
-            byte* ostart = (byte*)(dst);
+            nuint lhSize = (nuint)(3 + (litSize >= 1 * (1 << 10) - header ? 1 : 0) + (litSize >= 16 * (1 << 10) - header ? 1 : 0));
+            byte* ostart = (byte*)dst;
             byte* oend = ostart + dstSize;
             byte* op = ostart + lhSize;
-            uint singleStream = ((lhSize == 3) ? 1U : 0U);
+            uint singleStream = lhSize == 3 ? 1U : 0U;
             symbolEncodingType_e hType = writeEntropy != 0 ? hufMetadata->hType : symbolEncodingType_e.set_repeat;
             nuint cLitSize = 0;
-
             *entropyWritten = 0;
             if (litSize == 0 || hufMetadata->hType == symbolEncodingType_e.set_basic)
             {
-                return ZSTD_noCompressLiterals(dst, dstSize, (void*)literals, litSize);
+                return ZSTD_noCompressLiterals(dst, dstSize, literals, litSize);
             }
             else if (hufMetadata->hType == symbolEncodingType_e.set_rle)
             {
-                return ZSTD_compressRleLiteralsBlock(dst, dstSize, (void*)literals, litSize);
+                return ZSTD_compressRleLiteralsBlock(dst, dstSize, literals, litSize);
             }
 
             assert(litSize > 0);
             assert(hufMetadata->hType == symbolEncodingType_e.set_compressed || hufMetadata->hType == symbolEncodingType_e.set_repeat);
             if (writeEntropy != 0 && hufMetadata->hType == symbolEncodingType_e.set_compressed)
             {
-                memcpy((void*)(op), (void*)(hufMetadata->hufDesBuffer), (hufMetadata->hufDesSize));
+                memcpy(op, hufMetadata->hufDesBuffer, (uint)hufMetadata->hufDesSize);
                 op += hufMetadata->hufDesSize;
                 cLitSize += hufMetadata->hufDesSize;
             }
 
-
             {
-                nuint cSize = singleStream != 0 ? HUF_compress1X_usingCTable((void*)op, (nuint)(oend - op), (void*)literals, litSize, hufTable) : HUF_compress4X_usingCTable((void*)op, (nuint)(oend - op), (void*)literals, litSize, hufTable);
-
+                nuint cSize = singleStream != 0 ? HUF_compress1X_usingCTable(op, (nuint)(oend - op), literals, litSize, hufTable) : HUF_compress4X_usingCTable(op, (nuint)(oend - op), literals, litSize, hufTable);
                 op += cSize;
                 cLitSize += cSize;
-                if (cSize == 0 || (ERR_isError(cSize)) != 0)
+                if (cSize == 0 || ERR_isError(cSize))
                 {
                     return 0;
                 }
 
                 if (writeEntropy == 0 && cLitSize >= litSize)
                 {
-                    return ZSTD_noCompressLiterals(dst, dstSize, (void*)literals, litSize);
+                    return ZSTD_noCompressLiterals(dst, dstSize, literals, litSize);
                 }
 
-                if (lhSize < (nuint)(3 + ((cLitSize >= (uint)(1 * (1 << 10))) ? 1 : 0) + ((cLitSize >= (uint)(16 * (1 << 10))) ? 1 : 0)))
+                if (lhSize < (nuint)(3 + (cLitSize >= 1 * (1 << 10) ? 1 : 0) + (cLitSize >= 16 * (1 << 10) ? 1 : 0)))
                 {
                     assert(cLitSize > litSize);
-                    return ZSTD_noCompressLiterals(dst, dstSize, (void*)literals, litSize);
+                    return ZSTD_noCompressLiterals(dst, dstSize, literals, litSize);
                 }
-
             }
 
             switch (lhSize)
             {
                 case 3:
-                {
-                    uint lhc = (uint)(hType + ((singleStream == 0 ? 1 : 0) << 2)) + ((uint)(litSize) << 4) + ((uint)(cLitSize) << 14);
-
-                    MEM_writeLE24((void*)ostart, lhc);
-                    break;
-                }
+                    {
+                        uint lhc = (uint)(hType + ((singleStream == 0 ? 1 : 0) << 2)) + ((uint)litSize << 4) + ((uint)cLitSize << 14);
+                        MEM_writeLE24(ostart, lhc);
+                        break;
+                    }
 
                 case 4:
-                {
-                    uint lhc = (uint)(hType + (2 << 2)) + ((uint)(litSize) << 4) + ((uint)(cLitSize) << 18);
-
-                    MEM_writeLE32((void*)ostart, lhc);
-                    break;
-                }
+                    {
+                        uint lhc = (uint)(hType + (2 << 2)) + ((uint)litSize << 4) + ((uint)cLitSize << 18);
+                        MEM_writeLE32(ostart, lhc);
+                        break;
+                    }
 
                 case 5:
-                {
-                    uint lhc = (uint)(hType + (3 << 2)) + ((uint)(litSize) << 4) + ((uint)(cLitSize) << 22);
-
-                    MEM_writeLE32((void*)ostart, lhc);
-                    ostart[4] = (byte)(cLitSize >> 10);
-                    break;
-                }
+                    {
+                        uint lhc = (uint)(hType + (3 << 2)) + ((uint)litSize << 4) + ((uint)cLitSize << 22);
+                        MEM_writeLE32(ostart, lhc);
+                        ostart[4] = (byte)(cLitSize >> 10);
+                        break;
+                    }
 
                 default:
-                {
                     assert(0 != 0);
-                }
-                break;
+                    break;
             }
 
             *entropyWritten = 1;
@@ -123,11 +113,9 @@ namespace ZstdSharp.Unsafe
             seqDef_s* sp = sstart;
             nuint matchLengthSum = 0;
             nuint litLengthSum = 0;
-
             while (send - sp > 0)
             {
                 ZSTD_sequenceLength seqLen = ZSTD_getSequenceLength(seqStore, sp);
-
                 litLengthSum += seqLen.litLength;
                 matchLengthSum += seqLen.matchLength;
                 sp++;
@@ -154,29 +142,30 @@ namespace ZstdSharp.Unsafe
          *            Or error code. */
         private static nuint ZSTD_compressSubBlock_sequences(ZSTD_fseCTables_t* fseTables, ZSTD_fseCTablesMetadata_t* fseMetadata, seqDef_s* sequences, nuint nbSeq, byte* llCode, byte* mlCode, byte* ofCode, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, int bmi2, int writeEntropy, int* entropyWritten)
         {
-            int longOffsets = ((cctxParams->cParams.windowLog > ((uint)(MEM_32bits ? 25 : 57))) ? 1 : 0);
-            byte* ostart = (byte*)(dst);
+            int longOffsets = cctxParams->cParams.windowLog > (uint)(MEM_32bits ? 25 : 57) ? 1 : 0;
+            byte* ostart = (byte*)dst;
             byte* oend = ostart + dstCapacity;
             byte* op = ostart;
             byte* seqHead;
-
             *entropyWritten = 0;
-            if ((oend - op) < 3 + 1)
+            if (oend - op < 3 + 1)
             {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall)));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
             if (nbSeq < 0x7F)
-            {
-                *op++ = (byte)(nbSeq);
-            }
+                *op++ = (byte)nbSeq;
             else if (nbSeq < 0x7F00)
             {
-                op[0] = (byte)((nbSeq >> 8) + 0x80); op[1] = (byte)(nbSeq); op += 2;
+                op[0] = (byte)((nbSeq >> 8) + 0x80);
+                op[1] = (byte)nbSeq;
+                op += 2;
             }
             else
             {
-                op[0] = 0xFF; MEM_writeLE16((void*)(op + 1), (ushort)(nbSeq - 0x7F00)); op += 3;
+                op[0] = 0xFF;
+                MEM_writeLE16(op + 1, (ushort)(nbSeq - 0x7F00));
+                op += 3;
             }
 
             if (nbSeq == 0)
@@ -190,27 +179,21 @@ namespace ZstdSharp.Unsafe
                 uint LLtype = (uint)fseMetadata->llType;
                 uint Offtype = (uint)fseMetadata->ofType;
                 uint MLtype = (uint)fseMetadata->mlType;
-
                 *seqHead = (byte)((LLtype << 6) + (Offtype << 4) + (MLtype << 2));
-                memcpy((void*)(op), (void*)(fseMetadata->fseTablesBuffer), (fseMetadata->fseTablesSize));
+                memcpy(op, fseMetadata->fseTablesBuffer, (uint)fseMetadata->fseTablesSize);
                 op += fseMetadata->fseTablesSize;
             }
             else
             {
                 uint repeat = (uint)symbolEncodingType_e.set_repeat;
-
                 *seqHead = (byte)((repeat << 6) + (repeat << 4) + (repeat << 2));
             }
 
-
             {
-                nuint bitstreamSize = ZSTD_encodeSequences((void*)op, (nuint)(oend - op), (uint*)fseTables->matchlengthCTable, mlCode, (uint*)fseTables->offcodeCTable, ofCode, (uint*)fseTables->litlengthCTable, llCode, sequences, nbSeq, longOffsets, bmi2);
-
-
+                nuint bitstreamSize = ZSTD_encodeSequences(op, (nuint)(oend - op), fseTables->matchlengthCTable, mlCode, fseTables->offcodeCTable, ofCode, fseTables->litlengthCTable, llCode, sequences, nbSeq, longOffsets, bmi2);
                 {
-                    nuint err_code = (bitstreamSize);
-
-                    if ((ERR_isError(err_code)) != 0)
+                    nuint err_code = bitstreamSize;
+                    if (ERR_isError(err_code))
                     {
                         return err_code;
                     }
@@ -222,7 +205,6 @@ namespace ZstdSharp.Unsafe
                     assert(fseMetadata->lastCountSize + bitstreamSize == 3);
                     return 0;
                 }
-
             }
 
             if (op - seqHead < 4)
@@ -240,60 +222,43 @@ namespace ZstdSharp.Unsafe
          *            Or 0 if it failed to compress. */
         private static nuint ZSTD_compressSubBlock(ZSTD_entropyCTables_t* entropy, ZSTD_entropyCTablesMetadata_t* entropyMetadata, seqDef_s* sequences, nuint nbSeq, byte* literals, nuint litSize, byte* llCode, byte* mlCode, byte* ofCode, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, int bmi2, int writeLitEntropy, int writeSeqEntropy, int* litEntropyWritten, int* seqEntropyWritten, uint lastBlock)
         {
-            byte* ostart = (byte*)(dst);
+            byte* ostart = (byte*)dst;
             byte* oend = ostart + dstCapacity;
             byte* op = ostart + ZSTD_blockHeaderSize;
-
-
             {
-                nuint cLitSize = ZSTD_compressSubBlock_literal((nuint*)(entropy->huf.CTable), &entropyMetadata->hufMetadata, literals, litSize, (void*)op, (nuint)(oend - op), bmi2, writeLitEntropy, litEntropyWritten);
-
-
+                nuint cLitSize = ZSTD_compressSubBlock_literal((nuint*)entropy->huf.CTable, &entropyMetadata->hufMetadata, literals, litSize, op, (nuint)(oend - op), bmi2, writeLitEntropy, litEntropyWritten);
                 {
-                    nuint err_code = (cLitSize);
-
-                    if ((ERR_isError(err_code)) != 0)
+                    nuint err_code = cLitSize;
+                    if (ERR_isError(err_code))
                     {
                         return err_code;
                     }
                 }
 
                 if (cLitSize == 0)
-                {
                     return 0;
-                }
-
                 op += cLitSize;
             }
 
-
             {
-                nuint cSeqSize = ZSTD_compressSubBlock_sequences(&entropy->fse, &entropyMetadata->fseMetadata, sequences, nbSeq, llCode, mlCode, ofCode, cctxParams, (void*)op, (nuint)(oend - op), bmi2, writeSeqEntropy, seqEntropyWritten);
-
-
+                nuint cSeqSize = ZSTD_compressSubBlock_sequences(&entropy->fse, &entropyMetadata->fseMetadata, sequences, nbSeq, llCode, mlCode, ofCode, cctxParams, op, (nuint)(oend - op), bmi2, writeSeqEntropy, seqEntropyWritten);
                 {
-                    nuint err_code = (cSeqSize);
-
-                    if ((ERR_isError(err_code)) != 0)
+                    nuint err_code = cSeqSize;
+                    if (ERR_isError(err_code))
                     {
                         return err_code;
                     }
                 }
 
                 if (cSeqSize == 0)
-                {
                     return 0;
-                }
-
                 op += cSeqSize;
             }
 
-
             {
-                nuint cSize = (nuint)((ulong)((op - ostart)) - ZSTD_blockHeaderSize);
-                uint cBlockHeader24 = lastBlock + (((uint)(blockType_e.bt_compressed)) << 1) + (uint)(cSize << 3);
-
-                MEM_writeLE24((void*)ostart, cBlockHeader24);
+                nuint cSize = (nuint)((ulong)(op - ostart) - ZSTD_blockHeaderSize);
+                uint cBlockHeader24 = lastBlock + ((uint)blockType_e.bt_compressed << 1) + (uint)(cSize << 3);
+                MEM_writeLE24(ostart, cBlockHeader24);
             }
 
             return (nuint)(op - ostart);
@@ -301,36 +266,23 @@ namespace ZstdSharp.Unsafe
 
         private static nuint ZSTD_estimateSubBlockSize_literal(byte* literals, nuint litSize, ZSTD_hufCTables_t* huf, ZSTD_hufCTablesMetadata_t* hufMetadata, void* workspace, nuint wkspSize, int writeEntropy)
         {
-            uint* countWksp = (uint*)(workspace);
+            uint* countWksp = (uint*)workspace;
             uint maxSymbolValue = 255;
+            /* Use hard coded size of 3 bytes */
             nuint literalSectionHeaderSize = 3;
-
             if (hufMetadata->hType == symbolEncodingType_e.set_basic)
-            {
                 return litSize;
-            }
             else if (hufMetadata->hType == symbolEncodingType_e.set_rle)
-            {
                 return 1;
-            }
             else if (hufMetadata->hType == symbolEncodingType_e.set_compressed || hufMetadata->hType == symbolEncodingType_e.set_repeat)
             {
-                nuint largest = HIST_count_wksp(countWksp, &maxSymbolValue, (void*)(byte*)(literals), litSize, workspace, wkspSize);
-
-                if ((ERR_isError(largest)) != 0)
-                {
+                nuint largest = HIST_count_wksp(countWksp, &maxSymbolValue, literals, litSize, workspace, wkspSize);
+                if (ERR_isError(largest))
                     return litSize;
-                }
-
-
                 {
-                    nuint cLitSizeEstimate = HUF_estimateCompressedSize((nuint*)(huf->CTable), countWksp, maxSymbolValue);
-
+                    nuint cLitSizeEstimate = HUF_estimateCompressedSize((nuint*)huf->CTable, countWksp, maxSymbolValue);
                     if (writeEntropy != 0)
-                    {
                         cLitSizeEstimate += hufMetadata->hufDesSize;
-                    }
-
                     return cLitSizeEstimate + literalSectionHeaderSize;
                 }
             }
@@ -341,18 +293,17 @@ namespace ZstdSharp.Unsafe
 
         private static nuint ZSTD_estimateSubBlockSize_symbolType(symbolEncodingType_e type, byte* codeTable, uint maxCode, nuint nbSeq, uint* fseCTable, byte* additionalBits, short* defaultNorm, uint defaultNormLog, uint defaultMax, void* workspace, nuint wkspSize)
         {
-            uint* countWksp = (uint*)(workspace);
+            uint* countWksp = (uint*)workspace;
             byte* ctp = codeTable;
             byte* ctStart = ctp;
             byte* ctEnd = ctStart + nbSeq;
             nuint cSymbolTypeSizeEstimateInBits = 0;
             uint max = maxCode;
-
-            HIST_countFast_wksp(countWksp, &max, (void*)codeTable, nbSeq, workspace, wkspSize);
+            HIST_countFast_wksp(countWksp, &max, codeTable, nbSeq, workspace, wkspSize);
             if (type == symbolEncodingType_e.set_basic)
             {
                 assert(max <= defaultMax);
-                cSymbolTypeSizeEstimateInBits = max <= defaultMax ? ZSTD_crossEntropyCost(defaultNorm, defaultNormLog, countWksp, max) : (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
+                cSymbolTypeSizeEstimateInBits = max <= defaultMax ? ZSTD_crossEntropyCost(defaultNorm, defaultNormLog, countWksp, max) : unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
             }
             else if (type == symbolEncodingType_e.set_rle)
             {
@@ -363,22 +314,14 @@ namespace ZstdSharp.Unsafe
                 cSymbolTypeSizeEstimateInBits = ZSTD_fseBitCost(fseCTable, countWksp, max);
             }
 
-            if ((ERR_isError(cSymbolTypeSizeEstimateInBits)) != 0)
-            {
+            if (ERR_isError(cSymbolTypeSizeEstimateInBits))
                 return nbSeq * 10;
-            }
-
             while (ctp < ctEnd)
             {
                 if (additionalBits != null)
-                {
                     cSymbolTypeSizeEstimateInBits += additionalBits[*ctp];
-                }
                 else
-                {
                     cSymbolTypeSizeEstimateInBits += *ctp;
-                }
-
                 ctp++;
             }
 
@@ -387,29 +330,22 @@ namespace ZstdSharp.Unsafe
 
         private static nuint ZSTD_estimateSubBlockSize_sequences(byte* ofCodeTable, byte* llCodeTable, byte* mlCodeTable, nuint nbSeq, ZSTD_fseCTables_t* fseTables, ZSTD_fseCTablesMetadata_t* fseMetadata, void* workspace, nuint wkspSize, int writeEntropy)
         {
-            nuint sequencesSectionHeaderSize = 3;
+            /* Use hard coded size of 3 bytes */
+            const nuint sequencesSectionHeaderSize = 3;
             nuint cSeqSizeEstimate = 0;
-
             if (nbSeq == 0)
-            {
                 return sequencesSectionHeaderSize;
-            }
-
-            cSeqSizeEstimate += ZSTD_estimateSubBlockSize_symbolType(fseMetadata->ofType, ofCodeTable, 31, nbSeq, (uint*)fseTables->offcodeCTable, (byte*)null, (short*)OF_defaultNorm, OF_defaultNormLog, 28, workspace, wkspSize);
-            cSeqSizeEstimate += ZSTD_estimateSubBlockSize_symbolType(fseMetadata->llType, llCodeTable, 35, nbSeq, (uint*)fseTables->litlengthCTable, (byte*)LL_bits, (short*)LL_defaultNorm, LL_defaultNormLog, 35, workspace, wkspSize);
-            cSeqSizeEstimate += ZSTD_estimateSubBlockSize_symbolType(fseMetadata->mlType, mlCodeTable, 52, nbSeq, (uint*)fseTables->matchlengthCTable, (byte*)ML_bits, (short*)ML_defaultNorm, ML_defaultNormLog, 52, workspace, wkspSize);
+            cSeqSizeEstimate += ZSTD_estimateSubBlockSize_symbolType(fseMetadata->ofType, ofCodeTable, 31, nbSeq, fseTables->offcodeCTable, null, OF_defaultNorm, OF_defaultNormLog, 28, workspace, wkspSize);
+            cSeqSizeEstimate += ZSTD_estimateSubBlockSize_symbolType(fseMetadata->llType, llCodeTable, 35, nbSeq, fseTables->litlengthCTable, LL_bits, LL_defaultNorm, LL_defaultNormLog, 35, workspace, wkspSize);
+            cSeqSizeEstimate += ZSTD_estimateSubBlockSize_symbolType(fseMetadata->mlType, mlCodeTable, 52, nbSeq, fseTables->matchlengthCTable, ML_bits, ML_defaultNorm, ML_defaultNormLog, 52, workspace, wkspSize);
             if (writeEntropy != 0)
-            {
                 cSeqSizeEstimate += fseMetadata->fseTablesSize;
-            }
-
             return cSeqSizeEstimate + sequencesSectionHeaderSize;
         }
 
         private static nuint ZSTD_estimateSubBlockSize(byte* literals, nuint litSize, byte* ofCodeTable, byte* llCodeTable, byte* mlCodeTable, nuint nbSeq, ZSTD_entropyCTables_t* entropy, ZSTD_entropyCTablesMetadata_t* entropyMetadata, void* workspace, nuint wkspSize, int writeLitEntropy, int writeSeqEntropy)
         {
             nuint cSizeEstimate = 0;
-
             cSizeEstimate += ZSTD_estimateSubBlockSize_literal(literals, litSize, &entropy->huf, &entropyMetadata->hufMetadata, workspace, wkspSize, writeLitEntropy);
             cSizeEstimate += ZSTD_estimateSubBlockSize_sequences(ofCodeTable, llCodeTable, mlCodeTable, nbSeq, &entropy->fse, &entropyMetadata->fseMetadata, workspace, wkspSize, writeSeqEntropy);
             return cSizeEstimate + ZSTD_blockHeaderSize;
@@ -418,20 +354,11 @@ namespace ZstdSharp.Unsafe
         private static int ZSTD_needSequenceEntropyTables(ZSTD_fseCTablesMetadata_t* fseMetadata)
         {
             if (fseMetadata->llType == symbolEncodingType_e.set_compressed || fseMetadata->llType == symbolEncodingType_e.set_rle)
-            {
                 return 1;
-            }
-
             if (fseMetadata->mlType == symbolEncodingType_e.set_compressed || fseMetadata->mlType == symbolEncodingType_e.set_rle)
-            {
                 return 1;
-            }
-
             if (fseMetadata->ofType == symbolEncodingType_e.set_compressed || fseMetadata->ofType == symbolEncodingType_e.set_rle)
-            {
                 return 1;
-            }
-
             return 0;
         }
 
@@ -450,9 +377,9 @@ namespace ZstdSharp.Unsafe
             byte* lstart = seqStorePtr->litStart;
             byte* lend = seqStorePtr->lit;
             byte* lp = lstart;
-            byte* ip = (byte*)(src);
+            byte* ip = (byte*)src;
             byte* iend = ip + srcSize;
-            byte* ostart = (byte*)(dst);
+            byte* ostart = (byte*)dst;
             byte* oend = ostart + dstCapacity;
             byte* op = ostart;
             byte* llCodePtr = seqStorePtr->llCode;
@@ -460,16 +387,14 @@ namespace ZstdSharp.Unsafe
             byte* ofCodePtr = seqStorePtr->ofCode;
             nuint targetCBlockSize = cctxParams->targetCBlockSize;
             nuint litSize, seqCount;
-            int writeLitEntropy = ((entropyMetadata->hufMetadata.hType == symbolEncodingType_e.set_compressed) ? 1 : 0);
+            int writeLitEntropy = entropyMetadata->hufMetadata.hType == symbolEncodingType_e.set_compressed ? 1 : 0;
             int writeSeqEntropy = 1;
             int lastSequence = 0;
-
             litSize = 0;
             seqCount = 0;
             do
             {
                 nuint cBlockSizeEstimate = 0;
-
                 if (sstart == send)
                 {
                     lastSequence = 1;
@@ -477,8 +402,7 @@ namespace ZstdSharp.Unsafe
                 else
                 {
                     seqDef_s* sequence = sp + seqCount;
-
-                    lastSequence = ((sequence == send - 1) ? 1 : 0);
+                    lastSequence = sequence == send - 1 ? 1 : 0;
                     litSize += ZSTD_getSequenceLength(seqStorePtr, sequence).litLength;
                     seqCount++;
                 }
@@ -496,13 +420,10 @@ namespace ZstdSharp.Unsafe
                     int litEntropyWritten = 0;
                     int seqEntropyWritten = 0;
                     nuint decompressedSize = ZSTD_seqDecompressedSize(seqStorePtr, sp, seqCount, litSize, lastSequence);
-                    nuint cSize = ZSTD_compressSubBlock(&nextCBlock->entropy, entropyMetadata, sp, seqCount, lp, litSize, llCodePtr, mlCodePtr, ofCodePtr, cctxParams, (void*)op, (nuint)(oend - op), bmi2, writeLitEntropy, writeSeqEntropy, &litEntropyWritten, &seqEntropyWritten, ((lastBlock != 0 && lastSequence != 0) ? 1U : 0U));
-
-
+                    nuint cSize = ZSTD_compressSubBlock(&nextCBlock->entropy, entropyMetadata, sp, seqCount, lp, litSize, llCodePtr, mlCodePtr, ofCodePtr, cctxParams, op, (nuint)(oend - op), bmi2, writeLitEntropy, writeSeqEntropy, &litEntropyWritten, &seqEntropyWritten, lastBlock != 0 && lastSequence != 0 ? 1U : 0U);
                     {
-                        nuint err_code = (cSize);
-
-                        if ((ERR_isError(err_code)) != 0)
+                        nuint err_code = cSize;
+                        if (ERR_isError(err_code))
                         {
                             return err_code;
                         }
@@ -533,26 +454,22 @@ namespace ZstdSharp.Unsafe
                 }
             }
             while (lastSequence == 0);
-
             if (writeLitEntropy != 0)
             {
-                memcpy((void*)(&nextCBlock->entropy.huf), (void*)(&prevCBlock->entropy.huf), ((nuint)(sizeof(ZSTD_hufCTables_t))));
+                memcpy(&nextCBlock->entropy.huf, &prevCBlock->entropy.huf, (uint)sizeof(ZSTD_hufCTables_t));
             }
 
-            if (writeSeqEntropy != 0 && (ZSTD_needSequenceEntropyTables(&entropyMetadata->fseMetadata)) != 0)
+            if (writeSeqEntropy != 0 && ZSTD_needSequenceEntropyTables(&entropyMetadata->fseMetadata) != 0)
             {
                 return 0;
             }
 
             if (ip < iend)
             {
-                nuint cSize = ZSTD_noCompressBlock((void*)op, (nuint)(oend - op), (void*)ip, (nuint)(iend - ip), lastBlock);
-
-
+                nuint cSize = ZSTD_noCompressBlock(op, (nuint)(oend - op), ip, (nuint)(iend - ip), lastBlock);
                 {
-                    nuint err_code = (cSize);
-
-                    if ((ERR_isError(err_code)) != 0)
+                    nuint err_code = cSize;
+                    if (ERR_isError(err_code))
                     {
                         return err_code;
                     }
@@ -564,14 +481,13 @@ namespace ZstdSharp.Unsafe
                 {
                     seqDef_s* seq;
                     repcodes_s rep;
-
-                    memcpy((void*)(&rep), (void*)(prevCBlock->rep), ((nuint)(sizeof(repcodes_s))));
+                    memcpy(&rep, prevCBlock->rep, (uint)sizeof(repcodes_s));
                     for (seq = sstart; seq < sp; ++seq)
                     {
-                        ZSTD_updateRep(rep.rep, seq->offBase - 1, ((ZSTD_getSequenceLength(seqStorePtr, seq).litLength == 0) ? 1U : 0U));
+                        ZSTD_updateRep(rep.rep, seq->offBase - 1, ZSTD_getSequenceLength(seqStorePtr, seq).litLength == 0 ? 1U : 0U);
                     }
 
-                    memcpy((void*)(nextCBlock->rep), (void*)(&rep), ((nuint)(sizeof(repcodes_s))));
+                    memcpy(nextCBlock->rep, &rep, (uint)sizeof(repcodes_s));
                 }
             }
 
@@ -584,18 +500,15 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_compressSuperBlock(ZSTD_CCtx_s* zc, void* dst, nuint dstCapacity, void* src, nuint srcSize, uint lastBlock)
         {
             ZSTD_entropyCTablesMetadata_t entropyMetadata;
-
-
             {
-                nuint err_code = (ZSTD_buildBlockEntropyStats(&zc->seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, &entropyMetadata, (void*)zc->entropyWorkspace, ((uint)(((8 << 10) + 512)) + ((nuint)(4) * (uint)((((35) > (52) ? (35) : (52)) + 2))))));
-
-                if ((ERR_isError(err_code)) != 0)
+                nuint err_code = ZSTD_buildBlockEntropyStats(&zc->seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, &entropyMetadata, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2));
+                if (ERR_isError(err_code))
                 {
                     return err_code;
                 }
             }
 
-            return ZSTD_compressSubBlock_multi(&zc->seqStore, zc->blockState.prevCBlock, zc->blockState.nextCBlock, &entropyMetadata, &zc->appliedParams, dst, dstCapacity, src, srcSize, zc->bmi2, lastBlock, (void*)zc->entropyWorkspace, ((uint)(((8 << 10) + 512)) + ((nuint)(sizeof(uint)) * (uint)((((35) > (52) ? (35) : (52)) + 2)))));
+            return ZSTD_compressSubBlock_multi(&zc->seqStore, zc->blockState.prevCBlock, zc->blockState.nextCBlock, &entropyMetadata, &zc->appliedParams, dst, dstCapacity, src, srcSize, zc->bmi2, lastBlock, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2));
         }
     }
 }

@@ -1,5 +1,3 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     /**
@@ -8,10 +6,9 @@ namespace ZstdSharp.Unsafe
      *       similarly, before using `decompressedBound`, check for errors using:
      *          `decompressedBound != ZSTD_CONTENTSIZE_ERROR`
      */
-    public partial struct ZSTD_frameSizeInfo
+    public struct ZSTD_frameSizeInfo
     {
         public nuint compressedSize;
-
         public ulong decompressedBound;
     }
 }

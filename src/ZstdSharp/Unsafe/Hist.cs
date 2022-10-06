@@ -1,4 +1,3 @@
-using System;
 using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
@@ -8,7 +7,7 @@ namespace ZstdSharp.Unsafe
         /* --- Error management --- */
         public static uint HIST_isError(nuint code)
         {
-            return ERR_isError(code);
+            return ERR_isError(code) ? 1U : 0U;
         }
 
         /*-**************************************************************
@@ -16,12 +15,11 @@ namespace ZstdSharp.Unsafe
          ****************************************************************/
         public static uint HIST_count_simple(uint* count, uint* maxSymbolValuePtr, void* src, nuint srcSize)
         {
-            byte* ip = (byte*)(src);
+            byte* ip = (byte*)src;
             byte* end = ip + srcSize;
             uint maxSymbolValue = *maxSymbolValuePtr;
             uint largestCount = 0;
-
-            memset((void*)(count), (0), ((maxSymbolValue + 1) * (nuint)(sizeof(uint))));
+            memset(count, 0, (maxSymbolValue + 1) * sizeof(uint));
             if (srcSize == 0)
             {
                 *maxSymbolValuePtr = 0;
@@ -34,23 +32,14 @@ namespace ZstdSharp.Unsafe
                 count[*ip++]++;
             }
 
-            while ((count[maxSymbolValue]) == 0)
-            {
+            while (count[maxSymbolValue] == 0)
                 maxSymbolValue--;
-            }
-
             *maxSymbolValuePtr = maxSymbolValue;
-
             {
                 uint s;
-
                 for (s = 0; s <= maxSymbolValue; s++)
-                {
                     if (count[s] > largestCount)
-                    {
                         largestCount = count[s];
-                    }
-                }
             }
 
             return largestCount;
@@ -66,57 +55,53 @@ namespace ZstdSharp.Unsafe
          *           or an error code (notably when histogram's alphabet is larger than *maxSymbolValuePtr) */
         private static nuint HIST_count_parallel_wksp(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize, HIST_checkInput_e check, uint* workSpace)
         {
-            byte* ip = (byte*)(source);
+            byte* ip = (byte*)source;
             byte* iend = ip + sourceSize;
-            nuint countSize = (*maxSymbolValuePtr + 1) * (nuint)(4);
+            nuint countSize = (*maxSymbolValuePtr + 1) * sizeof(uint);
             uint max = 0;
             uint* Counting1 = workSpace;
             uint* Counting2 = Counting1 + 256;
             uint* Counting3 = Counting2 + 256;
             uint* Counting4 = Counting3 + 256;
-
             assert(*maxSymbolValuePtr <= 255);
             if (sourceSize == 0)
             {
-                memset((void*)(count), (0), (countSize));
+                memset(count, 0, (uint)countSize);
                 *maxSymbolValuePtr = 0;
                 return 0;
             }
 
-            memset((void*)(workSpace), (0), ((uint)(4 * 256) * (nuint)(sizeof(uint))));
-
+            memset(workSpace, 0, 4 * 256 * sizeof(uint));
             {
-                uint cached = MEM_read32((void*)ip);
-
+                uint cached = MEM_read32(ip);
                 ip += 4;
                 while (ip < iend - 15)
                 {
                     uint c = cached;
-
-                    cached = MEM_read32((void*)ip);
+                    cached = MEM_read32(ip);
                     ip += 4;
-                    Counting1[(byte)(c)]++;
+                    Counting1[(byte)c]++;
                     Counting2[(byte)(c >> 8)]++;
                     Counting3[(byte)(c >> 16)]++;
                     Counting4[c >> 24]++;
                     c = cached;
-                    cached = MEM_read32((void*)ip);
+                    cached = MEM_read32(ip);
                     ip += 4;
-                    Counting1[(byte)(c)]++;
+                    Counting1[(byte)c]++;
                     Counting2[(byte)(c >> 8)]++;
                     Counting3[(byte)(c >> 16)]++;
                     Counting4[c >> 24]++;
                     c = cached;
-                    cached = MEM_read32((void*)ip);
+                    cached = MEM_read32(ip);
                     ip += 4;
-                    Counting1[(byte)(c)]++;
+                    Counting1[(byte)c]++;
                     Counting2[(byte)(c >> 8)]++;
                     Counting3[(byte)(c >> 16)]++;
                     Counting4[c >> 24]++;
                     c = cached;
-                    cached = MEM_read32((void*)ip);
+                    cached = MEM_read32(ip);
                     ip += 4;
-                    Counting1[(byte)(c)]++;
+                    Counting1[(byte)c]++;
                     Counting2[(byte)(c >> 8)]++;
                     Counting3[(byte)(c >> 16)]++;
                     Counting4[c >> 24]++;
@@ -126,43 +111,28 @@ namespace ZstdSharp.Unsafe
             }
 
             while (ip < iend)
-            {
                 Counting1[*ip++]++;
-            }
-
-
             {
                 uint s;
-
                 for (s = 0; s < 256; s++)
                 {
                     Counting1[s] += Counting2[s] + Counting3[s] + Counting4[s];
                     if (Counting1[s] > max)
-                    {
                         max = Counting1[s];
-                    }
                 }
             }
-
 
             {
                 uint maxSymbolValue = 255;
-
-                while ((Counting1[maxSymbolValue]) == 0)
-                {
+                while (Counting1[maxSymbolValue] == 0)
                     maxSymbolValue--;
-                }
-
                 if (check != default && maxSymbolValue > *maxSymbolValuePtr)
-                {
-                    return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_maxSymbolValue_tooSmall)));
-                }
-
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_maxSymbolValue_tooSmall));
                 *maxSymbolValuePtr = maxSymbolValue;
-                memmove((void*)(count), (void*)(Counting1), (countSize));
+                memmove(count, Counting1, countSize);
             }
 
-            return (nuint)(max);
+            return max;
         }
 
         /* HIST_countFast_wksp() :
@@ -173,21 +143,12 @@ namespace ZstdSharp.Unsafe
         public static nuint HIST_countFast_wksp(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize, void* workSpace, nuint workSpaceSize)
         {
             if (sourceSize < 1500)
-            {
                 return HIST_count_simple(count, maxSymbolValuePtr, source, sourceSize);
-            }
-
-            if (((nuint)(workSpace) & 3) != 0)
-            {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
-            }
-
-            if (workSpaceSize < (1024 * (nuint)(sizeof(uint))))
-            {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_workSpace_tooSmall)));
-            }
-
-            return HIST_count_parallel_wksp(count, maxSymbolValuePtr, source, sourceSize, HIST_checkInput_e.trustInput, (uint*)(workSpace));
+            if (((nuint)workSpace & 3) != 0)
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
+            if (workSpaceSize < 1024 * sizeof(uint))
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_workSpace_tooSmall));
+            return HIST_count_parallel_wksp(count, maxSymbolValuePtr, source, sourceSize, HIST_checkInput_e.trustInput, (uint*)workSpace);
         }
 
         /* HIST_count_wksp() :
@@ -195,21 +156,12 @@ namespace ZstdSharp.Unsafe
          * `workSpace` size must be table of >= HIST_WKSP_SIZE_U32 unsigned */
         public static nuint HIST_count_wksp(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize, void* workSpace, nuint workSpaceSize)
         {
-            if (((nuint)(workSpace) & 3) != 0)
-            {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
-            }
-
-            if (workSpaceSize < (1024 * (nuint)(sizeof(uint))))
-            {
-                return (unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_workSpace_tooSmall)));
-            }
-
+            if (((nuint)workSpace & 3) != 0)
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
+            if (workSpaceSize < 1024 * sizeof(uint))
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_workSpace_tooSmall));
             if (*maxSymbolValuePtr < 255)
-            {
-                return HIST_count_parallel_wksp(count, maxSymbolValuePtr, source, sourceSize, HIST_checkInput_e.checkMaxSymbolValue, (uint*)(workSpace));
-            }
-
+                return HIST_count_parallel_wksp(count, maxSymbolValuePtr, source, sourceSize, HIST_checkInput_e.checkMaxSymbolValue, (uint*)workSpace);
             *maxSymbolValuePtr = 255;
             return HIST_countFast_wksp(count, maxSymbolValuePtr, source, sourceSize, workSpace, workSpaceSize);
         }
@@ -218,8 +170,7 @@ namespace ZstdSharp.Unsafe
         public static nuint HIST_countFast(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize)
         {
             uint* tmpCounters = stackalloc uint[1024];
-
-            return HIST_countFast_wksp(count, maxSymbolValuePtr, source, sourceSize, (void*)tmpCounters, (nuint)(sizeof(uint) * 1024));
+            return HIST_countFast_wksp(count, maxSymbolValuePtr, source, sourceSize, tmpCounters, sizeof(uint) * 1024);
         }
 
         /*! HIST_count():
@@ -233,8 +184,7 @@ namespace ZstdSharp.Unsafe
         public static nuint HIST_count(uint* count, uint* maxSymbolValuePtr, void* src, nuint srcSize)
         {
             uint* tmpCounters = stackalloc uint[1024];
-
-            return HIST_count_wksp(count, maxSymbolValuePtr, src, srcSize, (void*)tmpCounters, (nuint)(sizeof(uint) * 1024));
+            return HIST_count_wksp(count, maxSymbolValuePtr, src, srcSize, tmpCounters, sizeof(uint) * 1024);
         }
     }
 }

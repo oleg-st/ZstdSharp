@@ -1,7 +1,6 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
+    /* Compression strategies, listed from fastest to strongest */
     public enum ZSTD_strategy
     {
         ZSTD_fast = 1,
@@ -12,6 +11,6 @@ namespace ZstdSharp.Unsafe
         ZSTD_btlazy2 = 6,
         ZSTD_btopt = 7,
         ZSTD_btultra = 8,
-        ZSTD_btultra2 = 9,
+        ZSTD_btultra2 = 9
     }
 }

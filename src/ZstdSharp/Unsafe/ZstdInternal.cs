@@ -1,285 +1,41 @@
-using System;
-using System.Numerics;
-using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
+#if NETCOREAPP3_0_OR_GREATER
+using System.Runtime.Intrinsics.X86;
+#endif
+using System.Runtime.CompilerServices;
+using System.Numerics;
 
 namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static readonly uint* repStartValue = GetArrayPointer(new uint[3]
-        {
-            1,
-            4,
-            8,
-        });
-
-        public static readonly nuint* ZSTD_fcs_fieldSize = GetArrayPointer(new nuint[4]
-        {
-            0,
-            2,
-            4,
-            8,
-        });
-
-        public static readonly nuint* ZSTD_did_fieldSize = GetArrayPointer(new nuint[4]
-        {
-            0,
-            1,
-            2,
-            4,
-        });
-
+        public static readonly uint* repStartValue = GetArrayPointer(new uint[3] { 1, 4, 8 });
+        public static readonly nuint* ZSTD_fcs_fieldSize = GetArrayPointer(new nuint[4] { 0, 2, 4, 8 });
+        public static readonly nuint* ZSTD_did_fieldSize = GetArrayPointer(new nuint[4] { 0, 1, 2, 4 });
         public const nuint ZSTD_blockHeaderSize = 3;
-
-        public static readonly byte* LL_bits = GetArrayPointer(new byte[36]
-        {
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            1,
-            1,
-            2,
-            2,
-            3,
-            3,
-            4,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-        });
-
-        public static readonly short* LL_defaultNorm = GetArrayPointer(new short[36]
-        {
-            4,
-            3,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            1,
-            1,
-            1,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            3,
-            2,
-            1,
-            1,
-            1,
-            1,
-            1,
-            -1,
-            -1,
-            -1,
-            -1,
-        });
-
+        public static readonly byte* LL_bits = GetArrayPointer(new byte[36] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
+        public static readonly short* LL_defaultNorm = GetArrayPointer(new short[36] { 4, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 1, 1, 1, 1, 1, -1, -1, -1, -1 });
         public const uint LL_defaultNormLog = 6;
-
-        public static readonly byte* ML_bits = GetArrayPointer(new byte[53]
-        {
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            1,
-            1,
-            2,
-            2,
-            3,
-            3,
-            4,
-            4,
-            5,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-        });
-
-        public static readonly short* ML_defaultNorm = GetArrayPointer(new short[53]
-        {
-            1,
-            4,
-            3,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-        });
-
+        public static readonly byte* ML_bits = GetArrayPointer(new byte[53] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
+        public static readonly short* ML_defaultNorm = GetArrayPointer(new short[53] { 1, 4, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1 });
         public const uint ML_defaultNormLog = 6;
-
-        public static readonly short* OF_defaultNorm = GetArrayPointer(new short[29]
-        {
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            2,
-            2,
-            2,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            -1,
-            -1,
-            -1,
-            -1,
-            -1,
-        });
-
+        public static readonly short* OF_defaultNorm = GetArrayPointer(new short[29] { 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1 });
         public const uint OF_defaultNormLog = 5;
-
         /*-*******************************************
-        *  Shared functions to include for inlining
-        *********************************************/
+         *  Shared functions to include for inlining
+         *********************************************/
         private static void ZSTD_copy8(void* dst, void* src)
         {
-            memcpy((dst), (src), (8));
+            memcpy(dst, src, 8);
         }
 
         /* Need to use memmove here since the literal buffer can now be located within
-           the dst buffer. In circumstances where the op "catches up" to where the
-           literal buffer is, there can be partial overlaps in this call on the final
-           copy if the literal is being shifted by less than 16 bytes. */
+        the dst buffer. In circumstances where the op "catches up" to where the
+        literal buffer is, there can be partial overlaps in this call on the final
+        copy if the literal is being shifted by less than 16 bytes. */
         private static void ZSTD_copy16(void* dst, void* src)
         {
-            memcpy((dst), (src), (16));
+            memcpy(dst, src, 16);
         }
 
         /*! ZSTD_wildcopy() :
@@ -292,66 +48,53 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_wildcopy(void* dst, void* src, nint length, ZSTD_overlap_e ovtype)
         {
-            nint diff = (nint)((byte*)(dst) - (byte*)(src));
-            byte* ip = (byte*)(src);
-            byte* op = (byte*)(dst);
+            nint diff = (nint)((byte*)dst - (byte*)src);
+            byte* ip = (byte*)src;
+            byte* op = (byte*)dst;
             byte* oend = op + length;
-
             if (ovtype == ZSTD_overlap_e.ZSTD_overlap_src_before_dst && diff < 16)
             {
                 do
                 {
-
-                    {
-                        ZSTD_copy8((void*)op, (void*)ip);
-                        op += 8;
-                        ip += 8;
-                    }
+                    ZSTD_copy8(op, ip);
+                    op += 8;
+                    ip += 8;
                 }
                 while (op < oend);
-
             }
             else
             {
                 assert(diff >= 16 || diff <= -16);
-                ZSTD_copy16((void*)op, (void*)ip);
+                ZSTD_copy16(op, ip);
                 if (16 >= length)
-                {
                     return;
-                }
-
                 op += 16;
                 ip += 16;
                 do
                 {
-
                     {
-                        ZSTD_copy16((void*)op, (void*)ip);
+                        ZSTD_copy16(op, ip);
                         op += 16;
                         ip += 16;
                     }
 
-
                     {
-                        ZSTD_copy16((void*)op, (void*)ip);
+                        ZSTD_copy16(op, ip);
                         op += 16;
                         ip += 16;
                     }
-
                 }
                 while (op < oend);
-
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_limitCopy(void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
-            nuint length = ((dstCapacity) < (srcSize) ? (dstCapacity) : (srcSize));
-
+            nuint length = dstCapacity < srcSize ? dstCapacity : srcSize;
             if (length > 0)
             {
-                memcpy((dst), (src), (length));
+                memcpy(dst, src, (uint)length);
             }
 
             return length;
@@ -365,7 +108,6 @@ namespace ZstdSharp.Unsafe
         private static ZSTD_sequenceLength ZSTD_getSequenceLength(seqStore_t* seqStore, seqDef_s* seq)
         {
             ZSTD_sequenceLength seqLen;
-
             seqLen.litLength = seq->litLength;
             seqLen.matchLength = (uint)(seq->mlBase + 3);
             if (seqStore->longLengthPos == (uint)(seq - seqStore->sequencesStart))
@@ -389,10 +131,7 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_highbit32(uint val)
         {
             assert(val != 0);
-
-            {
-                return (uint)BitOperations.Log2(val);
-            }
+            return (uint)BitOperations.Log2(val);
         }
 
         /**

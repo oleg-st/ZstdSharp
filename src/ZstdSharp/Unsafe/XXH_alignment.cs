@@ -1,10 +1,14 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
+    /*!
+     * @internal
+     * @brief Enum to indicate whether a pointer is aligned.
+     */
     public enum XXH_alignment
     {
+        /*!< Aligned */
         XXH_aligned,
-        XXH_unaligned,
+        /*!< Possibly unaligned */
+        XXH_unaligned
     }
 }

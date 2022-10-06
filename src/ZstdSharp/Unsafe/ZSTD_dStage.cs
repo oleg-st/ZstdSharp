@@ -1,5 +1,3 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     public enum ZSTD_dStage
@@ -11,6 +9,6 @@ namespace ZstdSharp.Unsafe
         ZSTDds_decompressLastBlock,
         ZSTDds_checkChecksum,
         ZSTDds_decodeSkippableHeader,
-        ZSTDds_skipFrame,
+        ZSTDds_skipFrame
     }
 }

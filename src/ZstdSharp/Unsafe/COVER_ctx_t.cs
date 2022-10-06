@@ -3,7 +3,7 @@ namespace ZstdSharp.Unsafe
     /*-*************************************
      * Context
      ***************************************/
-    public unsafe struct FASTCOVER_ctx_t
+    public unsafe struct COVER_ctx_t
     {
         public byte* samples;
         public nuint* offsets;
@@ -11,10 +11,10 @@ namespace ZstdSharp.Unsafe
         public nuint nbSamples;
         public nuint nbTrainSamples;
         public nuint nbTestSamples;
-        public nuint nbDmers;
+        public uint* suffix;
+        public nuint suffixSize;
         public uint* freqs;
+        public uint* dmerAt;
         public uint d;
-        public uint f;
-        public FASTCOVER_accel_t accelParams;
     }
 }

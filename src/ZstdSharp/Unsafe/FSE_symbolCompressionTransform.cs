@@ -1,14 +1,11 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     /* *****************************************
-    *  Implementation of inlined functions
-    *******************************************/
-    public partial struct FSE_symbolCompressionTransform
+     *  Implementation of inlined functions
+     *******************************************/
+    public struct FSE_symbolCompressionTransform
     {
         public int deltaFindState;
-
         public uint deltaNbBits;
     }
 }

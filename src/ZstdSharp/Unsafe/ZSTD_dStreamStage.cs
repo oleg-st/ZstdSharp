@@ -1,5 +1,3 @@
-using System;
-
 namespace ZstdSharp.Unsafe
 {
     public enum ZSTD_dStreamStage
@@ -8,6 +6,6 @@ namespace ZstdSharp.Unsafe
         zdss_loadHeader,
         zdss_read,
         zdss_load,
-        zdss_flush,
+        zdss_flush
     }
 }
