@@ -7,9 +7,9 @@ namespace ZstdSharp.Unsafe
         /*-********************************************************
          *  Helper functions
          **********************************************************/
-        public static uint ZDICT_isError(nuint errorCode)
+        public static bool ZDICT_isError(nuint errorCode)
         {
-            return ERR_isError(errorCode) ? 1U : 0U;
+            return ERR_isError(errorCode);
         }
 
         public static string ZDICT_getErrorName(nuint errorCode)
@@ -385,7 +385,7 @@ namespace ZstdSharp.Unsafe
             hSize = 8;
             {
                 nuint eSize = ZDICT_analyzeEntropy(header + hSize, 256 - hSize, compressionLevel, samplesBuffer, samplesSizes, nbSamples, customDictContent, dictContentSize, notificationLevel);
-                if (ZDICT_isError(eSize) != 0)
+                if (ZDICT_isError(eSize))
                     return eSize;
                 hSize += eSize;
             }
@@ -434,7 +434,7 @@ namespace ZstdSharp.Unsafe
             nuint hSize = 8;
             {
                 nuint eSize = ZDICT_analyzeEntropy((sbyte*)dictBuffer + hSize, dictBufferCapacity - hSize, compressionLevel, samplesBuffer, samplesSizes, nbSamples, (sbyte*)dictBuffer + dictBufferCapacity - dictContentSize, dictContentSize, notificationLevel);
-                if (ZDICT_isError(eSize) != 0)
+                if (ZDICT_isError(eSize))
                     return eSize;
                 hSize += eSize;
             }

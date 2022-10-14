@@ -5,9 +5,9 @@ namespace ZstdSharp.Unsafe
     public static unsafe partial class Methods
     {
         /* --- Error management --- */
-        public static uint HIST_isError(nuint code)
+        public static bool HIST_isError(nuint code)
         {
-            return ERR_isError(code) ? 1U : 0U;
+            return ERR_isError(code);
         }
 
         /*-**************************************************************

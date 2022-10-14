@@ -279,7 +279,7 @@ namespace ZstdSharp.Unsafe
 
             memcpy(largestDictbuffer, customDictContent, (uint)dictContentSize);
             dictContentSize = ZDICT_finalizeDictionary(largestDictbuffer, dictBufferCapacity, customDictContent, dictContentSize, samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
-            if (ZDICT_isError(dictContentSize) != 0)
+            if (ZDICT_isError(dictContentSize))
             {
                 free(largestDictbuffer);
                 free(candidateDictBuffer);
@@ -308,7 +308,7 @@ namespace ZstdSharp.Unsafe
             {
                 memcpy(candidateDictBuffer, largestDictbuffer, (uint)largestDict);
                 dictContentSize = ZDICT_finalizeDictionary(candidateDictBuffer, dictBufferCapacity, customDictContentEnd - dictContentSize, dictContentSize, samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
-                if (ZDICT_isError(dictContentSize) != 0)
+                if (ZDICT_isError(dictContentSize))
                 {
                     free(largestDictbuffer);
                     free(candidateDictBuffer);

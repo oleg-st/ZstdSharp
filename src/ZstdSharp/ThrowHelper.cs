@@ -9,7 +9,7 @@ namespace ZstdSharp
 
         public static nuint EnsureZstdSuccess(this nuint returnValue)
         {
-            if (Methods.ZSTD_isError(returnValue) != 0)
+            if (Methods.ZSTD_isError(returnValue))
                 ThrowException(returnValue, Methods.ZSTD_getErrorName(returnValue));
 
             return returnValue;
@@ -17,7 +17,7 @@ namespace ZstdSharp
 
         public static nuint EnsureZdictSuccess(this nuint returnValue)
         {
-            if (Methods.ZDICT_isError(returnValue) != 0)
+            if (Methods.ZDICT_isError(returnValue))
                 ThrowException(returnValue, Methods.ZDICT_getErrorName(returnValue));
 
             return returnValue;

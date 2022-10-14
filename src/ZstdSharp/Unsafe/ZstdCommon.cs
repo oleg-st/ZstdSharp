@@ -22,9 +22,9 @@ namespace ZstdSharp.Unsafe
         /*! ZSTD_isError() :
          *  tells if a return value is an error code
          *  symbol is required for external callers */
-        public static uint ZSTD_isError(nuint code)
+        public static bool ZSTD_isError(nuint code)
         {
-            return ERR_isError(code) ? 1U : 0U;
+            return ERR_isError(code);
         }
 
         /*! ZSTD_getErrorName() :

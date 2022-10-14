@@ -2199,7 +2199,7 @@ namespace ZstdSharp.Unsafe
             {
                 uint cdictEnd = (uint)(cdict->matchState.window.nextSrc - cdict->matchState.window.@base);
                 uint cdictLen = cdictEnd - cdict->matchState.window.dictLimit;
-                if (!(cdictLen == 0))
+                if (cdictLen != 0)
                 {
                     cctx->blockState.matchState.dictMatchState = &cdict->matchState;
                     if (cctx->blockState.matchState.window.dictLimit < cdictEnd)

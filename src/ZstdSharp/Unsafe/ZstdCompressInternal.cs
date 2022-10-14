@@ -225,10 +225,10 @@ namespace ZstdSharp.Unsafe
             assert(val != 0);
             if (BitConverter.IsLittleEndian)
             {
-                return (uint)(BitOperations.TrailingZeroCount(val) >> 3);
+                return MEM_64bits ? (uint)BitOperations.TrailingZeroCount(val) >> 3 : (uint)BitOperations.TrailingZeroCount((uint)val) >> 3;
             }
 
-            return (uint)(BitOperations.Log2(val) >> 3);
+            return MEM_64bits ? (uint)BitOperations.LeadingZeroCount(val) >> 3 : (uint)BitOperations.LeadingZeroCount((uint)val) >> 3;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

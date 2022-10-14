@@ -1,5 +1,3 @@
-using static ZstdSharp.UnsafeHelper;
-
 namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods

@@ -555,7 +555,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                     COVER_best_start(&best);
-                    if (!(pool != null))
+                    if (pool == null)
                     {
                         FASTCOVER_tryParameters(data);
                     }

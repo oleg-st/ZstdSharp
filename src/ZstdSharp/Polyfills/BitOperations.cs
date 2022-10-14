@@ -195,6 +195,54 @@ namespace System.Numerics
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong RotateRight(ulong value, int offset)
             => (value >> offset) | (value << (64 - offset));
+
+        /// <summary>
+        /// Count the number of leading zero bits in a mask.
+        /// Similar in behavior to the x86 instruction LZCNT.
+        /// </summary>
+        /// <param name="value">The value.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int LeadingZeroCount(uint value)
+        {
+            // Unguarded fallback contract is 0->31, BSR contract is 0->undefined
+            if (value == 0)
+            {
+                return 32;
+            }
+
+            // No AggressiveInlining due to large method size
+            // Has conventional contract 0->0 (Log(0) is undefined)
+
+            // Fill trailing zeros with ones, eg 00010010 becomes 00011111
+            value |= value >> 01;
+            value |= value >> 02;
+            value |= value >> 04;
+            value |= value >> 08;
+            value |= value >> 16;
+
+            // uint.MaxValue >> 27 is always in range [0 - 31] so we use Unsafe.AddByteOffset to avoid bounds check
+            return 31 ^ Log2DeBruijn[
+                // uint|long -> IntPtr cast on 32-bit platforms does expensive overflow checks not needed here
+                (int)((value * 0x07C4ACDDu) >> 27)];
+        }
+
+        /// <summary>
+        /// Count the number of leading zero bits in a mask.
+        /// Similar in behavior to the x86 instruction LZCNT.
+        /// </summary>
+        /// <param name="value">The value.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int LeadingZeroCount(ulong value)
+        {
+            uint hi = (uint)(value >> 32);
+
+            if (hi == 0)
+            {
+                return 32 + LeadingZeroCount((uint)value);
+            }
+
+            return LeadingZeroCount(hi);
+        }
     }
 }
 

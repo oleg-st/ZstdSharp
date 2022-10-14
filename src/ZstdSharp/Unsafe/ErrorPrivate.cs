@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
 {
