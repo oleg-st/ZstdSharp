@@ -11,6 +11,12 @@ namespace ZstdSharp
 
         private int level = DefaultCompressionLevel;
 
+        /*
+         * We have a finalizer that releases cctx (to prevent memory leaks if Disposed is not called),
+         * so we need to delay running the object's finalizer when dealing with cctx inside our methods.
+         * For this purpose we use GC.KeepAlive(this)
+         * For reference: https://devblogs.microsoft.com/oldnewthing/20100813-00/?p=13153
+         */
         private ZSTD_CCtx_s* cctx;
 
         public int Level
@@ -30,6 +36,7 @@ namespace ZstdSharp
         {
             EnsureNotDisposed();
             Methods.ZSTD_CCtx_setParameter(cctx, parameter, value).EnsureZstdSuccess();
+            GC.KeepAlive(this);
         }
 
         public int GetParameter(ZSTD_cParameter parameter)
@@ -37,13 +44,14 @@ namespace ZstdSharp
             EnsureNotDisposed();
             int value;
             Methods.ZSTD_CCtx_getParameter(cctx, parameter, &value).EnsureZstdSuccess();
+            GC.KeepAlive(this);
             return value;
         }
 
         public void LoadDictionary(byte[] dict)
         {
             var dictReadOnlySpan = new ReadOnlySpan<byte>(dict);
-            this.LoadDictionary(dictReadOnlySpan);
+            LoadDictionary(dictReadOnlySpan);
         }
 
         public void LoadDictionary(ReadOnlySpan<byte> dict)
@@ -59,6 +67,7 @@ namespace ZstdSharp
                 fixed (byte* dictPtr = dict)
                     Methods.ZSTD_CCtx_loadDictionary(cctx, dictPtr, (nuint) dict.Length).EnsureZstdSuccess();
             }
+            GC.KeepAlive(this);
         }
 
         public Compressor(int level = DefaultCompressionLevel)
@@ -96,9 +105,13 @@ namespace ZstdSharp
             EnsureNotDisposed();
             fixed (byte* srcPtr = src)
             fixed (byte* destPtr = dest)
-                return (int) Methods
+            {
+                var returnValue = (int) Methods
                     .ZSTD_compress2(cctx, destPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length)
                     .EnsureZstdSuccess();
+                GC.KeepAlive(this);
+                return returnValue;
+            }
         }
 
         public int Wrap(ArraySegment<byte> src, ArraySegment<byte> dest) 
@@ -118,6 +131,7 @@ namespace ZstdSharp
             {
                 var returnValue =
                     Methods.ZSTD_compress2(cctx, destPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length);
+                GC.KeepAlive(this);
 
                 if (returnValue == unchecked(0 - (nuint)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall))
                 {
@@ -163,7 +177,9 @@ namespace ZstdSharp
             fixed (ZSTD_inBuffer_s* inputPtr = &input)
             fixed (ZSTD_outBuffer_s* outputPtr = &output)
             {
-                return Methods.ZSTD_compressStream2(cctx, outputPtr, inputPtr, directive).EnsureZstdSuccess();
+                var returnValue = Methods.ZSTD_compressStream2(cctx, outputPtr, inputPtr, directive).EnsureZstdSuccess();
+                GC.KeepAlive(this);
+                return returnValue;
             }
         }
     }
