@@ -31,28 +31,28 @@ Best performance is achieved on `.NET Core`. `System.Runtime.Intrinsics` namespa
 
 Comparision `zstd` (native) and `ZstdSharp`  
 ```
-BenchmarkDotNet=v0.13.1, OS=Windows 10.0.19044.1566 (21H2)
+BenchmarkDotNet=v0.13.2, OS=Windows 10 (10.0.19044.2251/21H2/November2021Update)
 12th Gen Intel Core i7-12700, 1 CPU, 20 logical and 12 physical cores
-.NET SDK=6.0.200
-  [Host]     : .NET 6.0.2 (6.0.222.6406), X64 RyuJIT
-  DefaultJob : .NET 6.0.2 (6.0.222.6406), X64 RyuJIT
+.NET SDK=7.0.100
+  [Host]     : .NET 7.0.0 (7.0.22.51805), X64 RyuJIT AVX2
+  DefaultJob : .NET 7.0.0 (7.0.22.51805), X64 RyuJIT AVX2
 ```
 
 Compression level 1
-|           Method |      Mean |     Error |    StdDev | Ratio | InstructionRetired/Op |
-|----------------- |----------:|----------:|----------:|------:|----------------------:|
-|   CompressNative | 25.565 ms | 0.2983 ms | 0.2491 ms |  1.00 |           397,370,833 |
-|    CompressSharp | 35.616 ms | 0.0593 ms | 0.0495 ms |  1.39 |           523,222,222 |
-|                  |           |           |           |       |                       |
-| DecompressNative |  6.821 ms | 0.0097 ms | 0.0086 ms |  1.00 |           154,583,333 |
-|  DecompressSharp |  8.178 ms | 0.0198 ms | 0.0176 ms |  1.20 |           184,807,292 |
+|           Method |      Mean |     Error |    StdDev | Ratio | RatioSD | InstructionRetired/Op |
+|----------------- |----------:|----------:|----------:|------:|--------:|----------------------:|
+|   CompressNative | 26.554 ms | 0.2640 ms | 0.2470 ms |  1.00 |    0.00 |           397,460,417 |
+|    CompressSharp | 35.132 ms | 0.2346 ms | 0.2194 ms |  1.32 |    0.02 |           492,346,667 |
+|                  |           |           |           |       |         |                       |
+| DecompressNative |  7.096 ms | 0.0404 ms | 0.0358 ms |  1.00 |    0.00 |           154,629,167 |
+|  DecompressSharp |  8.088 ms | 0.0866 ms | 0.0723 ms |  1.14 |    0.01 |           185,760,417 |
 
 
 Compression level 5
 |           Method |      Mean |     Error |    StdDev | Ratio | RatioSD | InstructionRetired/Op |
 |----------------- |----------:|----------:|----------:|------:|--------:|----------------------:|
-|   CompressNative | 79.408 ms | 0.1196 ms | 0.0933 ms |  1.00 |    0.00 |         1,096,971,429 |
-|    CompressSharp | 96.018 ms | 0.3943 ms | 0.3292 ms |  1.21 |    0.00 |         1,528,277,778 |
+|   CompressNative | 82.992 ms | 1.2924 ms | 1.1456 ms |  1.00 |    0.00 |         1,099,049,020 |
+|    CompressSharp | 99.465 ms | 1.1068 ms | 0.8641 ms |  1.20 |    0.02 |         1,475,813,333 |
 |                  |           |           |           |       |         |                       |
-| DecompressNative |  8.156 ms | 0.1620 ms | 0.1663 ms |  1.00 |    0.00 |           205,591,912 |
-|  DecompressSharp | 10.637 ms | 0.0937 ms | 0.0831 ms |  1.31 |    0.03 |           250,476,042 |
+| DecompressNative |  8.322 ms | 0.1591 ms | 0.1954 ms |  1.00 |    0.00 |           205,625,000 |
+|  DecompressSharp | 10.257 ms | 0.1346 ms | 0.1259 ms |  1.23 |    0.04 |           257,361,458 |
