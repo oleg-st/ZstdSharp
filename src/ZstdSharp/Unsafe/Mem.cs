@@ -18,9 +18,17 @@ namespace ZstdSharp.Unsafe
          * but unfortunately reduces inlining in .NET 5 or below
         *****************************************************************/
         /*=== Static platform detection ===*/
-        public static bool MEM_32bits => sizeof(nint) == 4;
+        public static bool MEM_32bits
+        {
+            [InlineMethod.Inline]
+            get => sizeof(nint) == 4;
+        }
 
-        public static bool MEM_64bits => sizeof(nint) == 8;
+        public static bool MEM_64bits
+        {
+            [InlineMethod.Inline]
+            get => sizeof(nint) == 8;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /* default method, safe and standard.

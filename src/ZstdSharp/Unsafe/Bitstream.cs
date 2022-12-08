@@ -343,6 +343,7 @@ namespace ZstdSharp.Unsafe
          * @return : 1 if DStream has _exactly_ reached its end (all bits consumed).
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static uint BIT_endOfDStream(BIT_DStream_t* DStream)
         {
             return DStream->ptr == DStream->start && DStream->bitsConsumed == (uint)(sizeof(nuint) * 8) ? 1U : 0U;

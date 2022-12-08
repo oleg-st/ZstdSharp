@@ -1058,6 +1058,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static seq_t ZSTD_decodeSequence(seqState_t* seqState, ZSTD_longOffset_e longOffsets)
         {
             seq_t seq;

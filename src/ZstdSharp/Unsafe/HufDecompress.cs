@@ -209,6 +209,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static byte HUF_decodeSymbolX1(BIT_DStream_t* Dstream, HUF_DEltX1* dt, uint dtLog)
         {
             /* note : dtLog >= 1 */

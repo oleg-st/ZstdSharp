@@ -23,26 +23,16 @@ namespace ZstdSharp.Unsafe
             memcpy(dest, src, (uint)size);
         }
 
-        /*
-         * Portable and safe solution. Generally efficient.
-         * see: http://fastcompression.blogspot.com/2015/08/accessing-unaligned-memory.html
-         */
-        private static uint XXH_read32(void* memPtr)
-        {
-            uint val;
-            XXH_memcpy(&val, memPtr, sizeof(uint));
-            return val;
-        }
-
         [InlineMethod.Inline]
         private static uint XXH_readLE32(void* ptr)
         {
-            return BitConverter.IsLittleEndian ? XXH_read32(ptr) : BinaryPrimitives.ReverseEndianness(XXH_read32(ptr));
+            return BitConverter.IsLittleEndian ? MEM_read32(ptr) : BinaryPrimitives.ReverseEndianness(MEM_read32(ptr));
         }
 
+        [InlineMethod.Inline]
         private static uint XXH_readBE32(void* ptr)
         {
-            return BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(XXH_read32(ptr)) : XXH_read32(ptr);
+            return BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(MEM_read32(ptr)) : MEM_read32(ptr);
         }
 
         private static uint XXH_readLE32_align(void* ptr, XXH_alignment align)
@@ -307,26 +297,16 @@ namespace ZstdSharp.Unsafe
             return XXH_readBE32(src);
         }
 
-        /*
-         * Portable and safe solution. Generally efficient.
-         * see: http://fastcompression.blogspot.com/2015/08/accessing-unaligned-memory.html
-         */
-        private static ulong XXH_read64(void* memPtr)
-        {
-            ulong val;
-            XXH_memcpy(&val, memPtr, sizeof(ulong));
-            return val;
-        }
-
         [InlineMethod.Inline]
         private static ulong XXH_readLE64(void* ptr)
         {
-            return BitConverter.IsLittleEndian ? XXH_read64(ptr) : BinaryPrimitives.ReverseEndianness(XXH_read64(ptr));
+            return BitConverter.IsLittleEndian ? MEM_read64(ptr) : BinaryPrimitives.ReverseEndianness(MEM_read64(ptr));
         }
 
+        [InlineMethod.Inline]
         private static ulong XXH_readBE64(void* ptr)
         {
-            return BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(XXH_read64(ptr)) : XXH_read64(ptr);
+            return BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(MEM_read64(ptr)) : MEM_read64(ptr);
         }
 
         private static ulong XXH_readLE64_align(void* ptr, XXH_alignment align)

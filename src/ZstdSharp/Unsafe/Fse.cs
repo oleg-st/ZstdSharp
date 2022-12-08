@@ -113,6 +113,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static byte FSE_decodeSymbol(FSE_DState_t* DStatePtr, BIT_DStream_t* bitD)
         {
             FSE_decode_t DInfo = ((FSE_decode_t*)DStatePtr->table)[DStatePtr->state];
