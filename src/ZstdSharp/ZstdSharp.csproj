@@ -16,6 +16,7 @@
     <PackageTags>zstd zstandard port compression</PackageTags>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Version>0.6.6</Version>
   </PropertyGroup>
 
