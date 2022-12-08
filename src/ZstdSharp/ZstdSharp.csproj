@@ -14,6 +14,8 @@
     <PackageProjectUrl>https://github.com/oleg-st/ZstdSharp</PackageProjectUrl>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageTags>zstd zstandard port compression</PackageTags>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
     <Version>0.6.5</Version>
   </PropertyGroup>
 
@@ -43,6 +45,7 @@
     </PackageReference>
     <PackageReference Include="InlineIL.Fody" Version="1.7.3" PrivateAssets="all" />
     <PackageReference Include="InlineMethod.Fody" Version="0.6.2" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All"/>
   </ItemGroup>
 
 </Project>
