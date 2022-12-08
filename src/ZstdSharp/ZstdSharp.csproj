@@ -16,7 +16,7 @@
     <PackageTags>zstd zstandard port compression</PackageTags>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
-    <Version>0.6.5</Version>
+    <Version>0.6.6</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
