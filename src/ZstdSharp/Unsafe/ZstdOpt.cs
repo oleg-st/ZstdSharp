@@ -799,8 +799,8 @@ namespace ZstdSharp.Unsafe
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_dictMatchState, 6);
         }
 
-        public static delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[][] getAllMatchesFns = new delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[3][] { new delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[4] { &ZSTD_btGetAllMatches_noDict_3, &ZSTD_btGetAllMatches_noDict_4, &ZSTD_btGetAllMatches_noDict_5, &ZSTD_btGetAllMatches_noDict_6 }, new delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[4] { &ZSTD_btGetAllMatches_extDict_3, &ZSTD_btGetAllMatches_extDict_4, &ZSTD_btGetAllMatches_extDict_5, &ZSTD_btGetAllMatches_extDict_6 }, new delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>[4] { &ZSTD_btGetAllMatches_dictMatchState_3, &ZSTD_btGetAllMatches_dictMatchState_4, &ZSTD_btGetAllMatches_dictMatchState_5, &ZSTD_btGetAllMatches_dictMatchState_6 } };
-        private static delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint> ZSTD_selectBtGetAllMatches(ZSTD_matchState_t* ms, ZSTD_dictMode_e dictMode)
+        public static ZSTD_getAllMatchesFn[][] getAllMatchesFns = new ZSTD_getAllMatchesFn[3][] { new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_noDict_3, ZSTD_btGetAllMatches_noDict_4, ZSTD_btGetAllMatches_noDict_5, ZSTD_btGetAllMatches_noDict_6 }, new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_extDict_3, ZSTD_btGetAllMatches_extDict_4, ZSTD_btGetAllMatches_extDict_5, ZSTD_btGetAllMatches_extDict_6 }, new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_dictMatchState_3, ZSTD_btGetAllMatches_dictMatchState_4, ZSTD_btGetAllMatches_dictMatchState_5, ZSTD_btGetAllMatches_dictMatchState_6 } };
+        private static ZSTD_getAllMatchesFn ZSTD_selectBtGetAllMatches(ZSTD_matchState_t* ms, ZSTD_dictMode_e dictMode)
         {
             uint mls = 3 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 3 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
             assert((uint)dictMode < 3);
@@ -953,7 +953,7 @@ namespace ZstdSharp.Unsafe
             byte* @base = ms->window.@base;
             byte* prefixStart = @base + ms->window.dictLimit;
             ZSTD_compressionParameters* cParams = &ms->cParams;
-            delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint> getAllMatches = ZSTD_selectBtGetAllMatches(ms, dictMode);
+            ZSTD_getAllMatchesFn getAllMatches = ZSTD_selectBtGetAllMatches(ms, dictMode);
             uint sufficient_len = cParams->targetLength < (1 << 12) - 1 ? cParams->targetLength : (1 << 12) - 1;
             uint minMatch = (uint)(cParams->minMatch == 3 ? 3 : 4);
             uint nextToUpdate3 = ms->nextToUpdate;

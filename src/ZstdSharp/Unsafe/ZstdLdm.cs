@@ -684,7 +684,7 @@ namespace ZstdSharp.Unsafe
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint minMatch = cParams->minMatch;
-            delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> blockCompressor = ZSTD_selectBlockCompressor(cParams->strategy, useRowMatchFinder, ZSTD_matchState_dictMode(ms));
+            ZSTD_blockCompressor blockCompressor = ZSTD_selectBlockCompressor(cParams->strategy, useRowMatchFinder, ZSTD_matchState_dictMode(ms));
             /* Input bounds */
             byte* istart = (byte*)src;
             byte* iend = istart + srcSize;
