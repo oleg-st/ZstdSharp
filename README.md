@@ -1,33 +1,51 @@
 # ZstdSharp
 
 [![NuGet package](https://img.shields.io/nuget/v/ZstdSharp.Port.svg?logo=NuGet)](https://www.nuget.org/packages/ZstdSharp.Port)
+[![NuGet package](https://img.shields.io/nuget/dt/ZstdSharp.Port?logo=NuGet)](https://www.nuget.org/packages/ZstdSharp.Port)
 
 ZstdSharp is a port of [zstd compression library](https://github.com/facebook/zstd) to С#  
 Based on Zstandard v1.5.2  
-Supports .NET Core 3.1, .NET 5, .NET 6, .NET Standard 2.0+, .NET Framework 4.6.1+
+Supports .NET Core 3.1, .NET 5+, .NET Standard 2.0+, .NET Framework 4.6.1+
 
 # Usage  
 
 ZstdSharp has an unsafe API much the same as zstd.  
 There are also safe wrappers.
 
-Compress:
+Compress data:
 ```c#
 var src = File.ReadAllBytes("dickens");
 using var compressor = new Compressor(level);
 var compressed = compressor.Wrap(src);
 ```
 
-Decompress:
+Decompress data:
 ```c#
 var src = File.ReadAllBytes("dickens.zst");
 using var decompressor = new Decompressor();
 var decompressed = decompressor.Unwrap(src);
 ```
 
+Streaming compression:
+```c#
+using var input = File.OpenRead("dickens");
+using var output = File.OpenWrite("dickens.zst");
+using var compressionStream = new CompressionStream(output, level);
+input.CopyTo(compressionStream);
+```
+
+Streaming decompression:
+```c#
+using var input = File.OpenRead("dickens.zst");
+using var output = File.OpenWrite("dickens");
+using var decompressionStream = new DecompressionStream(input);
+decompressionStream.CopyTo(output);
+```
+
+
 # Benchmark
 
-Best performance is achieved on `.NET Core`. `System.Runtime.Intrinsics` namespace is required for hardware accelerated bit and vector operations. `.NET Standard` and `.NET Framework` will use software implementation
+Best performance is achieved on `.NET`. `System.Runtime.Intrinsics` namespace is required for hardware accelerated bit and vector operations. `.NET Standard` and `.NET Framework` will use software implementation
 
 Comparision `zstd` (native) and `ZstdSharp`  
 ```
