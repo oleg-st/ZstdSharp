@@ -1142,7 +1142,6 @@ namespace ZstdSharp.Unsafe
                     assert(0 != 0);
                     goto case ZSTD_dStage.ZSTDds_getFrameHeaderSize;
                 case ZSTD_dStage.ZSTDds_getFrameHeaderSize:
-                    goto case ZSTD_dStage.ZSTDds_decodeFrameHeader;
                 case ZSTD_dStage.ZSTDds_decodeFrameHeader:
                     return ZSTD_nextInputType_e.ZSTDnit_frameHeader;
                 case ZSTD_dStage.ZSTDds_decodeBlockHeader:
@@ -1154,7 +1153,6 @@ namespace ZstdSharp.Unsafe
                 case ZSTD_dStage.ZSTDds_checkChecksum:
                     return ZSTD_nextInputType_e.ZSTDnit_checksum;
                 case ZSTD_dStage.ZSTDds_decodeSkippableHeader:
-                    goto case ZSTD_dStage.ZSTDds_skipFrame;
                 case ZSTD_dStage.ZSTDds_skipFrame:
                     return ZSTD_nextInputType_e.ZSTDnit_skippableFrame;
             }

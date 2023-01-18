@@ -894,14 +894,11 @@ namespace ZstdSharp.Unsafe
                             HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 2, 1, 0);
                             break;
                         case 10:
-                            goto case 9;
                         case 9:
-                            goto case 8;
                         case 8:
                             HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 2, 1, 1);
                             break;
                         case 7:
-                            goto default;
                         default:
                             HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 3, 1, 1);
                             break;
@@ -927,7 +924,6 @@ namespace ZstdSharp.Unsafe
                             HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 8, 1, 0);
                             break;
                         case 6:
-                            goto default;
                         default:
                             HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 9, 1, 1);
                             break;
