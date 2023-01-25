@@ -74,3 +74,13 @@ Compression level 5
 |                  |           |           |           |       |         |                       |
 | DecompressNative |  8.322 ms | 0.1591 ms | 0.1954 ms |  1.00 |    0.00 |           205,625,000 |
 |  DecompressSharp | 10.257 ms | 0.1346 ms | 0.1259 ms |  1.23 |    0.04 |           257,361,458 |
+
+
+Compression level 15
+|           Method |         Mean |      Error |     StdDev | Ratio | RatioSD | InstructionRetired/Op |
+|----------------- |-------------:|-----------:|-----------:|------:|--------:|----------------------:|
+|   CompressNative | 2,471.505 ms | 35.0230 ms | 31.0470 ms |  1.00 |    0.00 |         6,897,800,000 |
+|    CompressSharp | 2,546.185 ms | 31.8153 ms | 29.7601 ms |  1.03 |    0.02 |         7,912,600,000 |
+|                  |              |            |            |       |         |                       |
+| DecompressNative |     7.348 ms |  0.0962 ms |  0.0900 ms |  1.00 |    0.00 |           146,806,337 |
+|  DecompressSharp |     8.510 ms |  0.1176 ms |  0.1100 ms |  1.16 |    0.02 |           183,541,667 |
