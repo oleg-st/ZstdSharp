@@ -13,18 +13,19 @@ namespace ZstdSharp
         private readonly byte[] inputBuffer;
         private readonly int inputBufferSize;
         private readonly bool preserveDecompressor;
+        private readonly bool leaveOpen;
         private readonly bool checkEndOfStream;
         private Decompressor decompressor;
         private ZSTD_inBuffer_s input;
         private nuint lastDecompressResult = 0;
 
-        public DecompressionStream(Stream stream, int bufferSize = 0, bool checkEndOfStream = true)
-            : this(stream, new Decompressor(), bufferSize, checkEndOfStream)
+        public DecompressionStream(Stream stream, int bufferSize = 0, bool checkEndOfStream = true, bool leaveOpen = true)
+            : this(stream, new Decompressor(), bufferSize, checkEndOfStream, false, leaveOpen)
         {
-            preserveDecompressor = false;
         }
 
-        public DecompressionStream(Stream stream, Decompressor decompressor, int bufferSize = 0, bool checkEndOfStream = true)
+        public DecompressionStream(Stream stream, Decompressor decompressor, int bufferSize = 0,
+            bool checkEndOfStream = true, bool preserveDecompressor = true, bool leaveOpen = true)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -37,7 +38,8 @@ namespace ZstdSharp
 
             innerStream = stream;
             this.decompressor = decompressor;
-            preserveDecompressor = true;
+            this.preserveDecompressor = preserveDecompressor;
+            this.leaveOpen = leaveOpen;
             this.checkEndOfStream = checkEndOfStream;
 
             inputBufferSize = bufferSize > 0 ? bufferSize : (int) Methods.ZSTD_CStreamInSize().EnsureZstdSuccess();
@@ -74,10 +76,14 @@ namespace ZstdSharp
             {
                 decompressor.Dispose();
             }
-            
             decompressor = null;
 
             ArrayPool<byte>.Shared.Return(inputBuffer);
+
+            if (!leaveOpen)
+            {
+                innerStream.Dispose();
+            }
         }
 
         public override int Read(byte[] buffer, int offset, int count)

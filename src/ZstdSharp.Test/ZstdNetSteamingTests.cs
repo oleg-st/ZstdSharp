@@ -458,5 +458,30 @@ namespace ZstdSharp.Test
                 trainingData[i] = DataGenerator.GetSmallBuffer(DataFill.Sequential);
             return DictBuilder.TrainFromBuffer(trainingData);
         }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void StreamingLeaveOpen(bool leaveOpen)
+        {
+            var data = DataGenerator.GetSmallBuffer(DataFill.Sequential);
+
+            var tempStream = new MemoryStream();
+            using (var compressionStream = new CompressionStream(tempStream, leaveOpen: leaveOpen))
+                compressionStream.Write(data);
+
+            Assert.True(leaveOpen == tempStream.CanWrite);
+
+            var compressedData = tempStream.ToArray();
+            tempStream = new MemoryStream(compressedData);
+
+            var resultStream = new MemoryStream();
+            using (var decompressionStream = new DecompressionStream(tempStream, leaveOpen: leaveOpen))
+                decompressionStream.CopyTo(resultStream);
+
+            Assert.True(leaveOpen == tempStream.CanRead);
+
+            Assert.True(data.SequenceEqual(resultStream.ToArray()));
+        }
     }
 }

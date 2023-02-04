@@ -12,17 +12,18 @@ namespace ZstdSharp
         private readonly Stream innerStream;
         private readonly byte[] outputBuffer;
         private readonly bool preserveCompressor;
+        private readonly bool leaveOpen;
         private Compressor compressor;
         private ZSTD_outBuffer_s output;
 
         public CompressionStream(Stream stream, int level = Compressor.DefaultCompressionLevel,
-            int bufferSize = 0)
-            : this(stream, new Compressor(level), bufferSize)
+            int bufferSize = 0, bool leaveOpen = true)
+            : this(stream, new Compressor(level), bufferSize, false, leaveOpen)
         {
-            preserveCompressor = false;
         }
 
-        public CompressionStream(Stream stream, Compressor compressor, int bufferSize = 0)
+        public CompressionStream(Stream stream, Compressor compressor, int bufferSize = 0,
+            bool preserveCompressor = true, bool leaveOpen = true)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -35,7 +36,8 @@ namespace ZstdSharp
 
             innerStream = stream;
             this.compressor = compressor;
-            preserveCompressor = true;
+            this.preserveCompressor = preserveCompressor;
+            this.leaveOpen = leaveOpen;
 
             var outputBufferSize =
                 bufferSize > 0 ? bufferSize : (int) Methods.ZSTD_CStreamOutSize().EnsureZstdSuccess();
@@ -105,10 +107,14 @@ namespace ZstdSharp
             {
                 compressor.Dispose();
             }
-
             compressor = null;
 
             ArrayPool<byte>.Shared.Return(outputBuffer);
+
+            if (!leaveOpen)
+            {
+                innerStream.Dispose();
+            }
         }
 
         public override void Flush()
