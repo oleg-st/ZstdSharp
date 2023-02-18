@@ -49,38 +49,38 @@ Best performance is achieved on `.NET`. `System.Runtime.Intrinsics` namespace is
 
 Comparision `zstd` (native) and `ZstdSharp`  
 ```
-BenchmarkDotNet=v0.13.2, OS=Windows 10 (10.0.19044.2251/21H2/November2021Update)
+BenchmarkDotNet=v0.13.2, OS=Windows 10 (10.0.19044.2604/21H2/November2021Update)
 12th Gen Intel Core i7-12700, 1 CPU, 20 logical and 12 physical cores
-.NET SDK=7.0.100
-  [Host]     : .NET 7.0.0 (7.0.22.51805), X64 RyuJIT AVX2
-  DefaultJob : .NET 7.0.0 (7.0.22.51805), X64 RyuJIT AVX2
+.NET SDK=7.0.101
+  [Host]     : .NET 7.0.1 (7.0.122.56804), X64 RyuJIT AVX2
+  DefaultJob : .NET 7.0.1 (7.0.122.56804), X64 RyuJIT AVX2
 ```
 
 Compression level 1
-|           Method |      Mean |     Error |    StdDev | Ratio | RatioSD | InstructionRetired/Op |
-|----------------- |----------:|----------:|----------:|------:|--------:|----------------------:|
-|   CompressNative | 26.554 ms | 0.2640 ms | 0.2470 ms |  1.00 |    0.00 |           397,460,417 |
-|    CompressSharp | 35.132 ms | 0.2346 ms | 0.2194 ms |  1.32 |    0.02 |           492,346,667 |
-|                  |           |           |           |       |         |                       |
-| DecompressNative |  7.096 ms | 0.0404 ms | 0.0358 ms |  1.00 |    0.00 |           154,629,167 |
-|  DecompressSharp |  8.088 ms | 0.0866 ms | 0.0723 ms |  1.14 |    0.01 |           185,760,417 |
+|           Method |      Mean |     Error |    StdDev | Ratio | InstructionRetired/Op |
+|----------------- |----------:|----------:|----------:|------:|----------------------:|
+|   CompressNative | 24.743 ms | 0.0862 ms | 0.0764 ms |  1.00 |           349,127,604 |
+|    CompressSharp | 35.408 ms | 0.1431 ms | 0.1339 ms |  1.43 |           492,475,556 |
+|                  |           |           |           |       |                       |
+| DecompressNative |  6.580 ms | 0.0338 ms | 0.0282 ms |  1.00 |           131,053,646 |
+|  DecompressSharp |  8.255 ms | 0.0386 ms | 0.0342 ms |  1.25 |           185,826,042 |
 
 
 Compression level 5
-|           Method |      Mean |     Error |    StdDev | Ratio | RatioSD | InstructionRetired/Op |
-|----------------- |----------:|----------:|----------:|------:|--------:|----------------------:|
-|   CompressNative | 82.992 ms | 1.2924 ms | 1.1456 ms |  1.00 |    0.00 |         1,099,049,020 |
-|    CompressSharp | 99.465 ms | 1.1068 ms | 0.8641 ms |  1.20 |    0.02 |         1,475,813,333 |
-|                  |           |           |           |       |         |                       |
-| DecompressNative |  8.322 ms | 0.1591 ms | 0.1954 ms |  1.00 |    0.00 |           205,625,000 |
-|  DecompressSharp | 10.257 ms | 0.1346 ms | 0.1259 ms |  1.23 |    0.04 |           257,361,458 |
+|           Method |       Mean |     Error |    StdDev | Ratio | RatioSD | InstructionRetired/Op |
+|----------------- |-----------:|----------:|----------:|------:|--------:|----------------------:|
+|   CompressNative |  80.846 ms | 1.6085 ms | 2.2549 ms |  1.00 |    0.00 |         1,014,121,693 |
+|    CompressSharp | 104.436 ms | 1.2555 ms | 0.9802 ms |  1.30 |    0.04 |         1,476,093,333 |
+|                  |            |           |           |       |         |                       |
+| DecompressNative |   7.636 ms | 0.0440 ms | 0.0390 ms |  1.00 |    0.00 |           175,539,844 |
+|  DecompressSharp |  10.471 ms | 0.0795 ms | 0.0744 ms |  1.37 |    0.01 |           257,408,333 |
 
 
 Compression level 15
 |           Method |         Mean |      Error |     StdDev | Ratio | RatioSD | InstructionRetired/Op |
 |----------------- |-------------:|-----------:|-----------:|------:|--------:|----------------------:|
-|   CompressNative | 2,471.505 ms | 35.0230 ms | 31.0470 ms |  1.00 |    0.00 |         6,897,800,000 |
-|    CompressSharp | 2,546.185 ms | 31.8153 ms | 29.7601 ms |  1.03 |    0.02 |         7,912,600,000 |
+|   CompressNative | 2,392.471 ms | 19.2618 ms | 16.0844 ms |  1.00 |    0.00 |         5,508,866,667 |
+|    CompressSharp | 2,497.905 ms | 22.7917 ms | 19.0321 ms |  1.04 |    0.01 |         7,915,266,667 |
 |                  |              |            |            |       |         |                       |
-| DecompressNative |     7.348 ms |  0.0962 ms |  0.0900 ms |  1.00 |    0.00 |           146,806,337 |
-|  DecompressSharp |     8.510 ms |  0.1176 ms |  0.1100 ms |  1.16 |    0.02 |           183,541,667 |
+| DecompressNative |     6.579 ms |  0.1297 ms |  0.1213 ms |  1.00 |    0.00 |           125,783,333 |
+|  DecompressSharp |     8.441 ms |  0.1101 ms |  0.0976 ms |  1.29 |    0.03 |           183,633,333 |
