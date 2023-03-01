@@ -170,7 +170,7 @@ namespace ZstdSharp.Unsafe
                     {
                         bestLength = matchLength;
                         assert(curr - matchIndex > 0);
-                        *offsetPtr = curr - matchIndex + (3 - 1);
+                        *offsetPtr = curr - matchIndex + 3;
                     }
 
                     if (ip + matchLength == iend)
@@ -203,14 +203,14 @@ namespace ZstdSharp.Unsafe
 
             if (bestLength >= 3)
             {
-                assert(*offsetPtr > 3 - 1);
-                uint mIndex = curr - (uint)(*offsetPtr - (3 - 1));
+                assert(*offsetPtr > 3);
+                uint mIndex = curr - (uint)(*offsetPtr - 3);
             }
 
             return bestLength;
         }
 
-        private static nuint ZSTD_DUBT_findBestMatch(ZSTD_matchState_t* ms, byte* ip, byte* iend, nuint* offsetPtr, uint mls, ZSTD_dictMode_e dictMode)
+        private static nuint ZSTD_DUBT_findBestMatch(ZSTD_matchState_t* ms, byte* ip, byte* iend, nuint* offBasePtr, uint mls, ZSTD_dictMode_e dictMode)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
@@ -294,11 +294,11 @@ namespace ZstdSharp.Unsafe
                     {
                         if (matchLength > matchEndIdx - matchIndex)
                             matchEndIdx = matchIndex + (uint)matchLength;
-                        if (4 * (int)(matchLength - bestLength) > (int)(ZSTD_highbit32(curr - matchIndex + 1) - ZSTD_highbit32((uint)offsetPtr[0] + 1)))
+                        if (4 * (int)(matchLength - bestLength) > (int)(ZSTD_highbit32(curr - matchIndex + 1) - ZSTD_highbit32((uint)*offBasePtr)))
                         {
                             bestLength = matchLength;
                             assert(curr - matchIndex > 0);
-                            *offsetPtr = curr - matchIndex + (3 - 1);
+                            *offBasePtr = curr - matchIndex + 3;
                         }
 
                         if (ip + matchLength == iend)
@@ -344,15 +344,15 @@ namespace ZstdSharp.Unsafe
                 assert(nbCompares <= 1U << (sizeof(nuint) == 4 ? 30 : 31) - 1);
                 if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && nbCompares != 0)
                 {
-                    bestLength = ZSTD_DUBT_findBetterDictMatch(ms, ip, iend, offsetPtr, bestLength, nbCompares, mls, dictMode);
+                    bestLength = ZSTD_DUBT_findBetterDictMatch(ms, ip, iend, offBasePtr, bestLength, nbCompares, mls, dictMode);
                 }
 
                 assert(matchEndIdx > curr + 8);
                 ms->nextToUpdate = matchEndIdx - 8;
                 if (bestLength >= 3)
                 {
-                    assert(*offsetPtr > 3 - 1);
-                    uint mIndex = curr - (uint)(*offsetPtr - (3 - 1));
+                    assert(*offBasePtr > 3);
+                    uint mIndex = curr - (uint)(*offBasePtr - 3);
                 }
 
                 return bestLength;
@@ -361,12 +361,12 @@ namespace ZstdSharp.Unsafe
 
         /** ZSTD_BtFindBestMatch() : Tree updater, providing best match */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint ZSTD_BtFindBestMatch(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr, uint mls, ZSTD_dictMode_e dictMode)
+        private static nuint ZSTD_BtFindBestMatch(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr, uint mls, ZSTD_dictMode_e dictMode)
         {
             if (ip < ms->window.@base + ms->nextToUpdate)
                 return 0;
             ZSTD_updateDUBT(ms, ip, iLimit, mls);
-            return ZSTD_DUBT_findBestMatch(ms, ip, iLimit, offsetPtr, mls, dictMode);
+            return ZSTD_DUBT_findBestMatch(ms, ip, iLimit, offBasePtr, mls, dictMode);
         }
 
         /***********************************
@@ -541,7 +541,7 @@ namespace ZstdSharp.Unsafe
                 {
                     ml = currentMl;
                     assert(curr - (matchIndex + ddsIndexDelta) > 0);
-                    *offsetPtr = curr - (matchIndex + ddsIndexDelta) + (3 - 1);
+                    *offsetPtr = curr - (matchIndex + ddsIndexDelta) + 3;
                     if (ip + currentMl == iLimit)
                     {
                         return ml;
@@ -578,7 +578,7 @@ namespace ZstdSharp.Unsafe
                     {
                         ml = currentMl;
                         assert(curr - (matchIndex + ddsIndexDelta) > 0);
-                        *offsetPtr = curr - (matchIndex + ddsIndexDelta) + (3 - 1);
+                        *offsetPtr = curr - (matchIndex + ddsIndexDelta) + 3;
                         if (ip + currentMl == iLimit)
                             break;
                     }
@@ -658,7 +658,7 @@ namespace ZstdSharp.Unsafe
                 {
                     byte* match = @base + matchIndex;
                     assert(matchIndex >= dictLimit);
-                    if (match[ml] == ip[ml])
+                    if (MEM_read32(match + ml - 3) == MEM_read32(ip + ml - 3))
                         currentMl = ZSTD_count(ip, match, iLimit);
                 }
                 else
@@ -673,7 +673,7 @@ namespace ZstdSharp.Unsafe
                 {
                     ml = currentMl;
                     assert(curr - matchIndex > 0);
-                    *offsetPtr = curr - matchIndex + (3 - 1);
+                    *offsetPtr = curr - matchIndex + 3;
                     if (ip + currentMl == iLimit)
                         break;
                 }
@@ -712,7 +712,7 @@ namespace ZstdSharp.Unsafe
                         ml = currentMl;
                         assert(curr > matchIndex + dmsIndexDelta);
                         assert(curr - (matchIndex + dmsIndexDelta) > 0);
-                        *offsetPtr = curr - (matchIndex + dmsIndexDelta) + (3 - 1);
+                        *offsetPtr = curr - (matchIndex + dmsIndexDelta) + 3;
                         if (ip + currentMl == iLimit)
                             break;
                     }
@@ -730,6 +730,7 @@ namespace ZstdSharp.Unsafe
          * Starting from the LSB, returns the idx of the next non-zero bit.
          * Basically counting the nb of trailing zeroes.
          */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
         private static uint ZSTD_VecMask_next(ulong val)
         {
@@ -887,6 +888,18 @@ namespace ZstdSharp.Unsafe
             ZSTD_row_update_internal(ms, ip, mls, rowLog, rowMask, 0);
         }
 
+        /* Returns the mask width of bits group of which will be set to 1. Given not all
+         * architectures have easy movemask instruction, this helps to iterate over
+         * groups of bits easier and faster.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint ZSTD_row_matchMaskGroupWidth(uint rowEntries)
+        {
+            assert(rowEntries == 16 || rowEntries == 32 || rowEntries == 64);
+            assert(rowEntries <= 64);
+            return 1;
+        }
+
 #if NETCOREAPP3_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong ZSTD_row_getSSEMask(int nbChunks, byte* src, byte tag, uint head)
@@ -912,20 +925,23 @@ namespace ZstdSharp.Unsafe
         }
 #endif
 
-        /* Returns a ZSTD_VecMask (U32) that has the nth bit set to 1 if the newly-computed "tag" matches
-         * the hash at the nth position in a row of the tagTable.
-         * Each row is a circular buffer beginning at the value of "head". So we must rotate the "matches" bitfield
-         * to match up with the actual layout of the entries within the hashTable */
+        /* Returns a ZSTD_VecMask (U64) that has the nth group (determined by
+         * ZSTD_row_matchMaskGroupWidth) of bits set to 1 if the newly-computed "tag"
+         * matches the hash at the nth position in a row of the tagTable.
+         * Each row is a circular buffer beginning at the value of "headGrouped". So we
+         * must rotate the "matches" bitfield to match up with the actual layout of the
+         * entries within the hashTable */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong ZSTD_row_getMatchMask(byte* tagRow, byte tag, uint head, uint rowEntries)
+        private static ulong ZSTD_row_getMatchMask(byte* tagRow, byte tag, uint headGrouped, uint rowEntries)
         {
             byte* src = tagRow + 16;
             assert(rowEntries == 16 || rowEntries == 32 || rowEntries == 64);
             assert(rowEntries <= 64);
+            assert(ZSTD_row_matchMaskGroupWidth(rowEntries) * rowEntries <= sizeof(ulong) * 8);
 #if NETCOREAPP3_0_OR_GREATER
             if (Sse2.IsSupported)
             {
-                return ZSTD_row_getSSEMask((int)(rowEntries / 16), src, tag, head);
+                return ZSTD_row_getSSEMask((int)(rowEntries / 16), src, tag, headGrouped);
             }
 #endif
 
@@ -942,7 +958,7 @@ namespace ZstdSharp.Unsafe
                     Vector128<byte> t3 = AdvSimd.ShiftRightLogicalAdd(t2, t2, 28).As<ulong, byte>();
                     ushort hi = AdvSimd.Extract(t3, 8);
                     ushort lo = AdvSimd.Extract(t3, 0);
-                    return BitOperations.RotateRight((ushort)(hi << 8 | lo), (int)head);
+                    return BitOperations.RotateRight((ushort)(hi << 8 | lo), (int)headGrouped);
                 }
                 else if (rowEntries == 32)
                 {
@@ -998,15 +1014,15 @@ namespace ZstdSharp.Unsafe
                 matches = ~matches;
                 if (rowEntries == 16)
                 {
-                    return BitOperations.RotateRight((ushort)matches, (int)head);
+                    return BitOperations.RotateRight((ushort)matches, (int)headGrouped);
                 }
                 else if (rowEntries == 32)
                 {
-                    return BitOperations.RotateRight((uint)matches, (int)head);
+                    return BitOperations.RotateRight((uint)matches, (int)headGrouped);
                 }
                 else
                 {
-                    return BitOperations.RotateRight(matches, (int)head);
+                    return BitOperations.RotateRight(matches, (int)headGrouped);
                 }
             }
         }
@@ -1050,6 +1066,7 @@ namespace ZstdSharp.Unsafe
             uint rowMask = rowEntries - 1;
             /* nb of searches is capped at nb entries per row */
             uint cappedSearchLog = cParams->searchLog < rowLog ? cParams->searchLog : rowLog;
+            uint groupWidth = ZSTD_row_matchMaskGroupWidth(rowEntries);
             uint nbAttempts = 1U << (int)cappedSearchLog;
             nuint ml = 4 - 1;
             /* DMS/DDS variables that may be referenced laster */
@@ -1092,14 +1109,14 @@ namespace ZstdSharp.Unsafe
                 uint tag = hash & (1U << 8) - 1;
                 uint* row = hashTable + relRow;
                 byte* tagRow = (byte*)(tagTable + relRow);
-                uint head = *tagRow & rowMask;
+                uint headGrouped = (*tagRow & rowMask) * groupWidth;
                 uint* matchBuffer = stackalloc uint[64];
                 nuint numMatches = 0;
                 nuint currMatch = 0;
-                ulong matches = ZSTD_row_getMatchMask(tagRow, (byte)tag, head, rowEntries);
+                ulong matches = ZSTD_row_getMatchMask(tagRow, (byte)tag, headGrouped, rowEntries);
                 for (; matches > 0 && nbAttempts > 0; --nbAttempts, matches &= matches - 1)
                 {
-                    uint matchPos = head + ZSTD_VecMask_next(matches) & rowMask;
+                    uint matchPos = (headGrouped + ZSTD_VecMask_next(matches)) / groupWidth & rowMask;
                     uint matchIndex = row[matchPos];
                     assert(numMatches < rowEntries);
                     if (matchIndex < lowLimit)
@@ -1132,7 +1149,7 @@ namespace ZstdSharp.Unsafe
                     {
                         byte* match = @base + matchIndex;
                         assert(matchIndex >= dictLimit);
-                        if (match[ml] == ip[ml])
+                        if (MEM_read32(match + ml - 3) == MEM_read32(ip + ml - 3))
                             currentMl = ZSTD_count(ip, match, iLimit);
                     }
                     else
@@ -1147,7 +1164,7 @@ namespace ZstdSharp.Unsafe
                     {
                         ml = currentMl;
                         assert(curr - matchIndex > 0);
-                        *offsetPtr = curr - matchIndex + (3 - 1);
+                        *offsetPtr = curr - matchIndex + 3;
                         if (ip + currentMl == iLimit)
                             break;
                     }
@@ -1168,14 +1185,14 @@ namespace ZstdSharp.Unsafe
                 uint dmsSize = (uint)(dmsEnd - dmsBase);
                 uint dmsIndexDelta = dictLimit - dmsSize;
                 {
-                    uint head = *dmsTagRow & rowMask;
+                    uint headGrouped = (*dmsTagRow & rowMask) * groupWidth;
                     uint* matchBuffer = stackalloc uint[64];
                     nuint numMatches = 0;
                     nuint currMatch = 0;
-                    ulong matches = ZSTD_row_getMatchMask(dmsTagRow, (byte)dmsTag, head, rowEntries);
+                    ulong matches = ZSTD_row_getMatchMask(dmsTagRow, (byte)dmsTag, headGrouped, rowEntries);
                     for (; matches > 0 && nbAttempts > 0; --nbAttempts, matches &= matches - 1)
                     {
-                        uint matchPos = head + ZSTD_VecMask_next(matches) & rowMask;
+                        uint matchPos = (headGrouped + ZSTD_VecMask_next(matches)) / groupWidth & rowMask;
                         uint matchIndex = dmsRow[matchPos];
                         if (matchIndex < dmsLowestIndex)
                             break;
@@ -1201,7 +1218,7 @@ namespace ZstdSharp.Unsafe
                             ml = currentMl;
                             assert(curr > matchIndex + dmsIndexDelta);
                             assert(curr - (matchIndex + dmsIndexDelta) > 0);
-                            *offsetPtr = curr - (matchIndex + dmsIndexDelta) + (3 - 1);
+                            *offsetPtr = curr - (matchIndex + dmsIndexDelta) + 3;
                             if (ip + currentMl == iLimit)
                                 break;
                         }
@@ -1219,7 +1236,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_noDict, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_4_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_4_4 };
         private static nuint ZSTD_RowFindBestMatch_noDict_4_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1227,7 +1243,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_noDict, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_4_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_4_5 };
         private static nuint ZSTD_RowFindBestMatch_noDict_4_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1235,7 +1250,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_noDict, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_4_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_4_6 };
         private static nuint ZSTD_RowFindBestMatch_noDict_5_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1243,7 +1257,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_noDict, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_5_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_5_4 };
         private static nuint ZSTD_RowFindBestMatch_noDict_5_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1251,7 +1264,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_noDict, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_5_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_5_5 };
         private static nuint ZSTD_RowFindBestMatch_noDict_5_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1259,7 +1271,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_noDict, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_5_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_5_6 };
         private static nuint ZSTD_RowFindBestMatch_noDict_6_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1267,7 +1278,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_noDict, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_6_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_6_4 };
         private static nuint ZSTD_RowFindBestMatch_noDict_6_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1275,7 +1285,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_noDict, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_6_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_6_5 };
         private static nuint ZSTD_RowFindBestMatch_noDict_6_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1283,7 +1292,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_noDict, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_noDict_6_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_noDict_6_6 };
         private static nuint ZSTD_RowFindBestMatch_extDict_4_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1291,7 +1299,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_extDict, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_4_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_4_4 };
         private static nuint ZSTD_RowFindBestMatch_extDict_4_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1299,7 +1306,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_extDict, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_4_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_4_5 };
         private static nuint ZSTD_RowFindBestMatch_extDict_4_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1307,7 +1313,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_extDict, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_4_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_4_6 };
         private static nuint ZSTD_RowFindBestMatch_extDict_5_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1315,7 +1320,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_extDict, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_5_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_5_4 };
         private static nuint ZSTD_RowFindBestMatch_extDict_5_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1323,7 +1327,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_extDict, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_5_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_5_5 };
         private static nuint ZSTD_RowFindBestMatch_extDict_5_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1331,7 +1334,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_extDict, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_5_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_5_6 };
         private static nuint ZSTD_RowFindBestMatch_extDict_6_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1339,7 +1341,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_extDict, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_6_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_6_4 };
         private static nuint ZSTD_RowFindBestMatch_extDict_6_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1347,7 +1348,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_extDict, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_6_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_6_5 };
         private static nuint ZSTD_RowFindBestMatch_extDict_6_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1355,7 +1355,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_extDict, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_extDict_6_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_extDict_6_6 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_4_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1363,7 +1362,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dictMatchState, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_4_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_4_4 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_4_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1371,7 +1369,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dictMatchState, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_4_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_4_5 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_4_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1379,7 +1376,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dictMatchState, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_4_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_4_6 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_5_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1387,7 +1383,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dictMatchState, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_5_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_5_4 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_5_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1395,7 +1390,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dictMatchState, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_5_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_5_5 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_5_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1403,7 +1397,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dictMatchState, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_5_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_5_6 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_6_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1411,7 +1404,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dictMatchState, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_6_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_6_4 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_6_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1419,7 +1411,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dictMatchState, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_6_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_6_5 };
         private static nuint ZSTD_RowFindBestMatch_dictMatchState_6_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1427,7 +1418,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dictMatchState, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dictMatchState_6_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dictMatchState_6_6 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_4_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1435,7 +1425,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_4_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_4_4 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_4_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1443,7 +1432,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_4_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_4_5 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_4_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
@@ -1451,7 +1439,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_4_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_4_6 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_5_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1459,7 +1446,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_5_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_5_4 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_5_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1467,7 +1453,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_5_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_5_5 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_5_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
@@ -1475,7 +1460,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_5_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_5_6 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_6_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1483,7 +1467,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 4);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_6_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_6_4 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_6_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1491,7 +1474,6 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 5);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_6_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_6_5 };
         private static nuint ZSTD_RowFindBestMatch_dedicatedDictSearch_6_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
@@ -1499,201 +1481,361 @@ namespace ZstdSharp.Unsafe
             return ZSTD_RowFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch, 6);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_RowVTable_dedicatedDictSearch_6_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_RowFindBestMatch_dedicatedDictSearch_6_6 };
-        private static nuint ZSTD_BtFindBestMatch_noDict_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_noDict_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_noDict);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 4, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_noDict_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_noDict_4 };
-        private static nuint ZSTD_BtFindBestMatch_noDict_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_noDict_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_noDict);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 5, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_noDict_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_noDict_5 };
-        private static nuint ZSTD_BtFindBestMatch_noDict_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_noDict_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_noDict);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 6, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_noDict_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_noDict_6 };
-        private static nuint ZSTD_BtFindBestMatch_extDict_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_extDict_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_extDict);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 4, ZSTD_dictMode_e.ZSTD_extDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_extDict_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_extDict_4 };
-        private static nuint ZSTD_BtFindBestMatch_extDict_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_extDict_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_extDict);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 5, ZSTD_dictMode_e.ZSTD_extDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_extDict_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_extDict_5 };
-        private static nuint ZSTD_BtFindBestMatch_extDict_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_extDict_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_extDict);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 6, ZSTD_dictMode_e.ZSTD_extDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_extDict_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_extDict_6 };
-        private static nuint ZSTD_BtFindBestMatch_dictMatchState_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_dictMatchState_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dictMatchState);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 4, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_dictMatchState_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_dictMatchState_4 };
-        private static nuint ZSTD_BtFindBestMatch_dictMatchState_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_dictMatchState_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dictMatchState);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 5, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_dictMatchState_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_dictMatchState_5 };
-        private static nuint ZSTD_BtFindBestMatch_dictMatchState_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_dictMatchState_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dictMatchState);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 6, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_dictMatchState_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_dictMatchState_6 };
-        private static nuint ZSTD_BtFindBestMatch_dedicatedDictSearch_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_dedicatedDictSearch_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 4, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_dedicatedDictSearch_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_dedicatedDictSearch_4 };
-        private static nuint ZSTD_BtFindBestMatch_dedicatedDictSearch_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_dedicatedDictSearch_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 5, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_dedicatedDictSearch_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_dedicatedDictSearch_5 };
-        private static nuint ZSTD_BtFindBestMatch_dedicatedDictSearch_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
+        private static nuint ZSTD_BtFindBestMatch_dedicatedDictSearch_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offBasePtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
-            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
+            return ZSTD_BtFindBestMatch(ms, ip, iLimit, offBasePtr, 6, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_BtVTable_dedicatedDictSearch_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_BtFindBestMatch_dedicatedDictSearch_6 };
         private static nuint ZSTD_HcFindBestMatch_noDict_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_noDict_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_noDict_4 };
         private static nuint ZSTD_HcFindBestMatch_noDict_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_noDict_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_noDict_5 };
         private static nuint ZSTD_HcFindBestMatch_noDict_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_noDict_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_noDict_6 };
         private static nuint ZSTD_HcFindBestMatch_extDict_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_extDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_extDict_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_extDict_4 };
         private static nuint ZSTD_HcFindBestMatch_extDict_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_extDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_extDict_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_extDict_5 };
         private static nuint ZSTD_HcFindBestMatch_extDict_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_extDict);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_extDict_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_extDict_6 };
         private static nuint ZSTD_HcFindBestMatch_dictMatchState_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_dictMatchState_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_dictMatchState_4 };
         private static nuint ZSTD_HcFindBestMatch_dictMatchState_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_dictMatchState_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_dictMatchState_5 };
         private static nuint ZSTD_HcFindBestMatch_dictMatchState_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_dictMatchState_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_dictMatchState_6 };
         private static nuint ZSTD_HcFindBestMatch_dedicatedDictSearch_4(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 4);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 4, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_dedicatedDictSearch_4 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_dedicatedDictSearch_4 };
         private static nuint ZSTD_HcFindBestMatch_dedicatedDictSearch_5(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 5);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 5, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_dedicatedDictSearch_5 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_dedicatedDictSearch_5 };
         private static nuint ZSTD_HcFindBestMatch_dedicatedDictSearch_6(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr)
         {
             assert((4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) == 6);
             return ZSTD_HcFindBestMatch(ms, ip, iLimit, offsetPtr, 6, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static readonly ZSTD_LazyVTable ZSTD_HcVTable_dedicatedDictSearch_6 = new ZSTD_LazyVTable { searchMax = &ZSTD_HcFindBestMatch_dedicatedDictSearch_6 };
-        public static ZSTD_LazyVTable[][] hcVTables = new ZSTD_LazyVTable[4][] { new ZSTD_LazyVTable[3] { ZSTD_HcVTable_noDict_4, ZSTD_HcVTable_noDict_5, ZSTD_HcVTable_noDict_6 }, new ZSTD_LazyVTable[3] { ZSTD_HcVTable_extDict_4, ZSTD_HcVTable_extDict_5, ZSTD_HcVTable_extDict_6 }, new ZSTD_LazyVTable[3] { ZSTD_HcVTable_dictMatchState_4, ZSTD_HcVTable_dictMatchState_5, ZSTD_HcVTable_dictMatchState_6 }, new ZSTD_LazyVTable[3] { ZSTD_HcVTable_dedicatedDictSearch_4, ZSTD_HcVTable_dedicatedDictSearch_5, ZSTD_HcVTable_dedicatedDictSearch_6 } };
-        public static ZSTD_LazyVTable[][] btVTables = new ZSTD_LazyVTable[4][] { new ZSTD_LazyVTable[3] { ZSTD_BtVTable_noDict_4, ZSTD_BtVTable_noDict_5, ZSTD_BtVTable_noDict_6 }, new ZSTD_LazyVTable[3] { ZSTD_BtVTable_extDict_4, ZSTD_BtVTable_extDict_5, ZSTD_BtVTable_extDict_6 }, new ZSTD_LazyVTable[3] { ZSTD_BtVTable_dictMatchState_4, ZSTD_BtVTable_dictMatchState_5, ZSTD_BtVTable_dictMatchState_6 }, new ZSTD_LazyVTable[3] { ZSTD_BtVTable_dedicatedDictSearch_4, ZSTD_BtVTable_dedicatedDictSearch_5, ZSTD_BtVTable_dedicatedDictSearch_6 } };
-        public static ZSTD_LazyVTable[][][] rowVTables = new ZSTD_LazyVTable[4][][] { new ZSTD_LazyVTable[3][] { new ZSTD_LazyVTable[3] { ZSTD_RowVTable_noDict_4_4, ZSTD_RowVTable_noDict_4_5, ZSTD_RowVTable_noDict_4_6 }, new ZSTD_LazyVTable[3] { ZSTD_RowVTable_noDict_5_4, ZSTD_RowVTable_noDict_5_5, ZSTD_RowVTable_noDict_5_6 }, new ZSTD_LazyVTable[3] { ZSTD_RowVTable_noDict_6_4, ZSTD_RowVTable_noDict_6_5, ZSTD_RowVTable_noDict_6_6 } }, new ZSTD_LazyVTable[3][] { new ZSTD_LazyVTable[3] { ZSTD_RowVTable_extDict_4_4, ZSTD_RowVTable_extDict_4_5, ZSTD_RowVTable_extDict_4_6 }, new ZSTD_LazyVTable[3] { ZSTD_RowVTable_extDict_5_4, ZSTD_RowVTable_extDict_5_5, ZSTD_RowVTable_extDict_5_6 }, new ZSTD_LazyVTable[3] { ZSTD_RowVTable_extDict_6_4, ZSTD_RowVTable_extDict_6_5, ZSTD_RowVTable_extDict_6_6 } }, new ZSTD_LazyVTable[3][] { new ZSTD_LazyVTable[3] { ZSTD_RowVTable_dictMatchState_4_4, ZSTD_RowVTable_dictMatchState_4_5, ZSTD_RowVTable_dictMatchState_4_6 }, new ZSTD_LazyVTable[3] { ZSTD_RowVTable_dictMatchState_5_4, ZSTD_RowVTable_dictMatchState_5_5, ZSTD_RowVTable_dictMatchState_5_6 }, new ZSTD_LazyVTable[3] { ZSTD_RowVTable_dictMatchState_6_4, ZSTD_RowVTable_dictMatchState_6_5, ZSTD_RowVTable_dictMatchState_6_6 } }, new ZSTD_LazyVTable[3][] { new ZSTD_LazyVTable[3] { ZSTD_RowVTable_dedicatedDictSearch_4_4, ZSTD_RowVTable_dedicatedDictSearch_4_5, ZSTD_RowVTable_dedicatedDictSearch_4_6 }, new ZSTD_LazyVTable[3] { ZSTD_RowVTable_dedicatedDictSearch_5_4, ZSTD_RowVTable_dedicatedDictSearch_5_5, ZSTD_RowVTable_dedicatedDictSearch_5_6 }, new ZSTD_LazyVTable[3] { ZSTD_RowVTable_dedicatedDictSearch_6_4, ZSTD_RowVTable_dedicatedDictSearch_6_5, ZSTD_RowVTable_dedicatedDictSearch_6_6 } } };
         /**
-         * This table is indexed first by the four ZSTD_dictMode_e values, and then
-         * by the two searchMethod_e values. NULLs are placed for configurations
-         * that should never occur (extDict modes go to the other implementation
-         * below and there is no DDSS for binary tree search yet).
+         * Searches for the longest match at @p ip.
+         * Dispatches to the correct implementation function based on the
+         * (searchMethod, dictMode, mls, rowLog). We use switch statements
+         * here instead of using an indirect function call through a function
+         * pointer because after Spectre and Meltdown mitigations, indirect
+         * function calls can be very costly, especially in the kernel.
+         *
+         * NOTE: dictMode and searchMethod should be templated, so those switch
+         * statements should be optimized out. Only the mls & rowLog switches
+         * should be left.
+         *
+         * @param ms The match state.
+         * @param ip The position to search at.
+         * @param iend The end of the input data.
+         * @param[out] offsetPtr Stores the match offset into this pointer.
+         * @param mls The minimum search length, in the range [4, 6].
+         * @param rowLog The row log (if applicable), in the range [4, 6].
+         * @param searchMethod The search method to use (templated).
+         * @param dictMode The dictMode (templated).
+         *
+         * @returns The length of the longest match found, or < mls if no match is found.
+         * If a match is found its offset is stored in @p offsetPtr.
          */
-        private static ZSTD_LazyVTable ZSTD_selectLazyVTable(ZSTD_matchState_t* ms, searchMethod_e searchMethod, ZSTD_dictMode_e dictMode)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_searchMax(ZSTD_matchState_t* ms, byte* ip, byte* iend, nuint* offsetPtr, uint mls, uint rowLog, searchMethod_e searchMethod, ZSTD_dictMode_e dictMode)
         {
-            uint mls = 4 > (6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch) ? 4 : 6 < ms->cParams.minMatch ? 6 : ms->cParams.minMatch;
-            uint rowLog = 4 > (6 < ms->cParams.searchLog ? 6 : ms->cParams.searchLog) ? 4 : 6 < ms->cParams.searchLog ? 6 : ms->cParams.searchLog;
-            switch (searchMethod)
+            if (dictMode == ZSTD_dictMode_e.ZSTD_noDict)
             {
-                case searchMethod_e.search_hashChain:
-                    return hcVTables[(int)dictMode][mls - 4];
-                case searchMethod_e.search_binaryTree:
-                    return btVTables[(int)dictMode][mls - 4];
-                case searchMethod_e.search_rowHash:
-                    return rowVTables[(int)dictMode][mls - 4][rowLog - 4];
-                default:
-                    return null;
+                if (searchMethod == searchMethod_e.search_rowHash)
+                {
+                    if (mls == 4)
+                    {
+                        if (rowLog == 4)
+                            return ZSTD_RowFindBestMatch_noDict_4_4(ms, ip, iend, offsetPtr);
+                        return rowLog == 5 ? ZSTD_RowFindBestMatch_noDict_4_5(ms, ip, iend, offsetPtr) : ZSTD_RowFindBestMatch_noDict_4_6(ms, ip, iend, offsetPtr);
+                    }
+
+                    if (mls == 5)
+                    {
+                        if (rowLog == 4)
+                            return ZSTD_RowFindBestMatch_noDict_5_4(ms, ip, iend, offsetPtr);
+                        return rowLog == 5 ? ZSTD_RowFindBestMatch_noDict_5_5(ms, ip, iend, offsetPtr) : ZSTD_RowFindBestMatch_noDict_5_6(ms, ip, iend, offsetPtr);
+                    }
+
+                    if (rowLog == 4)
+                        return ZSTD_RowFindBestMatch_noDict_6_4(ms, ip, iend, offsetPtr);
+                    return rowLog == 5 ? ZSTD_RowFindBestMatch_noDict_6_5(ms, ip, iend, offsetPtr) : ZSTD_RowFindBestMatch_noDict_6_6(ms, ip, iend, offsetPtr);
+                }
+
+                if (searchMethod == searchMethod_e.search_hashChain)
+                {
+                    if (mls == 4)
+                        return ZSTD_HcFindBestMatch_noDict_4(ms, ip, iend, offsetPtr);
+                    return mls == 5 ? ZSTD_HcFindBestMatch_noDict_5(ms, ip, iend, offsetPtr) : ZSTD_HcFindBestMatch_noDict_6(ms, ip, iend, offsetPtr);
+                }
+
+                // searchMethod_e.search_binaryTree
+                if (mls == 4)
+                    return ZSTD_BtFindBestMatch_noDict_4(ms, ip, iend, offsetPtr);
+                return mls == 5 ? ZSTD_BtFindBestMatch_noDict_5(ms, ip, iend, offsetPtr) : ZSTD_BtFindBestMatch_noDict_6(ms, ip, iend, offsetPtr);
             }
+
+            if (dictMode == ZSTD_dictMode_e.ZSTD_extDict)
+            {
+                if (searchMethod == searchMethod_e.search_rowHash)
+                {
+                    if (mls == 4)
+                    {
+                        if (rowLog == 4)
+                            return ZSTD_RowFindBestMatch_extDict_4_4(ms, ip, iend, offsetPtr);
+                        if (rowLog == 5)
+                            return ZSTD_RowFindBestMatch_extDict_4_5(ms, ip, iend, offsetPtr);
+                        return ZSTD_RowFindBestMatch_extDict_4_6(ms, ip, iend, offsetPtr);
+                    }
+
+                    if (mls == 5)
+                    {
+                        if (rowLog == 4)
+                            return ZSTD_RowFindBestMatch_extDict_5_4(ms, ip, iend, offsetPtr);
+                        if (rowLog == 5)
+                            return ZSTD_RowFindBestMatch_extDict_5_5(ms, ip, iend, offsetPtr);
+                        return ZSTD_RowFindBestMatch_extDict_5_6(ms, ip, iend, offsetPtr);
+                    }
+
+                    if (mls == 6)
+                    {
+                        if (rowLog == 4)
+                            return ZSTD_RowFindBestMatch_extDict_6_4(ms, ip, iend, offsetPtr);
+                        if (rowLog == 5)
+                            return ZSTD_RowFindBestMatch_extDict_6_5(ms, ip, iend, offsetPtr);
+                        return ZSTD_RowFindBestMatch_extDict_6_6(ms, ip, iend, offsetPtr);
+                    }
+                }
+
+                if (searchMethod == searchMethod_e.search_hashChain)
+                {
+                    if (mls == 4)
+                        return ZSTD_HcFindBestMatch_extDict_4(ms, ip, iend, offsetPtr);
+                    if (mls == 5)
+                        return ZSTD_HcFindBestMatch_extDict_5(ms, ip, iend, offsetPtr);
+                    return ZSTD_HcFindBestMatch_extDict_6(ms, ip, iend, offsetPtr);
+                }
+
+                // searchMethod_e.search_binaryTree
+                if (mls == 4)
+                    return ZSTD_BtFindBestMatch_extDict_4(ms, ip, iend, offsetPtr);
+                if (mls == 5)
+                    return ZSTD_BtFindBestMatch_extDict_5(ms, ip, iend, offsetPtr);
+                return ZSTD_BtFindBestMatch_extDict_6(ms, ip, iend, offsetPtr);
+            }
+
+            if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState)
+            {
+                if (searchMethod == searchMethod_e.search_rowHash)
+                {
+                    if (mls == 4)
+                    {
+                        if (rowLog == 4)
+                            return ZSTD_RowFindBestMatch_dictMatchState_4_4(ms, ip, iend, offsetPtr);
+                        if (rowLog == 5)
+                            return ZSTD_RowFindBestMatch_dictMatchState_4_5(ms, ip, iend, offsetPtr);
+                        return ZSTD_RowFindBestMatch_dictMatchState_4_6(ms, ip, iend, offsetPtr);
+                    }
+
+                    if (mls == 5)
+                    {
+                        if (rowLog == 4)
+                            return ZSTD_RowFindBestMatch_dictMatchState_5_4(ms, ip, iend, offsetPtr);
+                        if (rowLog == 5)
+                            return ZSTD_RowFindBestMatch_dictMatchState_5_5(ms, ip, iend, offsetPtr);
+                        return ZSTD_RowFindBestMatch_dictMatchState_5_6(ms, ip, iend, offsetPtr);
+                    }
+
+                    if (mls == 6)
+                    {
+                        if (rowLog == 4)
+                            return ZSTD_RowFindBestMatch_dictMatchState_6_4(ms, ip, iend, offsetPtr);
+                        if (rowLog == 5)
+                            return ZSTD_RowFindBestMatch_dictMatchState_6_5(ms, ip, iend, offsetPtr);
+                        return ZSTD_RowFindBestMatch_dictMatchState_6_6(ms, ip, iend, offsetPtr);
+                    }
+                }
+
+                if (searchMethod == searchMethod_e.search_hashChain)
+                {
+                    if (mls == 4)
+                        return ZSTD_HcFindBestMatch_dictMatchState_4(ms, ip, iend, offsetPtr);
+                    if (mls == 5)
+                        return ZSTD_HcFindBestMatch_dictMatchState_5(ms, ip, iend, offsetPtr);
+                    return ZSTD_HcFindBestMatch_dictMatchState_6(ms, ip, iend, offsetPtr);
+                }
+
+                // search_binaryTree
+                if (mls == 4)
+                    return ZSTD_BtFindBestMatch_dictMatchState_4(ms, ip, iend, offsetPtr);
+                if (mls == 5)
+                    return ZSTD_BtFindBestMatch_dictMatchState_5(ms, ip, iend, offsetPtr);
+                return ZSTD_BtFindBestMatch_dictMatchState_6(ms, ip, iend, offsetPtr);
+            }
+
+            if (searchMethod == searchMethod_e.search_rowHash)
+            {
+                if (mls == 4)
+                {
+                    if (rowLog == 4)
+                        return ZSTD_RowFindBestMatch_dedicatedDictSearch_4_4(ms, ip, iend, offsetPtr);
+                    if (rowLog == 5)
+                        return ZSTD_RowFindBestMatch_dedicatedDictSearch_4_5(ms, ip, iend, offsetPtr);
+                    return ZSTD_RowFindBestMatch_dedicatedDictSearch_4_6(ms, ip, iend, offsetPtr);
+                }
+
+                if (mls == 5)
+                {
+                    if (rowLog == 4)
+                        return ZSTD_RowFindBestMatch_dedicatedDictSearch_5_4(ms, ip, iend, offsetPtr);
+                    if (rowLog == 5)
+                        return ZSTD_RowFindBestMatch_dedicatedDictSearch_5_5(ms, ip, iend, offsetPtr);
+                    return ZSTD_RowFindBestMatch_dedicatedDictSearch_5_6(ms, ip, iend, offsetPtr);
+                }
+
+                if (mls == 6)
+                {
+                    if (rowLog == 4)
+                        return ZSTD_RowFindBestMatch_dedicatedDictSearch_6_4(ms, ip, iend, offsetPtr);
+                    if (rowLog == 5)
+                        return ZSTD_RowFindBestMatch_dedicatedDictSearch_6_5(ms, ip, iend, offsetPtr);
+                    return ZSTD_RowFindBestMatch_dedicatedDictSearch_6_6(ms, ip, iend, offsetPtr);
+                }
+            }
+
+            if (searchMethod == searchMethod_e.search_hashChain)
+            {
+                if (mls == 4)
+                    return ZSTD_HcFindBestMatch_dedicatedDictSearch_4(ms, ip, iend, offsetPtr);
+                if (mls == 5)
+                    return ZSTD_HcFindBestMatch_dedicatedDictSearch_5(ms, ip, iend, offsetPtr);
+                return ZSTD_HcFindBestMatch_dedicatedDictSearch_6(ms, ip, iend, offsetPtr);
+            }
+
+            // searchMethod_e.search_binaryTree
+            if (mls == 4)
+                return ZSTD_BtFindBestMatch_dedicatedDictSearch_4(ms, ip, iend, offsetPtr);
+            if (mls == 5)
+                return ZSTD_BtFindBestMatch_dedicatedDictSearch_5(ms, ip, iend, offsetPtr);
+            return ZSTD_BtFindBestMatch_dedicatedDictSearch_6(ms, ip, iend, offsetPtr);
         }
 
+        /* *******************************
+         *  Common parser - lazy strategy
+         *********************************/
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_compressBlock_lazy_generic(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, searchMethod_e searchMethod, uint depth, ZSTD_dictMode_e dictMode)
         {
@@ -1705,8 +1847,10 @@ namespace ZstdSharp.Unsafe
             byte* @base = ms->window.@base;
             uint prefixLowestIndex = ms->window.dictLimit;
             byte* prefixLowest = @base + prefixLowestIndex;
-            delegate* managed<ZSTD_matchState_t*, byte*, byte*, nuint*, nuint> searchMax = ZSTD_selectLazyVTable(ms, searchMethod, dictMode).searchMax;
-            uint offset_1 = rep[0], offset_2 = rep[1], savedOffset = 0;
+            uint mls = 4 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 4 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
+            uint rowLog = 4 > (ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6) ? 4 : ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6;
+            uint offset_1 = rep[0], offset_2 = rep[1];
+            uint offsetSaved1 = 0, offsetSaved2 = 0;
             int isDMS = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? 1 : 0;
             int isDDS = dictMode == ZSTD_dictMode_e.ZSTD_dedicatedDictSearch ? 1 : 0;
             int isDxS = isDMS != 0 || isDDS != 0 ? 1 : 0;
@@ -1717,7 +1861,6 @@ namespace ZstdSharp.Unsafe
             byte* dictEnd = isDxS != 0 ? dms->window.nextSrc : null;
             uint dictIndexDelta = isDxS != 0 ? prefixLowestIndex - (uint)(dictEnd - dictBase) : 0;
             uint dictAndPrefixLength = (uint)(ip - prefixLowest + (dictEnd - dictLowest));
-            assert(searchMax != null);
             ip += dictAndPrefixLength == 0 ? 1 : 0;
             if (dictMode == ZSTD_dictMode_e.ZSTD_noDict)
             {
@@ -1726,13 +1869,13 @@ namespace ZstdSharp.Unsafe
                 uint maxRep = curr - windowLow;
                 if (offset_2 > maxRep)
                 {
-                    savedOffset = offset_2;
+                    offsetSaved2 = offset_2;
                     offset_2 = 0;
                 }
 
                 if (offset_1 > maxRep)
                 {
-                    savedOffset = offset_1;
+                    offsetSaved1 = offset_1;
                     offset_1 = 0;
                 }
             }
@@ -1745,7 +1888,6 @@ namespace ZstdSharp.Unsafe
 
             if (searchMethod == searchMethod_e.search_rowHash)
             {
-                uint rowLog = 4 > (6 < ms->cParams.searchLog ? 6 : ms->cParams.searchLog) ? 4 : 6 < ms->cParams.searchLog ? 6 : ms->cParams.searchLog;
                 ZSTD_row_fillHashCache(ms, @base, rowLog, ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6, ms->nextToUpdate, ilimit);
             }
 
@@ -1754,7 +1896,7 @@ namespace ZstdSharp.Unsafe
                 nuint matchLength = 0;
                 assert(1 >= 1);
                 assert(1 <= 3);
-                nuint offcode = 1 - 1;
+                nuint offBase = 1;
                 byte* start = ip + 1;
                 if (isDxS != 0)
                 {
@@ -1777,13 +1919,13 @@ namespace ZstdSharp.Unsafe
                 }
 
                 {
-                    nuint offsetFound = 999999999;
-                    nuint ml2 = searchMax(ms, ip, iend, &offsetFound);
+                    nuint offbaseFound = 999999999;
+                    nuint ml2 = ZSTD_searchMax(ms, ip, iend, &offbaseFound, mls, rowLog, searchMethod, dictMode);
                     if (ml2 > matchLength)
                     {
                         matchLength = ml2;
                         start = ip;
-                        offcode = offsetFound;
+                        offBase = offbaseFound;
                     }
                 }
 
@@ -1797,17 +1939,17 @@ namespace ZstdSharp.Unsafe
                     while (ip < ilimit)
                     {
                         ip++;
-                        if (dictMode == ZSTD_dictMode_e.ZSTD_noDict && offcode != 0 && offset_1 > 0 && MEM_read32(ip) == MEM_read32(ip - offset_1))
+                        if (dictMode == ZSTD_dictMode_e.ZSTD_noDict && offBase != 0 && offset_1 > 0 && MEM_read32(ip) == MEM_read32(ip - offset_1))
                         {
                             nuint mlRep = ZSTD_count(ip + 4, ip + 4 - offset_1, iend) + 4;
                             int gain2 = (int)(mlRep * 3);
-                            int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)(offcode + 1)) + 1);
+                            int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)offBase) + 1);
                             if (mlRep >= 4 && gain2 > gain1)
                             {
                                 matchLength = mlRep;
                                 assert(1 >= 1);
                                 assert(1 <= 3);
-                                offcode = 1 - 1;
+                                offBase = 1;
                                 start = ip;
                             }
                         }
@@ -1821,28 +1963,28 @@ namespace ZstdSharp.Unsafe
                                 byte* repMatchEnd = repIndex < prefixLowestIndex ? dictEnd : iend;
                                 nuint mlRep = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repMatchEnd, prefixLowest) + 4;
                                 int gain2 = (int)(mlRep * 3);
-                                int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)(offcode + 1)) + 1);
+                                int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)offBase) + 1);
                                 if (mlRep >= 4 && gain2 > gain1)
                                 {
                                     matchLength = mlRep;
                                     assert(1 >= 1);
                                     assert(1 <= 3);
-                                    offcode = 1 - 1;
+                                    offBase = 1;
                                     start = ip;
                                 }
                             }
                         }
 
                         {
-                            nuint offset2 = 999999999;
-                            nuint ml2 = searchMax(ms, ip, iend, &offset2);
+                            nuint ofbCandidate = 999999999;
+                            nuint ml2 = ZSTD_searchMax(ms, ip, iend, &ofbCandidate, mls, rowLog, searchMethod, dictMode);
                             /* raw approx */
-                            int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)(offset2 + 1)));
-                            int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offcode + 1)) + 4);
+                            int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)ofbCandidate));
+                            int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)offBase) + 4);
                             if (ml2 >= 4 && gain2 > gain1)
                             {
                                 matchLength = ml2;
-                                offcode = offset2;
+                                offBase = ofbCandidate;
                                 start = ip;
                                 continue;
                             }
@@ -1851,17 +1993,17 @@ namespace ZstdSharp.Unsafe
                         if (depth == 2 && ip < ilimit)
                         {
                             ip++;
-                            if (dictMode == ZSTD_dictMode_e.ZSTD_noDict && offcode != 0 && offset_1 > 0 && MEM_read32(ip) == MEM_read32(ip - offset_1))
+                            if (dictMode == ZSTD_dictMode_e.ZSTD_noDict && offBase != 0 && offset_1 > 0 && MEM_read32(ip) == MEM_read32(ip - offset_1))
                             {
                                 nuint mlRep = ZSTD_count(ip + 4, ip + 4 - offset_1, iend) + 4;
                                 int gain2 = (int)(mlRep * 4);
-                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offcode + 1)) + 1);
+                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)offBase) + 1);
                                 if (mlRep >= 4 && gain2 > gain1)
                                 {
                                     matchLength = mlRep;
                                     assert(1 >= 1);
                                     assert(1 <= 3);
-                                    offcode = 1 - 1;
+                                    offBase = 1;
                                     start = ip;
                                 }
                             }
@@ -1875,28 +2017,28 @@ namespace ZstdSharp.Unsafe
                                     byte* repMatchEnd = repIndex < prefixLowestIndex ? dictEnd : iend;
                                     nuint mlRep = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repMatchEnd, prefixLowest) + 4;
                                     int gain2 = (int)(mlRep * 4);
-                                    int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offcode + 1)) + 1);
+                                    int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)offBase) + 1);
                                     if (mlRep >= 4 && gain2 > gain1)
                                     {
                                         matchLength = mlRep;
                                         assert(1 >= 1);
                                         assert(1 <= 3);
-                                        offcode = 1 - 1;
+                                        offBase = 1;
                                         start = ip;
                                     }
                                 }
                             }
 
                             {
-                                nuint offset2 = 999999999;
-                                nuint ml2 = searchMax(ms, ip, iend, &offset2);
+                                nuint ofbCandidate = 999999999;
+                                nuint ml2 = ZSTD_searchMax(ms, ip, iend, &ofbCandidate, mls, rowLog, searchMethod, dictMode);
                                 /* raw approx */
-                                int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)(offset2 + 1)));
-                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offcode + 1)) + 7);
+                                int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)ofbCandidate));
+                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)offBase) + 7);
                                 if (ml2 >= 4 && gain2 > gain1)
                                 {
                                     matchLength = ml2;
-                                    offcode = offset2;
+                                    offBase = ofbCandidate;
                                     start = ip;
                                     continue;
                                 }
@@ -1906,13 +2048,13 @@ namespace ZstdSharp.Unsafe
                         break;
                     }
 
-                if (offcode > 3 - 1)
+                if (offBase > 3)
                 {
                     if (dictMode == ZSTD_dictMode_e.ZSTD_noDict)
                     {
-                        assert(offcode > 3 - 1);
-                        assert(offcode > 3 - 1);
-                        while (start > anchor && start - (offcode - (3 - 1)) > prefixLowest && start[-1] == (start - (offcode - (3 - 1)))[-1])
+                        assert(offBase > 3);
+                        assert(offBase > 3);
+                        while (start > anchor && start - (offBase - 3) > prefixLowest && start[-1] == (start - (offBase - 3))[-1])
                         {
                             start--;
                             matchLength++;
@@ -1921,8 +2063,8 @@ namespace ZstdSharp.Unsafe
 
                     if (isDxS != 0)
                     {
-                        assert(offcode > 3 - 1);
-                        uint matchIndex = (uint)((nuint)(start - @base) - (offcode - (3 - 1)));
+                        assert(offBase > 3);
+                        uint matchIndex = (uint)((nuint)(start - @base) - (offBase - 3));
                         byte* match = matchIndex < prefixLowestIndex ? dictBase + matchIndex - dictIndexDelta : @base + matchIndex;
                         byte* mStart = matchIndex < prefixLowestIndex ? dictLowest : prefixLowest;
                         while (start > anchor && match > mStart && start[-1] == match[-1])
@@ -1934,14 +2076,14 @@ namespace ZstdSharp.Unsafe
                     }
 
                     offset_2 = offset_1;
-                    assert(offcode > 3 - 1);
-                    offset_1 = (uint)(offcode - (3 - 1));
+                    assert(offBase > 3);
+                    offset_1 = (uint)(offBase - 3);
                 }
 
             _storeSequence:
                 {
                     nuint litLength = (nuint)(start - anchor);
-                    ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)offcode, matchLength);
+                    ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)offBase, matchLength);
                     anchor = ip = start + matchLength;
                 }
 
@@ -1956,12 +2098,12 @@ namespace ZstdSharp.Unsafe
                         {
                             byte* repEnd2 = repIndex < prefixLowestIndex ? dictEnd : iend;
                             matchLength = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repEnd2, prefixLowest) + 4;
-                            offcode = offset_2;
+                            offBase = offset_2;
                             offset_2 = offset_1;
-                            offset_1 = (uint)offcode;
+                            offset_1 = (uint)offBase;
                             assert(1 >= 1);
                             assert(1 <= 3);
-                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 1 - 1, matchLength);
+                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 1, matchLength);
                             ip += matchLength;
                             anchor = ip;
                             continue;
@@ -1976,12 +2118,12 @@ namespace ZstdSharp.Unsafe
                     while (ip <= ilimit && offset_2 > 0 && MEM_read32(ip) == MEM_read32(ip - offset_2))
                     {
                         matchLength = ZSTD_count(ip + 4, ip + 4 - offset_2, iend) + 4;
-                        offcode = offset_2;
+                        offBase = offset_2;
                         offset_2 = offset_1;
-                        offset_1 = (uint)offcode;
+                        offset_1 = (uint)offBase;
                         assert(1 >= 1);
                         assert(1 <= 3);
-                        ZSTD_storeSeq(seqStore, 0, anchor, iend, 1 - 1, matchLength);
+                        ZSTD_storeSeq(seqStore, 0, anchor, iend, 1, matchLength);
                         ip += matchLength;
                         anchor = ip;
                         continue;
@@ -1989,8 +2131,9 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            rep[0] = offset_1 != 0 ? offset_1 : savedOffset;
-            rep[1] = offset_2 != 0 ? offset_2 : savedOffset;
+            offsetSaved2 = offsetSaved1 != 0 && offset_1 != 0 ? offsetSaved1 : offsetSaved2;
+            rep[0] = offset_1 != 0 ? offset_1 : offsetSaved1;
+            rep[1] = offset_2 != 0 ? offset_2 : offsetSaved2;
             return (nuint)(iend - anchor);
         }
 
@@ -2111,8 +2254,8 @@ namespace ZstdSharp.Unsafe
             byte* dictEnd = dictBase + dictLimit;
             byte* dictStart = dictBase + ms->window.lowLimit;
             uint windowLog = ms->cParams.windowLog;
-            uint rowLog = (uint)(ms->cParams.searchLog < 5 ? 4 : 5);
-            delegate* managed<ZSTD_matchState_t*, byte*, byte*, nuint*, nuint> searchMax = ZSTD_selectLazyVTable(ms, searchMethod, ZSTD_dictMode_e.ZSTD_extDict).searchMax;
+            uint mls = 4 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 4 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
+            uint rowLog = 4 > (ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6) ? 4 : ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6;
             uint offset_1 = rep[0], offset_2 = rep[1];
             ip += ip == prefixStart ? 1 : 0;
             if (searchMethod == searchMethod_e.search_rowHash)
@@ -2125,7 +2268,7 @@ namespace ZstdSharp.Unsafe
                 nuint matchLength = 0;
                 assert(1 >= 1);
                 assert(1 <= 3);
-                nuint offcode = 1 - 1;
+                nuint offBase = 1;
                 byte* start = ip + 1;
                 uint curr = (uint)(ip - @base);
                 {
@@ -2145,13 +2288,13 @@ namespace ZstdSharp.Unsafe
                 }
 
                 {
-                    nuint offsetFound = 999999999;
-                    nuint ml2 = searchMax(ms, ip, iend, &offsetFound);
+                    nuint ofbCandidate = 999999999;
+                    nuint ml2 = ZSTD_searchMax(ms, ip, iend, &ofbCandidate, mls, rowLog, searchMethod, ZSTD_dictMode_e.ZSTD_extDict);
                     if (ml2 > matchLength)
                     {
                         matchLength = ml2;
                         start = ip;
-                        offcode = offsetFound;
+                        offBase = ofbCandidate;
                     }
                 }
 
@@ -2166,7 +2309,7 @@ namespace ZstdSharp.Unsafe
                     {
                         ip++;
                         curr++;
-                        if (offcode != 0)
+                        if (offBase != 0)
                         {
                             uint windowLow = ZSTD_getLowestMatchIndex(ms, curr, windowLog);
                             uint repIndex = curr - offset_1;
@@ -2179,28 +2322,28 @@ namespace ZstdSharp.Unsafe
                                     byte* repEnd = repIndex < dictLimit ? dictEnd : iend;
                                     nuint repLength = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repEnd, prefixStart) + 4;
                                     int gain2 = (int)(repLength * 3);
-                                    int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)(offcode + 1)) + 1);
+                                    int gain1 = (int)(matchLength * 3 - ZSTD_highbit32((uint)offBase) + 1);
                                     if (repLength >= 4 && gain2 > gain1)
                                     {
                                         matchLength = repLength;
                                         assert(1 >= 1);
                                         assert(1 <= 3);
-                                        offcode = 1 - 1;
+                                        offBase = 1;
                                         start = ip;
                                     }
                                 }
                         }
 
                         {
-                            nuint offset2 = 999999999;
-                            nuint ml2 = searchMax(ms, ip, iend, &offset2);
+                            nuint ofbCandidate = 999999999;
+                            nuint ml2 = ZSTD_searchMax(ms, ip, iend, &ofbCandidate, mls, rowLog, searchMethod, ZSTD_dictMode_e.ZSTD_extDict);
                             /* raw approx */
-                            int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)(offset2 + 1)));
-                            int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offcode + 1)) + 4);
+                            int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)ofbCandidate));
+                            int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)offBase) + 4);
                             if (ml2 >= 4 && gain2 > gain1)
                             {
                                 matchLength = ml2;
-                                offcode = offset2;
+                                offBase = ofbCandidate;
                                 start = ip;
                                 continue;
                             }
@@ -2210,7 +2353,7 @@ namespace ZstdSharp.Unsafe
                         {
                             ip++;
                             curr++;
-                            if (offcode != 0)
+                            if (offBase != 0)
                             {
                                 uint windowLow = ZSTD_getLowestMatchIndex(ms, curr, windowLog);
                                 uint repIndex = curr - offset_1;
@@ -2223,28 +2366,28 @@ namespace ZstdSharp.Unsafe
                                         byte* repEnd = repIndex < dictLimit ? dictEnd : iend;
                                         nuint repLength = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repEnd, prefixStart) + 4;
                                         int gain2 = (int)(repLength * 4);
-                                        int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offcode + 1)) + 1);
+                                        int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)offBase) + 1);
                                         if (repLength >= 4 && gain2 > gain1)
                                         {
                                             matchLength = repLength;
                                             assert(1 >= 1);
                                             assert(1 <= 3);
-                                            offcode = 1 - 1;
+                                            offBase = 1;
                                             start = ip;
                                         }
                                     }
                             }
 
                             {
-                                nuint offset2 = 999999999;
-                                nuint ml2 = searchMax(ms, ip, iend, &offset2);
+                                nuint ofbCandidate = 999999999;
+                                nuint ml2 = ZSTD_searchMax(ms, ip, iend, &ofbCandidate, mls, rowLog, searchMethod, ZSTD_dictMode_e.ZSTD_extDict);
                                 /* raw approx */
-                                int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)(offset2 + 1)));
-                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)(offcode + 1)) + 7);
+                                int gain2 = (int)(ml2 * 4 - ZSTD_highbit32((uint)ofbCandidate));
+                                int gain1 = (int)(matchLength * 4 - ZSTD_highbit32((uint)offBase) + 7);
                                 if (ml2 >= 4 && gain2 > gain1)
                                 {
                                     matchLength = ml2;
-                                    offcode = offset2;
+                                    offBase = ofbCandidate;
                                     start = ip;
                                     continue;
                                 }
@@ -2254,10 +2397,10 @@ namespace ZstdSharp.Unsafe
                         break;
                     }
 
-                if (offcode > 3 - 1)
+                if (offBase > 3)
                 {
-                    assert(offcode > 3 - 1);
-                    uint matchIndex = (uint)((nuint)(start - @base) - (offcode - (3 - 1)));
+                    assert(offBase > 3);
+                    uint matchIndex = (uint)((nuint)(start - @base) - (offBase - 3));
                     byte* match = matchIndex < dictLimit ? dictBase + matchIndex : @base + matchIndex;
                     byte* mStart = matchIndex < dictLimit ? dictStart : prefixStart;
                     while (start > anchor && match > mStart && start[-1] == match[-1])
@@ -2268,14 +2411,14 @@ namespace ZstdSharp.Unsafe
                     }
 
                     offset_2 = offset_1;
-                    assert(offcode > 3 - 1);
-                    offset_1 = (uint)(offcode - (3 - 1));
+                    assert(offBase > 3);
+                    offset_1 = (uint)(offBase - 3);
                 }
 
             _storeSequence:
                 {
                     nuint litLength = (nuint)(start - anchor);
-                    ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)offcode, matchLength);
+                    ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)offBase, matchLength);
                     anchor = ip = start + matchLength;
                 }
 
@@ -2292,12 +2435,12 @@ namespace ZstdSharp.Unsafe
                             /* repcode detected we should take it */
                             byte* repEnd = repIndex < dictLimit ? dictEnd : iend;
                             matchLength = ZSTD_count_2segments(ip + 4, repMatch + 4, iend, repEnd, prefixStart) + 4;
-                            offcode = offset_2;
+                            offBase = offset_2;
                             offset_2 = offset_1;
-                            offset_1 = (uint)offcode;
+                            offset_1 = (uint)offBase;
                             assert(1 >= 1);
                             assert(1 <= 3);
-                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 1 - 1, matchLength);
+                            ZSTD_storeSeq(seqStore, 0, anchor, iend, 1, matchLength);
                             ip += matchLength;
                             anchor = ip;
                             continue;

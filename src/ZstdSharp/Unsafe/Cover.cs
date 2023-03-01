@@ -25,7 +25,7 @@ namespace ZstdSharp.Unsafe
          */
         public static void COVER_warnOnSmallCorpus(nuint maxDictSize, nuint nbDmers, int displayLevel)
         {
-            double ratio = (double)nbDmers / maxDictSize;
+            double ratio = nbDmers / (double)maxDictSize;
             if (ratio >= 10)
             {
                 return;
@@ -228,14 +228,22 @@ namespace ZstdSharp.Unsafe
             }
         }
 
+        private static COVER_dictSelection setDictSelection(byte* buf, nuint s, nuint csz)
+        {
+            COVER_dictSelection ds;
+            ds.dictContent = buf;
+            ds.dictSize = s;
+            ds.totalCompressedSize = csz;
+            return ds;
+        }
+
         /**
          * Error function for COVER_selectDict function. Returns a struct where
          * return.totalCompressedSize is a ZSTD error.
          */
         public static COVER_dictSelection COVER_dictSelectionError(nuint error)
         {
-            COVER_dictSelection selection = new COVER_dictSelection { dictContent = null, dictSize = 0, totalCompressedSize = error };
-            return selection;
+            return setDictSelection(null, 0, error);
         }
 
         /**
@@ -296,9 +304,8 @@ namespace ZstdSharp.Unsafe
 
             if (@params.shrinkDict == 0)
             {
-                COVER_dictSelection selection = new COVER_dictSelection { dictContent = largestDictbuffer, dictSize = dictContentSize, totalCompressedSize = totalCompressedSize };
                 free(candidateDictBuffer);
-                return selection;
+                return setDictSelection(largestDictbuffer, dictContentSize, totalCompressedSize);
             }
 
             largestDict = dictContentSize;
@@ -325,9 +332,8 @@ namespace ZstdSharp.Unsafe
 
                 if (totalCompressedSize <= largestCompressed * regressionTolerance)
                 {
-                    COVER_dictSelection selection = new COVER_dictSelection { dictContent = candidateDictBuffer, dictSize = dictContentSize, totalCompressedSize = totalCompressedSize };
                     free(largestDictbuffer);
-                    return selection;
+                    return setDictSelection(candidateDictBuffer, dictContentSize, totalCompressedSize);
                 }
 
                 dictContentSize *= 2;
@@ -335,11 +341,8 @@ namespace ZstdSharp.Unsafe
 
             dictContentSize = largestDict;
             totalCompressedSize = largestCompressed;
-            {
-                COVER_dictSelection selection = new COVER_dictSelection { dictContent = largestDictbuffer, dictSize = dictContentSize, totalCompressedSize = totalCompressedSize };
-                free(candidateDictBuffer);
-                return selection;
-            }
+            free(candidateDictBuffer);
+            return setDictSelection(largestDictbuffer, dictContentSize, totalCompressedSize);
         }
     }
 }

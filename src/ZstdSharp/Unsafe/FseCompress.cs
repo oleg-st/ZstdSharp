@@ -147,7 +147,7 @@ namespace ZstdSharp.Unsafe
                         default:
                             assert(normalizedCounter[s] > 1);
                             {
-                                uint maxBitsOut = tableLog - BIT_highbit32((uint)normalizedCounter[s] - 1);
+                                uint maxBitsOut = tableLog - ZSTD_highbit32((uint)normalizedCounter[s] - 1);
                                 uint minStatePlus = (uint)normalizedCounter[s] << (int)maxBitsOut;
                                 symbolTT[s].deltaNbBits = (maxBitsOut << 16) - minStatePlus;
                                 symbolTT[s].deltaFindState = (int)(total - (uint)normalizedCounter[s]);
@@ -290,28 +290,11 @@ namespace ZstdSharp.Unsafe
             return FSE_writeNCount_generic(buffer, bufferSize, normalizedCounter, maxSymbolValue, tableLog, 1);
         }
 
-        /*-**************************************************************
-         *  FSE Compression Code
-         ****************************************************************/
-        public static uint* FSE_createCTable(uint maxSymbolValue, uint tableLog)
-        {
-            nuint size;
-            if (tableLog > 15)
-                tableLog = 15;
-            size = ((uint)(1 + (1 << (int)(tableLog - 1))) + (maxSymbolValue + 1) * 2) * sizeof(uint);
-            return (uint*)malloc(size);
-        }
-
-        public static void FSE_freeCTable(uint* ct)
-        {
-            free(ct);
-        }
-
         /* provides the minimum logSize to safely represent a distribution */
         private static uint FSE_minTableLog(nuint srcSize, uint maxSymbolValue)
         {
-            uint minBitsSrc = BIT_highbit32((uint)srcSize) + 1;
-            uint minBitsSymbols = BIT_highbit32(maxSymbolValue) + 2;
+            uint minBitsSrc = ZSTD_highbit32((uint)srcSize) + 1;
+            uint minBitsSymbols = ZSTD_highbit32(maxSymbolValue) + 2;
             uint minBits = minBitsSrc < minBitsSymbols ? minBitsSrc : minBitsSymbols;
             assert(srcSize > 1);
             return minBits;
@@ -322,7 +305,7 @@ namespace ZstdSharp.Unsafe
          ***************************************** */
         public static uint FSE_optimalTableLog_internal(uint maxTableLog, nuint srcSize, uint maxSymbolValue, uint minus)
         {
-            uint maxBitsSrc = BIT_highbit32((uint)(srcSize - 1)) - minus;
+            uint maxBitsSrc = ZSTD_highbit32((uint)(srcSize - 1)) - minus;
             uint tableLog = maxTableLog;
             uint minBits = FSE_minTableLog(srcSize, maxSymbolValue);
             assert(srcSize > 1);
@@ -542,36 +525,6 @@ namespace ZstdSharp.Unsafe
             return tableLog;
         }
 
-        /* fake FSE_CTable, for raw (uncompressed) input */
-        public static nuint FSE_buildCTable_raw(uint* ct, uint nbBits)
-        {
-            uint tableSize = (uint)(1 << (int)nbBits);
-            uint tableMask = tableSize - 1;
-            uint maxSymbolValue = tableMask;
-            void* ptr = ct;
-            ushort* tableU16 = (ushort*)ptr + 2;
-            /* header */
-            void* FSCT = (uint*)ptr + 1 + (tableSize >> 1);
-            FSE_symbolCompressionTransform* symbolTT = (FSE_symbolCompressionTransform*)FSCT;
-            uint s;
-            if (nbBits < 1)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
-            tableU16[-2] = (ushort)nbBits;
-            tableU16[-1] = (ushort)maxSymbolValue;
-            for (s = 0; s < tableSize; s++)
-                tableU16[s] = (ushort)(tableSize + s);
-            {
-                uint deltaNbBits = (nbBits << 16) - (uint)(1 << (int)nbBits);
-                for (s = 0; s <= maxSymbolValue; s++)
-                {
-                    symbolTT[s].deltaNbBits = deltaNbBits;
-                    symbolTT[s].deltaFindState = (int)(s - 1);
-                }
-            }
-
-            return 0;
-        }
-
         /* fake FSE_CTable, for rle input (always same symbol) */
         public static nuint FSE_buildCTable_rle(uint* ct, byte symbolValue)
         {
@@ -676,110 +629,6 @@ namespace ZstdSharp.Unsafe
         public static nuint FSE_compressBound(nuint size)
         {
             return 512 + (size + (size >> 7) + 4 + (uint)sizeof(nuint));
-        }
-
-        /* FSE_compress_wksp() :
-         * Same as FSE_compress2(), but using an externally allocated scratch buffer (`workSpace`).
-         * `wkspSize` size must be `(1<<tableLog)`.
-         */
-        public static nuint FSE_compress_wksp(void* dst, nuint dstSize, void* src, nuint srcSize, uint maxSymbolValue, uint tableLog, void* workSpace, nuint wkspSize)
-        {
-            byte* ostart = (byte*)dst;
-            byte* op = ostart;
-            byte* oend = ostart + dstSize;
-            uint* count = stackalloc uint[256];
-            short* norm = stackalloc short[256];
-            uint* CTable = (uint*)workSpace;
-            nuint CTableSize = (uint)(1 + (1 << (int)(tableLog - 1))) + (maxSymbolValue + 1) * 2;
-            void* scratchBuffer = CTable + CTableSize;
-            nuint scratchBufferSize = wkspSize - CTableSize * sizeof(uint);
-            if (wkspSize < (uint)(1 + (1 << (int)(tableLog - 1))) + (maxSymbolValue + 1) * 2 + (uint)(tableLog > 12 ? 1 << (int)(tableLog - 2) : 1024))
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
-            if (srcSize <= 1)
-                return 0;
-            if (maxSymbolValue == 0)
-                maxSymbolValue = 255;
-            if (tableLog == 0)
-                tableLog = 13 - 2;
-            {
-                nuint maxCount = HIST_count_wksp(count, &maxSymbolValue, src, srcSize, scratchBuffer, scratchBufferSize);
-                if (ERR_isError(maxCount))
-                    return maxCount;
-                if (maxCount == srcSize)
-                    return 1;
-                if (maxCount == 1)
-                    return 0;
-                if (maxCount < srcSize >> 7)
-                    return 0;
-            }
-
-            tableLog = FSE_optimalTableLog(tableLog, srcSize, maxSymbolValue);
-            {
-                nuint _var_err__ = FSE_normalizeCount(norm, tableLog, count, srcSize, maxSymbolValue, srcSize >= 2048 ? 1U : 0U);
-                if (ERR_isError(_var_err__))
-                    return _var_err__;
-            }
-
-            {
-                nuint nc_err = FSE_writeNCount(op, (nuint)(oend - op), norm, maxSymbolValue, tableLog);
-                if (ERR_isError(nc_err))
-                    return nc_err;
-                op += nc_err;
-            }
-
-            {
-                nuint _var_err__ = FSE_buildCTable_wksp(CTable, norm, maxSymbolValue, tableLog, scratchBuffer, scratchBufferSize);
-                if (ERR_isError(_var_err__))
-                    return _var_err__;
-            }
-
-            {
-                nuint cSize = FSE_compress_usingCTable(op, (nuint)(oend - op), src, srcSize, CTable);
-                if (ERR_isError(cSize))
-                    return cSize;
-                if (cSize == 0)
-                    return 0;
-                op += cSize;
-            }
-
-            if ((nuint)(op - ostart) >= srcSize - 1)
-                return 0;
-            return (nuint)(op - ostart);
-        }
-
-        /*-*****************************************
-         *  FSE advanced functions
-         ******************************************/
-        /*! FSE_compress2() :
-        Same as FSE_compress(), but allows the selection of 'maxSymbolValue' and 'tableLog'
-        Both parameters can be defined as '0' to mean : use default value
-        @return : size of compressed data
-        Special values : if return == 0, srcData is not compressible => Nothing is stored within cSrc !!!
-        if return == 1, srcData is a single byte symbol * srcSize times. Use RLE compression.
-        if FSE_isError(return), it's an error code.
-         */
-        public static nuint FSE_compress2(void* dst, nuint dstCapacity, void* src, nuint srcSize, uint maxSymbolValue, uint tableLog)
-        {
-            fseWkspMax_t scratchBuffer;
-            if (tableLog > 14 - 2)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
-            return FSE_compress_wksp(dst, dstCapacity, src, srcSize, maxSymbolValue, tableLog, &scratchBuffer, (nuint)sizeof(fseWkspMax_t));
-        }
-
-        /*-****************************************
-         *  FSE simple functions
-         ******************************************/
-        /*! FSE_compress() :
-        Compress content of buffer 'src', of size 'srcSize', into destination buffer 'dst'.
-        'dst' buffer must be already allocated. Compression runs faster is dstCapacity >= FSE_compressBound(srcSize).
-        @return : size of compressed data (<= dstCapacity).
-        Special values : if return == 0, srcData is not compressible => Nothing is stored within dst !!!
-        if return == 1, srcData is a single byte symbol * srcSize times. Use RLE compression instead.
-        if FSE_isError(return), compression failed (more details using FSE_getErrorName())
-         */
-        public static nuint FSE_compress(void* dst, nuint dstCapacity, void* src, nuint srcSize)
-        {
-            return FSE_compress2(dst, dstCapacity, src, srcSize, 255, 13 - 2);
         }
     }
 }

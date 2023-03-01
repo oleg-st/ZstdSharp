@@ -50,6 +50,7 @@ namespace ZstdSharp.Unsafe
         public ZSTD_DDictHashSet* ddictSet;
         /* User specified: if == 1, will allow references to multiple DDicts. Default == 0 (disabled) */
         public ZSTD_refMultipleDDicts_e refMultipleDDicts;
+        public int disableHufAsm;
         /* streaming */
         public ZSTD_dStreamStage streamStage;
         public sbyte* inBuff;

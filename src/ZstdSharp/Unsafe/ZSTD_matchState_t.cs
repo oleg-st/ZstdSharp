@@ -36,5 +36,9 @@ namespace ZstdSharp.Unsafe
         public ZSTD_matchState_t* dictMatchState;
         public ZSTD_compressionParameters cParams;
         public rawSeqStore_t* ldmSeqStore;
+        /* Controls prefetching in some dictMatchState matchfinders.
+         * This behavior is controlled from the cctx ms.
+         * This parameter has no effect in the cdict ms. */
+        public int prefetchCDictTables;
     }
 }

@@ -3,7 +3,6 @@ using static ZstdSharp.UnsafeHelper;
 using System.Runtime.Intrinsics.X86;
 #endif
 using System.Runtime.CompilerServices;
-using System.Numerics;
 #if NET5_0_OR_GREATER
 using System.Runtime.Intrinsics.Arm;
 #endif
@@ -137,37 +136,16 @@ namespace ZstdSharp.Unsafe
             {
                 if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_literalLength)
                 {
-                    seqLen.litLength += 0xFFFF;
+                    seqLen.litLength += 0x10000;
                 }
 
                 if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_matchLength)
                 {
-                    seqLen.matchLength += 0xFFFF;
+                    seqLen.matchLength += 0x10000;
                 }
             }
 
             return seqLen;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        private static uint ZSTD_highbit32(uint val)
-        {
-            assert(val != 0);
-            return (uint)BitOperations.Log2(val);
-        }
-
-        /**
-         * Counts the number of trailing zeros of a `size_t`.
-         * Most compilers should support CTZ as a builtin. A backup
-         * implementation is provided if the builtin isn't supported, but
-         * it may not be terribly efficient.
-         */
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_countTrailingZeros(nuint val)
-        {
-            assert(val != 0);
-            return (uint)BitOperations.TrailingZeroCount(val);
         }
     }
 }

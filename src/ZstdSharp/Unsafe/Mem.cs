@@ -74,6 +74,16 @@ namespace ZstdSharp.Unsafe
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
+        private static void MEM_write16(void* memPtr, ushort value)
+        {
+            Ldarg(nameof(memPtr));
+            Ldarg(nameof(value));
+            Unaligned(1);
+            Stind_I2();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static void MEM_write64(void* memPtr, ulong value)
         {
             Ldarg(nameof(memPtr));

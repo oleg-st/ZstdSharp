@@ -4,6 +4,9 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
+        /* **************************************************************
+         *  Literals compression - special cases
+         ****************************************************************/
         public static nuint ZSTD_noCompressLiterals(void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
             byte* ostart = (byte*)dst;
@@ -33,10 +36,33 @@ namespace ZstdSharp.Unsafe
             return srcSize + flSize;
         }
 
+        private static int allBytesIdentical(void* src, nuint srcSize)
+        {
+            assert(srcSize >= 1);
+            assert(src != null);
+            {
+                byte b = ((byte*)src)[0];
+                nuint p;
+                for (p = 1; p < srcSize; p++)
+                {
+                    if (((byte*)src)[p] != b)
+                        return 0;
+                }
+
+                return 1;
+            }
+        }
+
+        /* ZSTD_compressRleLiteralsBlock() :
+         * Conditions :
+         * - All bytes in @src are identical
+         * - dstCapacity >= 4 */
         public static nuint ZSTD_compressRleLiteralsBlock(void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
             byte* ostart = (byte*)dst;
             uint flSize = (uint)(1 + (srcSize > 31 ? 1 : 0) + (srcSize > 4095 ? 1 : 0));
+            assert(dstCapacity >= 4);
+            assert(allBytesIdentical(src, srcSize) != 0);
             switch (flSize)
             {
                 case 1:
@@ -57,10 +83,29 @@ namespace ZstdSharp.Unsafe
             return flSize + 1;
         }
 
-        /* If suspectUncompressible then some sampling checks will be run to potentially skip huffman coding */
-        public static nuint ZSTD_compressLiterals(ZSTD_hufCTables_t* prevHuf, ZSTD_hufCTables_t* nextHuf, ZSTD_strategy strategy, int disableLiteralCompression, void* dst, nuint dstCapacity, void* src, nuint srcSize, void* entropyWorkspace, nuint entropyWorkspaceSize, int bmi2, uint suspectUncompressible)
+        /* ZSTD_minLiteralsToCompress() :
+         * returns minimal amount of literals
+         * for literal compression to even be attempted.
+         * Minimum is made tighter as compression strategy increases.
+         */
+        private static nuint ZSTD_minLiteralsToCompress(ZSTD_strategy strategy, HUF_repeat huf_repeat)
         {
-            nuint minGain = ZSTD_minGain(srcSize, strategy);
+            assert((int)strategy >= 0);
+            assert((int)strategy <= 9);
+            {
+                int shift = 9 - (int)strategy < 3 ? 9 - (int)strategy : 3;
+                nuint mintc = huf_repeat == HUF_repeat.HUF_repeat_valid ? 6 : (nuint)8 << shift;
+                return mintc;
+            }
+        }
+
+        /* ZSTD_compressLiterals():
+         * @entropyWorkspace: must be aligned on 4-bytes boundaries
+         * @entropyWorkspaceSize : must be >= HUF_WORKSPACE_SIZE
+         * @suspectUncompressible: sampling checks, to potentially skip huffman coding
+         */
+        public static nuint ZSTD_compressLiterals(void* dst, nuint dstCapacity, void* src, nuint srcSize, void* entropyWorkspace, nuint entropyWorkspaceSize, ZSTD_hufCTables_t* prevHuf, ZSTD_hufCTables_t* nextHuf, ZSTD_strategy strategy, int disableLiteralCompression, int suspectUncompressible, int bmi2)
+        {
             nuint lhSize = (nuint)(3 + (srcSize >= 1 * (1 << 10) ? 1 : 0) + (srcSize >= 16 * (1 << 10) ? 1 : 0));
             byte* ostart = (byte*)dst;
             uint singleStream = srcSize < 256 ? 1U : 0U;
@@ -69,12 +114,8 @@ namespace ZstdSharp.Unsafe
             memcpy(nextHuf, prevHuf, (uint)sizeof(ZSTD_hufCTables_t));
             if (disableLiteralCompression != 0)
                 return ZSTD_noCompressLiterals(dst, dstCapacity, src, srcSize);
-            {
-                nuint minLitSize = (nuint)(prevHuf->repeatMode == HUF_repeat.HUF_repeat_valid ? 6 : 63);
-                if (srcSize <= minLitSize)
-                    return ZSTD_noCompressLiterals(dst, dstCapacity, src, srcSize);
-            }
-
+            if (srcSize < ZSTD_minLiteralsToCompress(strategy, prevHuf->repeatMode))
+                return ZSTD_noCompressLiterals(dst, dstCapacity, src, srcSize);
             if (dstCapacity < lhSize + 1)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
@@ -82,26 +123,34 @@ namespace ZstdSharp.Unsafe
 
             {
                 HUF_repeat repeat = prevHuf->repeatMode;
-                int preferRepeat = strategy < ZSTD_strategy.ZSTD_lazy ? srcSize <= 1024 ? 1 : 0 : 0;
+                int flags = 0 | (bmi2 != 0 ? (int)HUF_flags_e.HUF_flags_bmi2 : 0) | (strategy < ZSTD_strategy.ZSTD_lazy && srcSize <= 1024 ? (int)HUF_flags_e.HUF_flags_preferRepeat : 0) | (strategy >= ZSTD_strategy.ZSTD_btultra ? (int)HUF_flags_e.HUF_flags_optimalDepth : 0) | (suspectUncompressible != 0 ? (int)HUF_flags_e.HUF_flags_suspectUncompressible : 0);
+                delegate* managed<void*, nuint, void*, nuint, uint, uint, void*, nuint, nuint*, HUF_repeat*, int, nuint> huf_compress;
                 if (repeat == HUF_repeat.HUF_repeat_valid && lhSize == 3)
                     singleStream = 1;
-                cLitSize = singleStream != 0 ? HUF_compress1X_repeat(ostart + lhSize, dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, (nuint*)nextHuf->CTable, &repeat, preferRepeat, bmi2, suspectUncompressible) : HUF_compress4X_repeat(ostart + lhSize, dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, (nuint*)nextHuf->CTable, &repeat, preferRepeat, bmi2, suspectUncompressible);
+                huf_compress = singleStream != 0 ? &HUF_compress1X_repeat : &HUF_compress4X_repeat;
+                cLitSize = huf_compress(ostart + lhSize, dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, (nuint*)nextHuf->CTable, &repeat, flags);
                 if (repeat != HUF_repeat.HUF_repeat_none)
                 {
                     hType = symbolEncodingType_e.set_repeat;
                 }
             }
 
-            if (cLitSize == 0 || cLitSize >= srcSize - minGain || ERR_isError(cLitSize))
             {
-                memcpy(nextHuf, prevHuf, (uint)sizeof(ZSTD_hufCTables_t));
-                return ZSTD_noCompressLiterals(dst, dstCapacity, src, srcSize);
+                nuint minGain = ZSTD_minGain(srcSize, strategy);
+                if (cLitSize == 0 || cLitSize >= srcSize - minGain || ERR_isError(cLitSize))
+                {
+                    memcpy(nextHuf, prevHuf, (uint)sizeof(ZSTD_hufCTables_t));
+                    return ZSTD_noCompressLiterals(dst, dstCapacity, src, srcSize);
+                }
             }
 
             if (cLitSize == 1)
             {
-                memcpy(nextHuf, prevHuf, (uint)sizeof(ZSTD_hufCTables_t));
-                return ZSTD_compressRleLiteralsBlock(dst, dstCapacity, src, srcSize);
+                if (srcSize >= 8 || allBytesIdentical(src, srcSize) != 0)
+                {
+                    memcpy(nextHuf, prevHuf, (uint)sizeof(ZSTD_hufCTables_t));
+                    return ZSTD_compressRleLiteralsBlock(dst, dstCapacity, src, srcSize);
+                }
             }
 
             if (hType == symbolEncodingType_e.set_compressed)
@@ -112,13 +161,16 @@ namespace ZstdSharp.Unsafe
             switch (lhSize)
             {
                 case 3:
+                    if (singleStream == 0)
+                        assert(srcSize >= 6);
                     {
-                        uint lhc = (uint)(hType + ((singleStream == 0 ? 1 : 0) << 2)) + ((uint)srcSize << 4) + ((uint)cLitSize << 14);
+                        uint lhc = (uint)hType + ((singleStream == 0 ? 1U : 0U) << 2) + ((uint)srcSize << 4) + ((uint)cLitSize << 14);
                         MEM_writeLE24(ostart, lhc);
                         break;
                     }
 
                 case 4:
+                    assert(srcSize >= 6);
                     {
                         uint lhc = (uint)(hType + (2 << 2)) + ((uint)srcSize << 4) + ((uint)cLitSize << 18);
                         MEM_writeLE32(ostart, lhc);
@@ -126,6 +178,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                 case 5:
+                    assert(srcSize >= 6);
                     {
                         uint lhc = (uint)(hType + (3 << 2)) + ((uint)srcSize << 4) + ((uint)cLitSize << 22);
                         MEM_writeLE32(ostart, lhc);

@@ -45,11 +45,15 @@ namespace ZstdSharp.Unsafe
                 case ZSTD_ErrorCode.ZSTD_error_frameParameter_windowTooLarge:
                     return "Frame requires too much memory for decoding";
                 case ZSTD_ErrorCode.ZSTD_error_corruption_detected:
-                    return "Corrupted block detected";
+                    return "Data corruption detected";
                 case ZSTD_ErrorCode.ZSTD_error_checksum_wrong:
                     return "Restored data doesn't match checksum";
+                case ZSTD_ErrorCode.ZSTD_error_literals_headerWrong:
+                    return "Header of Literals' block doesn't respect format specification";
                 case ZSTD_ErrorCode.ZSTD_error_parameter_unsupported:
                     return "Unsupported parameter";
+                case ZSTD_ErrorCode.ZSTD_error_parameter_combination_unsupported:
+                    return "Unsupported combination of parameters";
                 case ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound:
                     return "Parameter is out of bound";
                 case ZSTD_ErrorCode.ZSTD_error_init_missing:
@@ -66,6 +70,8 @@ namespace ZstdSharp.Unsafe
                     return "Unsupported max Symbol Value : too large";
                 case ZSTD_ErrorCode.ZSTD_error_maxSymbolValue_tooSmall:
                     return "Specified maxSymbolValue is too small";
+                case ZSTD_ErrorCode.ZSTD_error_stabilityCondition_notRespected:
+                    return "pledged buffer stability condition is not respected";
                 case ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted:
                     return "Dictionary is corrupted";
                 case ZSTD_ErrorCode.ZSTD_error_dictionary_wrong:
@@ -78,6 +84,10 @@ namespace ZstdSharp.Unsafe
                     return "Src size is incorrect";
                 case ZSTD_ErrorCode.ZSTD_error_dstBuffer_null:
                     return "Operation on NULL destination buffer";
+                case ZSTD_ErrorCode.ZSTD_error_noForwardProgress_destFull:
+                    return "Operation made no progress over multiple calls, due to output buffer being full";
+                case ZSTD_ErrorCode.ZSTD_error_noForwardProgress_inputEmpty:
+                    return "Operation made no progress over multiple calls, due to input being empty";
                 case ZSTD_ErrorCode.ZSTD_error_frameIndex_tooLarge:
                     return "Frame index is too large";
                 case ZSTD_ErrorCode.ZSTD_error_seekableIO:
@@ -86,6 +96,10 @@ namespace ZstdSharp.Unsafe
                     return "Destination buffer is wrong";
                 case ZSTD_ErrorCode.ZSTD_error_srcBuffer_wrong:
                     return "Source buffer is wrong";
+                case ZSTD_ErrorCode.ZSTD_error_sequenceProducer_failed:
+                    return "Block-level external sequence producer returned an error code";
+                case ZSTD_ErrorCode.ZSTD_error_externalSequences_invalid:
+                    return "External sequences are not valid";
                 case ZSTD_ErrorCode.ZSTD_error_maxCode:
                 default:
                     return notErrorCode;

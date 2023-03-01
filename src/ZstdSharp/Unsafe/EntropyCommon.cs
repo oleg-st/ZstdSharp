@@ -1,6 +1,5 @@
-using static ZstdSharp.UnsafeHelper;
 using System.Runtime.CompilerServices;
-using System.Numerics;
+using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
 {
@@ -37,13 +36,6 @@ namespace ZstdSharp.Unsafe
         /*-**************************************************************
          *  FSE NCount encoding-decoding
          ****************************************************************/
-        [InlineMethod.Inline]
-        private static uint FSE_ctz(uint val)
-        {
-            assert(val != 0);
-            return (uint)BitOperations.TrailingZeroCount(val);
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint FSE_readNCount_body(short* normalizedCounter, uint* maxSVPtr, uint* tableLogPtr, void* headerBuffer, nuint hbSize)
         {
@@ -95,7 +87,7 @@ namespace ZstdSharp.Unsafe
                      * repeat.
                      * Avoid UB by setting the high bit to 1.
                      */
-                    int repeats = (int)(FSE_ctz(~bitStream | 0x80000000) >> 1);
+                    int repeats = (int)(ZSTD_countTrailingZeros32(~bitStream | 0x80000000) >> 1);
                     while (repeats >= 12)
                     {
                         charnum += 3 * 12;
@@ -111,7 +103,7 @@ namespace ZstdSharp.Unsafe
                         }
 
                         bitStream = MEM_readLE32(ip) >> bitCount;
-                        repeats = (int)(FSE_ctz(~bitStream | 0x80000000) >> 1);
+                        repeats = (int)(ZSTD_countTrailingZeros32(~bitStream | 0x80000000) >> 1);
                     }
 
                     charnum += (uint)(3 * repeats);
@@ -172,7 +164,7 @@ namespace ZstdSharp.Unsafe
                     {
                         if (remaining <= 1)
                             break;
-                        nbBits = (int)(BIT_highbit32((uint)remaining) + 1);
+                        nbBits = (int)(ZSTD_highbit32((uint)remaining) + 1);
                         threshold = 1 << nbBits - 1;
                     }
 
@@ -238,8 +230,8 @@ namespace ZstdSharp.Unsafe
          */
         public static nuint HUF_readStats(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize)
         {
-            uint* wksp = stackalloc uint[218];
-            return HUF_readStats_wksp(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, wksp, sizeof(uint) * 218, 0);
+            uint* wksp = stackalloc uint[219];
+            return HUF_readStats_wksp(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, wksp, sizeof(uint) * 219, 0);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -295,15 +287,15 @@ namespace ZstdSharp.Unsafe
             if (weightTotal == 0)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             {
-                uint tableLog = BIT_highbit32(weightTotal) + 1;
+                uint tableLog = ZSTD_highbit32(weightTotal) + 1;
                 if (tableLog > 12)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 *tableLogPtr = tableLog;
                 {
                     uint total = (uint)(1 << (int)tableLog);
                     uint rest = total - weightTotal;
-                    uint verif = (uint)(1 << (int)BIT_highbit32(rest));
-                    uint lastWeight = BIT_highbit32(rest) + 1;
+                    uint verif = (uint)(1 << (int)ZSTD_highbit32(rest));
+                    uint lastWeight = ZSTD_highbit32(rest) + 1;
                     if (verif != rest)
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                     huffWeight[oSize] = (byte)lastWeight;
@@ -323,7 +315,7 @@ namespace ZstdSharp.Unsafe
             return HUF_readStats_body(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, workSpace, wkspSize, 0);
         }
 
-        public static nuint HUF_readStats_wksp(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int bmi2)
+        public static nuint HUF_readStats_wksp(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
         {
             return HUF_readStats_body_default(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, workSpace, wkspSize);
         }

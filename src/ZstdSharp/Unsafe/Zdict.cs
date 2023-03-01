@@ -146,6 +146,7 @@ namespace ZstdSharp.Unsafe
             nuint totalSrcSize = ZDICT_totalSampleSize(fileSizes, nbFiles);
             nuint averageSampleSize = totalSrcSize / (nbFiles + (uint)(nbFiles == 0 ? 1 : 0));
             byte* dstPtr = (byte*)dstBuffer;
+            uint* wksp = stackalloc uint[1216];
             if (offcodeMax > 30)
             {
                 eSize = unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionaryCreation_failed));
@@ -189,7 +190,7 @@ namespace ZstdSharp.Unsafe
             }
 
             {
-                nuint maxNbBits = HUF_buildCTable(hufTable, countLit, 255, huffLog);
+                nuint maxNbBits = HUF_buildCTable_wksp(hufTable, countLit, 255, huffLog, wksp, sizeof(uint) * 1216);
                 if (ERR_isError(maxNbBits))
                 {
                     eSize = maxNbBits;
@@ -199,7 +200,7 @@ namespace ZstdSharp.Unsafe
                 if (maxNbBits == 8)
                 {
                     ZDICT_flatLit(countLit);
-                    maxNbBits = HUF_buildCTable(hufTable, countLit, 255, huffLog);
+                    maxNbBits = HUF_buildCTable_wksp(hufTable, countLit, 255, huffLog, wksp, sizeof(uint) * 1216);
                     assert(maxNbBits == 9);
                 }
 
@@ -246,7 +247,7 @@ namespace ZstdSharp.Unsafe
 
             llLog = (uint)errorCode;
             {
-                nuint hhSize = HUF_writeCTable(dstPtr, maxDstSize, hufTable, 255, huffLog);
+                nuint hhSize = HUF_writeCTable_wksp(dstPtr, maxDstSize, hufTable, 255, huffLog, wksp, sizeof(uint) * 1216);
                 if (ERR_isError(hhSize))
                 {
                     eSize = hhSize;

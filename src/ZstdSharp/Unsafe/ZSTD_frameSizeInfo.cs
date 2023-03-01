@@ -8,6 +8,7 @@ namespace ZstdSharp.Unsafe
      */
     public struct ZSTD_frameSizeInfo
     {
+        public nuint nbBlocks;
         public nuint compressedSize;
         public ulong decompressedBound;
     }

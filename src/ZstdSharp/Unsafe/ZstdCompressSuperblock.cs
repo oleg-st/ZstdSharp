@@ -21,7 +21,7 @@ namespace ZstdSharp.Unsafe
          *      If it is set_compressed, first sub-block's literals section will be Treeless_Literals_Block
          *      and the following sub-blocks' literals sections will be Treeless_Literals_Block.
          *  @return : compressed size of literals section of a sub-block
-         *            Or 0 if it unable to compress.
+         *            Or 0 if unable to compress.
          *            Or error code */
         private static nuint ZSTD_compressSubBlock_literal(nuint* hufTable, ZSTD_hufCTablesMetadata_t* hufMetadata, byte* literals, nuint litSize, void* dst, nuint dstSize, int bmi2, int writeEntropy, int* entropyWritten)
         {
@@ -53,7 +53,8 @@ namespace ZstdSharp.Unsafe
             }
 
             {
-                nuint cSize = singleStream != 0 ? HUF_compress1X_usingCTable(op, (nuint)(oend - op), literals, litSize, hufTable) : HUF_compress4X_usingCTable(op, (nuint)(oend - op), literals, litSize, hufTable);
+                int flags = bmi2 != 0 ? (int)HUF_flags_e.HUF_flags_bmi2 : 0;
+                nuint cSize = singleStream != 0 ? HUF_compress1X_usingCTable(op, (nuint)(oend - op), literals, litSize, hufTable, flags) : HUF_compress4X_usingCTable(op, (nuint)(oend - op), literals, litSize, hufTable, flags);
                 op += cSize;
                 cLitSize += cSize;
                 if (cSize == 0 || ERR_isError(cSize))
@@ -484,7 +485,7 @@ namespace ZstdSharp.Unsafe
                     memcpy(&rep, prevCBlock->rep, (uint)sizeof(repcodes_s));
                     for (seq = sstart; seq < sp; ++seq)
                     {
-                        ZSTD_updateRep(rep.rep, seq->offBase - 1, ZSTD_getSequenceLength(seqStorePtr, seq).litLength == 0 ? 1U : 0U);
+                        ZSTD_updateRep(rep.rep, seq->offBase, ZSTD_getSequenceLength(seqStorePtr, seq).litLength == 0 ? 1U : 0U);
                     }
 
                     memcpy(nextCBlock->rep, &rep, (uint)sizeof(repcodes_s));

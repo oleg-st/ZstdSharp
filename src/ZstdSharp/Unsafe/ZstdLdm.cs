@@ -263,10 +263,10 @@ namespace ZstdSharp.Unsafe
             switch (ms->cParams.strategy)
             {
                 case ZSTD_strategy.ZSTD_fast:
-                    ZSTD_fillHashTable(ms, iend, ZSTD_dictTableLoadMethod_e.ZSTD_dtlm_fast);
+                    ZSTD_fillHashTable(ms, iend, ZSTD_dictTableLoadMethod_e.ZSTD_dtlm_fast, ZSTD_tableFillPurpose_e.ZSTD_tfp_forCCtx);
                     break;
                 case ZSTD_strategy.ZSTD_dfast:
-                    ZSTD_fillDoubleHashTable(ms, iend, ZSTD_dictTableLoadMethod_e.ZSTD_dtlm_fast);
+                    ZSTD_fillDoubleHashTable(ms, iend, ZSTD_dictTableLoadMethod_e.ZSTD_dtlm_fast, ZSTD_tableFillPurpose_e.ZSTD_tfp_forCCtx);
                     break;
                 case ZSTD_strategy.ZSTD_greedy:
                 case ZSTD_strategy.ZSTD_lazy:
@@ -718,7 +718,7 @@ namespace ZstdSharp.Unsafe
                         rep[i] = rep[i - 1];
                     rep[0] = sequence.offset;
                     assert(sequence.offset > 0);
-                    ZSTD_storeSeq(seqStore, newLitLength, ip - newLitLength, iend, sequence.offset + (3 - 1), sequence.matchLength);
+                    ZSTD_storeSeq(seqStore, newLitLength, ip - newLitLength, iend, sequence.offset + 3, sequence.matchLength);
                     ip += sequence.matchLength;
                 }
             }

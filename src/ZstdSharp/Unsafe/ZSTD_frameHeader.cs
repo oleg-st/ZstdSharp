@@ -12,5 +12,7 @@ namespace ZstdSharp.Unsafe
         public uint headerSize;
         public uint dictID;
         public uint checksumFlag;
+        public uint _reserved1;
+        public uint _reserved2;
     }
 }

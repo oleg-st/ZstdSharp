@@ -13,6 +13,85 @@ namespace ZstdSharp.Unsafe
             return dtd;
         }
 
+        private static nuint HUF_initFastDStream(byte* ip)
+        {
+            byte lastByte = ip[7];
+            nuint bitsConsumed = lastByte != 0 ? 8 - ZSTD_highbit32(lastByte) : 0;
+            nuint value = MEM_readLEST(ip) | 1;
+            assert(bitsConsumed <= 8);
+            assert(sizeof(nuint) == 8);
+            return value << (int)bitsConsumed;
+        }
+
+        /**
+         * Initializes args for the fast decoding loop.
+         * @returns 1 on success
+         *          0 if the fallback implementation should be used.
+         *          Or an error code on failure.
+         */
+        private static nuint HUF_DecompressFastArgs_init(HUF_DecompressFastArgs* args, void* dst, nuint dstSize, void* src, nuint srcSize, uint* DTable)
+        {
+            void* dt = DTable + 1;
+            uint dtLog = HUF_getDTableDesc(DTable).tableLog;
+            byte* ilimit = (byte*)src + 6 + 8;
+            byte* oend = (byte*)dst + dstSize;
+            if (!BitConverter.IsLittleEndian || MEM_32bits)
+                return 0;
+            if (srcSize < 10)
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+            if (dtLog != 11)
+                return 0;
+            {
+                byte* istart = (byte*)src;
+                nuint length1 = MEM_readLE16(istart);
+                nuint length2 = MEM_readLE16(istart + 2);
+                nuint length3 = MEM_readLE16(istart + 4);
+                nuint length4 = srcSize - (length1 + length2 + length3 + 6);
+                args->iend[0] = istart + 6;
+                args->iend[1] = args->iend[0] + length1;
+                args->iend[2] = args->iend[1] + length2;
+                args->iend[3] = args->iend[2] + length3;
+                if (length1 < 16 || length2 < 8 || length3 < 8 || length4 < 8)
+                    return 0;
+                if (length4 > srcSize)
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+            }
+
+            args->ip[0] = args->iend[1] - sizeof(ulong);
+            args->ip[1] = args->iend[2] - sizeof(ulong);
+            args->ip[2] = args->iend[3] - sizeof(ulong);
+            args->ip[3] = (byte*)src + srcSize - sizeof(ulong);
+            args->op[0] = (byte*)dst;
+            args->op[1] = args->op[0] + (dstSize + 3) / 4;
+            args->op[2] = args->op[1] + (dstSize + 3) / 4;
+            args->op[3] = args->op[2] + (dstSize + 3) / 4;
+            if (args->op[3] >= oend)
+                return 0;
+            args->bits[0] = HUF_initFastDStream(args->ip[0]);
+            args->bits[1] = HUF_initFastDStream(args->ip[1]);
+            args->bits[2] = HUF_initFastDStream(args->ip[2]);
+            args->bits[3] = HUF_initFastDStream(args->ip[3]);
+            args->ilimit = ilimit;
+            args->oend = oend;
+            args->dt = dt;
+            return 1;
+        }
+
+        private static nuint HUF_initRemainingDStream(BIT_DStream_t* bit, HUF_DecompressFastArgs* args, int stream, byte* segmentEnd)
+        {
+            if (args->op[stream] > segmentEnd)
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+            if (args->ip[stream] < args->iend[stream] - 8)
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+            assert(sizeof(nuint) == 8);
+            bit->bitContainer = MEM_readLEST(args->ip[stream]);
+            bit->bitsConsumed = ZSTD_countTrailingZeros64(args->bits[stream]);
+            bit->start = (sbyte*)args->iend[0];
+            bit->limitPtr = bit->start + sizeof(nuint);
+            bit->ptr = (sbyte*)args->ip[stream];
+            return 0;
+        }
+
         /**
          * Packs 4 HUF_DEltX1 structs into a U64. This is used to lay down 4 entries at
          * a time.
@@ -30,6 +109,7 @@ namespace ZstdSharp.Unsafe
                 D4 = (ulong)(symbol + (nbBits << 8));
             }
 
+            assert(D4 < 1U << 16);
             D4 *= 0x0001000100010001UL;
             return D4;
         }
@@ -66,12 +146,7 @@ namespace ZstdSharp.Unsafe
             return targetTableLog;
         }
 
-        public static nuint HUF_readDTableX1_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize)
-        {
-            return HUF_readDTableX1_wksp_bmi2(DTable, src, srcSize, workSpace, wkspSize, 0);
-        }
-
-        public static nuint HUF_readDTableX1_wksp_bmi2(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int bmi2)
+        public static nuint HUF_readDTableX1_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
         {
             uint tableLog = 0;
             uint nbSymbols = 0;
@@ -81,7 +156,7 @@ namespace ZstdSharp.Unsafe
             HUF_ReadDTableX1_Workspace* wksp = (HUF_ReadDTableX1_Workspace*)workSpace;
             if ((uint)sizeof(HUF_ReadDTableX1_Workspace) > wkspSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
-            iSize = HUF_readStats_wksp(wksp->huffWeight, 255 + 1, wksp->rankVal, &nbSymbols, &tableLog, src, srcSize, wksp->statsWksp, sizeof(uint) * 218, bmi2);
+            iSize = HUF_readStats_wksp(wksp->huffWeight, 255 + 1, wksp->rankVal, &nbSymbols, &tableLog, src, srcSize, wksp->statsWksp, sizeof(uint) * 219, flags);
             if (ERR_isError(iSize))
                 return iSize;
             {
@@ -98,13 +173,13 @@ namespace ZstdSharp.Unsafe
 
             {
                 int n;
-                int nextRankStart = 0;
+                uint nextRankStart = 0;
                 const int unroll = 4;
                 int nLimit = (int)nbSymbols - unroll + 1;
                 for (n = 0; n < (int)tableLog + 1; n++)
                 {
-                    uint curr = (uint)nextRankStart;
-                    nextRankStart += (int)wksp->rankVal[n];
+                    uint curr = nextRankStart;
+                    nextRankStart += wksp->rankVal[n];
                     wksp->rankStart[n] = curr;
                 }
 
@@ -271,6 +346,10 @@ namespace ZstdSharp.Unsafe
             return dstSize;
         }
 
+        /* HUF_decompress4X1_usingDTable_internal_body():
+         * Conditions :
+         * @dstSize >= 6
+         */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint HUF_decompress4X1_usingDTable_internal_body(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
@@ -311,6 +390,8 @@ namespace ZstdSharp.Unsafe
                 if (length4 > cSrcSize)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 if (opStart4 > oend)
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                if (dstSize < 6)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD1, istart1, length1);
@@ -400,61 +481,179 @@ namespace ZstdSharp.Unsafe
             return HUF_decompress4X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
-        private static nuint HUF_decompress1X1_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
+        private static void HUF_decompress4X1_usingDTable_internal_fast_c_loop(HUF_DecompressFastArgs* args)
+        {
+            ulong* bits = stackalloc ulong[4];
+            byte** ip = stackalloc byte*[4];
+            byte** op = stackalloc byte*[4];
+            ushort* dtable = (ushort*)args->dt;
+            byte* oend = args->oend;
+            byte* ilimit = args->ilimit;
+            memcpy(&bits[0], &args->bits[0], sizeof(ulong) * 4);
+            memcpy(&ip[0], &args->ip, (uint)(sizeof(byte*) * 4));
+            memcpy(&op[0], &args->op, (uint)(sizeof(byte*) * 4));
+            assert(BitConverter.IsLittleEndian);
+            assert(!MEM_32bits);
+            for (; ; )
+            {
+                byte* olimit;
+                int stream;
+                int symbol;
+                for (stream = 0; stream < 4; ++stream)
+                {
+                    assert(op[stream] <= (stream == 3 ? oend : op[stream + 1]));
+                    assert(ip[stream] >= ilimit);
+                }
+
+                {
+                    /* Each iteration produces 5 output symbols per stream */
+                    nuint oiters = (nuint)(oend - op[3]) / 5;
+                    /* Each iteration consumes up to 11 bits * 5 = 55 bits < 7 bytes
+                     * per stream.
+                     */
+                    nuint iiters = (nuint)(ip[0] - ilimit) / 7;
+                    /* We can safely run iters iterations before running bounds checks */
+                    nuint iters = oiters < iiters ? oiters : iiters;
+                    nuint symbols = iters * 5;
+                    olimit = op[3] + symbols;
+                    if (op[3] + 20 > olimit)
+                        break;
+                    for (stream = 1; stream < 4; ++stream)
+                    {
+                        if (ip[stream] < ip[stream - 1])
+                            goto _out;
+                    }
+                }
+
+                for (stream = 1; stream < 4; ++stream)
+                {
+                    assert(ip[stream] >= ip[stream - 1]);
+                }
+
+                do
+                {
+                    for (symbol = 0; symbol < 5; ++symbol)
+                    {
+                        for (stream = 0; stream < 4; ++stream)
+                        {
+                            int index = (int)(bits[stream] >> 53);
+                            int entry = dtable[index];
+                            bits[stream] <<= entry & 63;
+                            op[stream][symbol] = (byte)(entry >> 8 & 0xFF);
+                        }
+                    }
+
+                    for (stream = 0; stream < 4; ++stream)
+                    {
+                        int ctz = (int)ZSTD_countTrailingZeros64(bits[stream]);
+                        int nbBits = ctz & 7;
+                        int nbBytes = ctz >> 3;
+                        op[stream] += 5;
+                        ip[stream] -= nbBytes;
+                        bits[stream] = MEM_read64(ip[stream]) | 1;
+                        bits[stream] <<= nbBits;
+                    }
+                }
+                while (op[3] < olimit);
+            }
+
+        _out:
+            memcpy(&args->bits[0], &bits[0], sizeof(ulong) * 4);
+            memcpy(&args->ip, &ip[0], (uint)(sizeof(byte*) * 4));
+            memcpy(&args->op, &op[0], (uint)(sizeof(byte*) * 4));
+        }
+
+        /**
+         * @returns @p dstSize on success (>= 6)
+         *          0 if the fallback implementation should be used
+         *          An error if an error occurred
+         */
+        private static nuint HUF_decompress4X1_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, delegate* managed<HUF_DecompressFastArgs*, void> loopFn)
+        {
+            void* dt = DTable + 1;
+            byte* iend = (byte*)cSrc + 6;
+            byte* oend = (byte*)dst + dstSize;
+            HUF_DecompressFastArgs args;
+            {
+                nuint ret = HUF_DecompressFastArgs_init(&args, dst, dstSize, cSrc, cSrcSize, DTable);
+                {
+                    nuint err_code = ret;
+                    if (ERR_isError(err_code))
+                    {
+                        return err_code;
+                    }
+                }
+
+                if (ret == 0)
+                    return 0;
+            }
+
+            assert(args.ip[0] >= args.ilimit);
+            loopFn(&args);
+            assert(args.ip[0] >= iend);
+            assert(args.ip[1] >= iend);
+            assert(args.ip[2] >= iend);
+            assert(args.ip[3] >= iend);
+            assert(args.op[3] <= oend);
+            {
+                nuint segmentSize = (dstSize + 3) / 4;
+                byte* segmentEnd = (byte*)dst;
+                int i;
+                for (i = 0; i < 4; ++i)
+                {
+                    BIT_DStream_t bit;
+                    if (segmentSize <= (nuint)(oend - segmentEnd))
+                        segmentEnd += segmentSize;
+                    else
+                        segmentEnd = oend;
+                    {
+                        nuint err_code = HUF_initRemainingDStream(&bit, &args, i, segmentEnd);
+                        if (ERR_isError(err_code))
+                        {
+                            return err_code;
+                        }
+                    }
+
+                    args.op[i] += HUF_decodeStreamX1(args.op[i], &bit, segmentEnd, (HUF_DEltX1*)dt, 11);
+                    if (args.op[i] != segmentEnd)
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                }
+            }
+
+            assert(dstSize != 0);
+            return dstSize;
+        }
+
+        private static nuint HUF_decompress1X1_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
             return HUF_decompress1X1_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
-        private static nuint HUF_decompress4X1_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
+        private static nuint HUF_decompress4X1_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
-            return HUF_decompress4X1_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
+            delegate* managed<void*, nuint, void*, nuint, uint*, nuint> fallbackFn = &HUF_decompress4X1_usingDTable_internal_default;
+            delegate* managed<HUF_DecompressFastArgs*, void> loopFn = &HUF_decompress4X1_usingDTable_internal_fast_c_loop;
+            if ((flags & (int)HUF_flags_e.HUF_flags_disableFast) == 0)
+            {
+                nuint ret = HUF_decompress4X1_usingDTable_internal_fast(dst, dstSize, cSrc, cSrcSize, DTable, loopFn);
+                if (ret != 0)
+                    return ret;
+            }
+
+            return fallbackFn(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
-        public static nuint HUF_decompress1X1_usingDTable(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            DTableDesc dtd = HUF_getDTableDesc(DTable);
-            if (dtd.tableType != 0)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
-            return HUF_decompress1X1_usingDTable_internal(dst, dstSize, cSrc, cSrcSize, DTable, 0);
-        }
-
-        public static nuint HUF_decompress1X1_DCtx_wksp(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize)
+        private static nuint HUF_decompress4X1_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             byte* ip = (byte*)cSrc;
-            nuint hSize = HUF_readDTableX1_wksp(DCtx, cSrc, cSrcSize, workSpace, wkspSize);
+            nuint hSize = HUF_readDTableX1_wksp(dctx, cSrc, cSrcSize, workSpace, wkspSize, flags);
             if (ERR_isError(hSize))
                 return hSize;
             if (hSize >= cSrcSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             ip += hSize;
             cSrcSize -= hSize;
-            return HUF_decompress1X1_usingDTable_internal(dst, dstSize, ip, cSrcSize, DCtx, 0);
-        }
-
-        public static nuint HUF_decompress4X1_usingDTable(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            DTableDesc dtd = HUF_getDTableDesc(DTable);
-            if (dtd.tableType != 0)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
-            return HUF_decompress4X1_usingDTable_internal(dst, dstSize, cSrc, cSrcSize, DTable, 0);
-        }
-
-        private static nuint HUF_decompress4X1_DCtx_wksp_bmi2(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int bmi2)
-        {
-            byte* ip = (byte*)cSrc;
-            nuint hSize = HUF_readDTableX1_wksp_bmi2(dctx, cSrc, cSrcSize, workSpace, wkspSize, bmi2);
-            if (ERR_isError(hSize))
-                return hSize;
-            if (hSize >= cSrcSize)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
-            ip += hSize;
-            cSrcSize -= hSize;
-            return HUF_decompress4X1_usingDTable_internal(dst, dstSize, ip, cSrcSize, dctx, bmi2);
-        }
-
-        public static nuint HUF_decompress4X1_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize)
-        {
-            return HUF_decompress4X1_DCtx_wksp_bmi2(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, 0);
+            return HUF_decompress4X1_usingDTable_internal(dst, dstSize, ip, cSrcSize, dctx, flags);
         }
 
         /**
@@ -667,12 +866,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static nuint HUF_readDTableX2_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize)
-        {
-            return HUF_readDTableX2_wksp_bmi2(DTable, src, srcSize, workSpace, wkspSize, 0);
-        }
-
-        public static nuint HUF_readDTableX2_wksp_bmi2(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int bmi2)
+        public static nuint HUF_readDTableX2_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
         {
             uint tableLog, maxW, nbSymbols;
             DTableDesc dtd = HUF_getDTableDesc(DTable);
@@ -690,7 +884,7 @@ namespace ZstdSharp.Unsafe
             memset(wksp->rankStart0, 0, sizeof(uint) * 15);
             if (maxTableLog > 12)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
-            iSize = HUF_readStats_wksp(wksp->weightList, 255 + 1, wksp->rankStats, &nbSymbols, &tableLog, src, srcSize, wksp->calleeWksp, sizeof(uint) * 218, bmi2);
+            iSize = HUF_readStats_wksp(wksp->weightList, 255 + 1, wksp->rankStats, &nbSymbols, &tableLog, src, srcSize, wksp->calleeWksp, sizeof(uint) * 219, flags);
             if (ERR_isError(iSize))
                 return iSize;
             if (tableLog > maxTableLog)
@@ -756,7 +950,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            HUF_fillDTableX2(dt, maxTableLog, (sortedSymbol_t*)wksp->sortedSymbol, wksp->rankStart0, wksp->rankVal, maxW, tableLog + 1);
+            HUF_fillDTableX2(dt, maxTableLog, (sortedSymbol_t*)wksp->sortedSymbol, wksp->rankStart0, (rankValCol_t*)wksp->rankVal, maxW, tableLog + 1);
             dtd.tableLog = (byte)maxTableLog;
             dtd.tableType = 1;
             memcpy(DTable, &dtd, (uint)sizeof(DTableDesc));
@@ -871,6 +1065,10 @@ namespace ZstdSharp.Unsafe
             return dstSize;
         }
 
+        /* HUF_decompress4X2_usingDTable_internal_body():
+         * Conditions:
+         * @dstSize >= 6
+         */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint HUF_decompress4X2_usingDTable_internal_body(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
@@ -911,6 +1109,8 @@ namespace ZstdSharp.Unsafe
                 if (length4 > cSrcSize)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 if (opStart4 > oend)
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                if (dstSize < 6)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD1, istart1, length1);
@@ -1000,76 +1200,214 @@ namespace ZstdSharp.Unsafe
             return HUF_decompress4X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
-        private static nuint HUF_decompress4X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
+        private static void HUF_decompress4X2_usingDTable_internal_fast_c_loop(HUF_DecompressFastArgs* args)
         {
-            return HUF_decompress4X2_usingDTable_internal_default(dst, dstSize, cSrc, cSrcSize, DTable);
+            ulong* bits = stackalloc ulong[4];
+            byte** ip = stackalloc byte*[4];
+            byte** op = stackalloc byte*[4];
+            byte** oend = stackalloc byte*[4];
+            HUF_DEltX2* dtable = (HUF_DEltX2*)args->dt;
+            byte* ilimit = args->ilimit;
+            memcpy(&bits[0], &args->bits[0], sizeof(ulong) * 4);
+            memcpy(&ip[0], &args->ip, (uint)(sizeof(byte*) * 4));
+            memcpy(&op[0], &args->op, (uint)(sizeof(byte*) * 4));
+            oend[0] = op[1];
+            oend[1] = op[2];
+            oend[2] = op[3];
+            oend[3] = args->oend;
+            assert(BitConverter.IsLittleEndian);
+            assert(!MEM_32bits);
+            for (; ; )
+            {
+                byte* olimit;
+                int stream;
+                int symbol;
+                for (stream = 0; stream < 4; ++stream)
+                {
+                    assert(op[stream] <= oend[stream]);
+                    assert(ip[stream] >= ilimit);
+                }
+
+                {
+                    /* Each loop does 5 table lookups for each of the 4 streams.
+                     * Each table lookup consumes up to 11 bits of input, and produces
+                     * up to 2 bytes of output.
+                     */
+                    /* We can consume up to 7 bytes of input per iteration per stream.
+                     * We also know that each input pointer is >= ip[0]. So we can run
+                     * iters loops before running out of input.
+                     */
+                    nuint iters = (nuint)(ip[0] - ilimit) / 7;
+                    for (stream = 0; stream < 4; ++stream)
+                    {
+                        nuint oiters = (nuint)(oend[stream] - op[stream]) / 10;
+                        iters = iters < oiters ? iters : oiters;
+                    }
+
+                    olimit = op[3] + iters * 5;
+                    if (op[3] + 10 > olimit)
+                        break;
+                    for (stream = 1; stream < 4; ++stream)
+                    {
+                        if (ip[stream] < ip[stream - 1])
+                            goto _out;
+                    }
+                }
+
+                for (stream = 1; stream < 4; ++stream)
+                {
+                    assert(ip[stream] >= ip[stream - 1]);
+                }
+
+                do
+                {
+                    for (symbol = 0; symbol < 5; ++symbol)
+                    {
+                        for (stream = 0; stream < 3; ++stream)
+                        {
+                            int index = (int)(bits[stream] >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op[stream], entry.sequence);
+                            bits[stream] <<= entry.nbBits;
+                            op[stream] += entry.length;
+                        }
+                    }
+
+                    {
+                        int index = (int)(bits[3] >> 53);
+                        HUF_DEltX2 entry = dtable[index];
+                        MEM_write16(op[3], entry.sequence);
+                        bits[3] <<= entry.nbBits;
+                        op[3] += entry.length;
+                    }
+
+                    for (stream = 0; stream < 4; ++stream)
+                    {
+                        {
+                            int index = (int)(bits[3] >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op[3], entry.sequence);
+                            bits[3] <<= entry.nbBits;
+                            op[3] += entry.length;
+                        }
+
+                        {
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits[stream]);
+                            int nbBits = ctz & 7;
+                            int nbBytes = ctz >> 3;
+                            ip[stream] -= nbBytes;
+                            bits[stream] = MEM_read64(ip[stream]) | 1;
+                            bits[stream] <<= nbBits;
+                        }
+                    }
+                }
+                while (op[3] < olimit);
+            }
+
+        _out:
+            memcpy(&args->bits[0], &bits[0], sizeof(ulong) * 4);
+            memcpy(&args->ip, &ip[0], (uint)(sizeof(byte*) * 4));
+            memcpy(&args->op, &op[0], (uint)(sizeof(byte*) * 4));
         }
 
-        private static nuint HUF_decompress1X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
+        private static nuint HUF_decompress4X2_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, delegate* managed<HUF_DecompressFastArgs*, void> loopFn)
+        {
+            void* dt = DTable + 1;
+            byte* iend = (byte*)cSrc + 6;
+            byte* oend = (byte*)dst + dstSize;
+            HUF_DecompressFastArgs args;
+            {
+                nuint ret = HUF_DecompressFastArgs_init(&args, dst, dstSize, cSrc, cSrcSize, DTable);
+                {
+                    nuint err_code = ret;
+                    if (ERR_isError(err_code))
+                    {
+                        return err_code;
+                    }
+                }
+
+                if (ret == 0)
+                    return 0;
+            }
+
+            assert(args.ip[0] >= args.ilimit);
+            loopFn(&args);
+            assert(args.ip[0] >= iend);
+            assert(args.ip[1] >= iend);
+            assert(args.ip[2] >= iend);
+            assert(args.ip[3] >= iend);
+            assert(args.op[3] <= oend);
+            {
+                nuint segmentSize = (dstSize + 3) / 4;
+                byte* segmentEnd = (byte*)dst;
+                int i;
+                for (i = 0; i < 4; ++i)
+                {
+                    BIT_DStream_t bit;
+                    if (segmentSize <= (nuint)(oend - segmentEnd))
+                        segmentEnd += segmentSize;
+                    else
+                        segmentEnd = oend;
+                    {
+                        nuint err_code = HUF_initRemainingDStream(&bit, &args, i, segmentEnd);
+                        if (ERR_isError(err_code))
+                        {
+                            return err_code;
+                        }
+                    }
+
+                    args.op[i] += HUF_decodeStreamX2(args.op[i], &bit, segmentEnd, (HUF_DEltX2*)dt, 11);
+                    if (args.op[i] != segmentEnd)
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                }
+            }
+
+            return dstSize;
+        }
+
+        private static nuint HUF_decompress4X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
+        {
+            delegate* managed<void*, nuint, void*, nuint, uint*, nuint> fallbackFn = &HUF_decompress4X2_usingDTable_internal_default;
+            delegate* managed<HUF_DecompressFastArgs*, void> loopFn = &HUF_decompress4X2_usingDTable_internal_fast_c_loop;
+            if ((flags & (int)HUF_flags_e.HUF_flags_disableFast) == 0)
+            {
+                nuint ret = HUF_decompress4X2_usingDTable_internal_fast(dst, dstSize, cSrc, cSrcSize, DTable, loopFn);
+                if (ret != 0)
+                    return ret;
+            }
+
+            return fallbackFn(dst, dstSize, cSrc, cSrcSize, DTable);
+        }
+
+        private static nuint HUF_decompress1X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
             return HUF_decompress1X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
-        public static nuint HUF_decompress1X2_usingDTable(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            DTableDesc dtd = HUF_getDTableDesc(DTable);
-            if (dtd.tableType != 1)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
-            return HUF_decompress1X2_usingDTable_internal(dst, dstSize, cSrc, cSrcSize, DTable, 0);
-        }
-
-        public static nuint HUF_decompress1X2_DCtx_wksp(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize)
+        public static nuint HUF_decompress1X2_DCtx_wksp(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             byte* ip = (byte*)cSrc;
-            nuint hSize = HUF_readDTableX2_wksp(DCtx, cSrc, cSrcSize, workSpace, wkspSize);
+            nuint hSize = HUF_readDTableX2_wksp(DCtx, cSrc, cSrcSize, workSpace, wkspSize, flags);
             if (ERR_isError(hSize))
                 return hSize;
             if (hSize >= cSrcSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             ip += hSize;
             cSrcSize -= hSize;
-            return HUF_decompress1X2_usingDTable_internal(dst, dstSize, ip, cSrcSize, DCtx, 0);
+            return HUF_decompress1X2_usingDTable_internal(dst, dstSize, ip, cSrcSize, DCtx, flags);
         }
 
-        public static nuint HUF_decompress4X2_usingDTable(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            DTableDesc dtd = HUF_getDTableDesc(DTable);
-            if (dtd.tableType != 1)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
-            return HUF_decompress4X2_usingDTable_internal(dst, dstSize, cSrc, cSrcSize, DTable, 0);
-        }
-
-        private static nuint HUF_decompress4X2_DCtx_wksp_bmi2(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int bmi2)
+        private static nuint HUF_decompress4X2_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             byte* ip = (byte*)cSrc;
-            nuint hSize = HUF_readDTableX2_wksp(dctx, cSrc, cSrcSize, workSpace, wkspSize);
+            nuint hSize = HUF_readDTableX2_wksp(dctx, cSrc, cSrcSize, workSpace, wkspSize, flags);
             if (ERR_isError(hSize))
                 return hSize;
             if (hSize >= cSrcSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             ip += hSize;
             cSrcSize -= hSize;
-            return HUF_decompress4X2_usingDTable_internal(dst, dstSize, ip, cSrcSize, dctx, bmi2);
-        }
-
-        public static nuint HUF_decompress4X2_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize)
-        {
-            return HUF_decompress4X2_DCtx_wksp_bmi2(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, 0);
-        }
-
-        /* ***********************************/
-        /* Universal decompression selectors */
-        /* ***********************************/
-        public static nuint HUF_decompress1X_usingDTable(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            DTableDesc dtd = HUF_getDTableDesc(DTable);
-            return dtd.tableType != 0 ? HUF_decompress1X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, 0) : HUF_decompress1X1_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, 0);
-        }
-
-        public static nuint HUF_decompress4X_usingDTable(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable)
-        {
-            DTableDesc dtd = HUF_getDTableDesc(DTable);
-            return dtd.tableType != 0 ? HUF_decompress4X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, 0) : HUF_decompress4X1_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, 0);
+            return HUF_decompress4X2_usingDTable_internal(dst, dstSize, ip, cSrcSize, dctx, flags);
         }
 
         public static algo_time_t[][] algoTime = new algo_time_t[16][] { new algo_time_t[2] { new algo_time_t { tableTime = 0, decode256Time = 0 }, new algo_time_t { tableTime = 1, decode256Time = 1 } }, new algo_time_t[2] { new algo_time_t { tableTime = 0, decode256Time = 0 }, new algo_time_t { tableTime = 1, decode256Time = 1 } }, new algo_time_t[2] { new algo_time_t { tableTime = 150, decode256Time = 216 }, new algo_time_t { tableTime = 381, decode256Time = 119 } }, new algo_time_t[2] { new algo_time_t { tableTime = 170, decode256Time = 205 }, new algo_time_t { tableTime = 514, decode256Time = 112 } }, new algo_time_t[2] { new algo_time_t { tableTime = 177, decode256Time = 199 }, new algo_time_t { tableTime = 539, decode256Time = 110 } }, new algo_time_t[2] { new algo_time_t { tableTime = 197, decode256Time = 194 }, new algo_time_t { tableTime = 644, decode256Time = 107 } }, new algo_time_t[2] { new algo_time_t { tableTime = 221, decode256Time = 192 }, new algo_time_t { tableTime = 735, decode256Time = 107 } }, new algo_time_t[2] { new algo_time_t { tableTime = 256, decode256Time = 189 }, new algo_time_t { tableTime = 881, decode256Time = 106 } }, new algo_time_t[2] { new algo_time_t { tableTime = 359, decode256Time = 188 }, new algo_time_t { tableTime = 1167, decode256Time = 109 } }, new algo_time_t[2] { new algo_time_t { tableTime = 582, decode256Time = 187 }, new algo_time_t { tableTime = 1570, decode256Time = 114 } }, new algo_time_t[2] { new algo_time_t { tableTime = 688, decode256Time = 187 }, new algo_time_t { tableTime = 1712, decode256Time = 122 } }, new algo_time_t[2] { new algo_time_t { tableTime = 825, decode256Time = 186 }, new algo_time_t { tableTime = 1965, decode256Time = 136 } }, new algo_time_t[2] { new algo_time_t { tableTime = 976, decode256Time = 185 }, new algo_time_t { tableTime = 2131, decode256Time = 150 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1180, decode256Time = 186 }, new algo_time_t { tableTime = 2070, decode256Time = 175 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1377, decode256Time = 185 }, new algo_time_t { tableTime = 1731, decode256Time = 202 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1412, decode256Time = 185 }, new algo_time_t { tableTime = 1695, decode256Time = 202 } } };
@@ -1093,19 +1431,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static nuint HUF_decompress4X_hufOnly_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize)
-        {
-            if (dstSize == 0)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-            if (cSrcSize == 0)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
-            {
-                uint algoNb = HUF_selectDecoder(dstSize, cSrcSize);
-                return algoNb != 0 ? HUF_decompress4X2_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize) : HUF_decompress4X1_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize);
-            }
-        }
-
-        public static nuint HUF_decompress1X_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize)
+        public static nuint HUF_decompress1X_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             if (dstSize == 0)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
@@ -1125,39 +1451,39 @@ namespace ZstdSharp.Unsafe
 
             {
                 uint algoNb = HUF_selectDecoder(dstSize, cSrcSize);
-                return algoNb != 0 ? HUF_decompress1X2_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize) : HUF_decompress1X1_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize);
+                return algoNb != 0 ? HUF_decompress1X2_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, flags) : HUF_decompress1X1_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, flags);
             }
         }
 
         /* BMI2 variants.
          * If the CPU has BMI2 support, pass bmi2=1, otherwise pass bmi2=0.
          */
-        public static nuint HUF_decompress1X_usingDTable_bmi2(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
+        public static nuint HUF_decompress1X_usingDTable(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
             DTableDesc dtd = HUF_getDTableDesc(DTable);
-            return dtd.tableType != 0 ? HUF_decompress1X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, bmi2) : HUF_decompress1X1_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, bmi2);
+            return dtd.tableType != 0 ? HUF_decompress1X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, flags) : HUF_decompress1X1_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, flags);
         }
 
-        public static nuint HUF_decompress1X1_DCtx_wksp_bmi2(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int bmi2)
+        public static nuint HUF_decompress1X1_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             byte* ip = (byte*)cSrc;
-            nuint hSize = HUF_readDTableX1_wksp_bmi2(dctx, cSrc, cSrcSize, workSpace, wkspSize, bmi2);
+            nuint hSize = HUF_readDTableX1_wksp(dctx, cSrc, cSrcSize, workSpace, wkspSize, flags);
             if (ERR_isError(hSize))
                 return hSize;
             if (hSize >= cSrcSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             ip += hSize;
             cSrcSize -= hSize;
-            return HUF_decompress1X1_usingDTable_internal(dst, dstSize, ip, cSrcSize, dctx, bmi2);
+            return HUF_decompress1X1_usingDTable_internal(dst, dstSize, ip, cSrcSize, dctx, flags);
         }
 
-        public static nuint HUF_decompress4X_usingDTable_bmi2(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable, int bmi2)
+        public static nuint HUF_decompress4X_usingDTable(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
             DTableDesc dtd = HUF_getDTableDesc(DTable);
-            return dtd.tableType != 0 ? HUF_decompress4X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, bmi2) : HUF_decompress4X1_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, bmi2);
+            return dtd.tableType != 0 ? HUF_decompress4X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, flags) : HUF_decompress4X1_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, flags);
         }
 
-        public static nuint HUF_decompress4X_hufOnly_wksp_bmi2(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int bmi2)
+        public static nuint HUF_decompress4X_hufOnly_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             if (dstSize == 0)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
@@ -1165,150 +1491,8 @@ namespace ZstdSharp.Unsafe
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             {
                 uint algoNb = HUF_selectDecoder(dstSize, cSrcSize);
-                return algoNb != 0 ? HUF_decompress4X2_DCtx_wksp_bmi2(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, bmi2) : HUF_decompress4X1_DCtx_wksp_bmi2(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, bmi2);
+                return algoNb != 0 ? HUF_decompress4X2_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, flags) : HUF_decompress4X1_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, wkspSize, flags);
             }
-        }
-
-        public static nuint HUF_readDTableX1(uint* DTable, void* src, nuint srcSize)
-        {
-            uint* workSpace = stackalloc uint[640];
-            return HUF_readDTableX1_wksp(DTable, src, srcSize, workSpace, sizeof(uint) * 640);
-        }
-
-        public static nuint HUF_decompress1X1_DCtx(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* workSpace = stackalloc uint[640];
-            return HUF_decompress1X1_DCtx_wksp(DCtx, dst, dstSize, cSrc, cSrcSize, workSpace, sizeof(uint) * 640);
-        }
-
-        public static nuint HUF_decompress1X1(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* DTable = stackalloc uint[2049];
-            DTable[0] = (uint)(12 - 1) * 0x01000001;
-            memset(DTable + 1, 0, sizeof(uint) * 2048);
-            return HUF_decompress1X1_DCtx(DTable, dst, dstSize, cSrc, cSrcSize);
-        }
-
-        public static nuint HUF_readDTableX2(uint* DTable, void* src, nuint srcSize)
-        {
-            uint* workSpace = stackalloc uint[640];
-            return HUF_readDTableX2_wksp(DTable, src, srcSize, workSpace, sizeof(uint) * 640);
-        }
-
-        public static nuint HUF_decompress1X2_DCtx(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* workSpace = stackalloc uint[640];
-            return HUF_decompress1X2_DCtx_wksp(DCtx, dst, dstSize, cSrc, cSrcSize, workSpace, sizeof(uint) * 640);
-        }
-
-        public static nuint HUF_decompress1X2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* DTable = stackalloc uint[4097];
-            DTable[0] = (uint)12 * 0x01000001;
-            memset(DTable + 1, 0, sizeof(uint) * 4096);
-            return HUF_decompress1X2_DCtx(DTable, dst, dstSize, cSrc, cSrcSize);
-        }
-
-        public static nuint HUF_decompress4X1_DCtx(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* workSpace = stackalloc uint[640];
-            return HUF_decompress4X1_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, sizeof(uint) * 640);
-        }
-
-        /* ****************************************
-         *  Advanced decompression functions
-         ******************************************/
-        public static nuint HUF_decompress4X1(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* DTable = stackalloc uint[2049];
-            DTable[0] = (uint)(12 - 1) * 0x01000001;
-            memset(DTable + 1, 0, sizeof(uint) * 2048);
-            return HUF_decompress4X1_DCtx(DTable, dst, dstSize, cSrc, cSrcSize);
-        }
-
-        public static nuint HUF_decompress4X2_DCtx(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* workSpace = stackalloc uint[640];
-            return HUF_decompress4X2_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, sizeof(uint) * 640);
-        }
-
-        public static nuint HUF_decompress4X2(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* DTable = stackalloc uint[4097];
-            DTable[0] = (uint)12 * 0x01000001;
-            memset(DTable + 1, 0, sizeof(uint) * 4096);
-            return HUF_decompress4X2_DCtx(DTable, dst, dstSize, cSrc, cSrcSize);
-        }
-
-        public static delegate* managed<void*, nuint, void*, nuint, nuint>[] decompress = new delegate* managed<void*, nuint, void*, nuint, nuint>[2] { &HUF_decompress4X1, &HUF_decompress4X2 };
-        /** HUF_decompress() :
-         *  Decompress HUF data from buffer 'cSrc', of size 'cSrcSize',
-         *  into already allocated buffer 'dst', of minimum size 'dstSize'.
-         * `originalSize` : **must** be the ***exact*** size of original (uncompressed) data.
-         *  Note : in contrast with FSE, HUF_decompress can regenerate
-         *         RLE (cSrcSize==1) and uncompressed (cSrcSize==dstSize) data,
-         *         because it knows size to regenerate (originalSize).
-         * @return : size of regenerated data (== originalSize),
-         *           or an error code, which can be tested using HUF_isError()
-         */
-        public static nuint HUF_decompress(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            if (dstSize == 0)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-            if (cSrcSize > dstSize)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
-            if (cSrcSize == dstSize)
-            {
-                memcpy(dst, cSrc, (uint)dstSize);
-                return dstSize;
-            }
-
-            if (cSrcSize == 1)
-            {
-                memset(dst, *(byte*)cSrc, (uint)dstSize);
-                return dstSize;
-            }
-
-            {
-                uint algoNb = HUF_selectDecoder(dstSize, cSrcSize);
-                return decompress[algoNb](dst, dstSize, cSrc, cSrcSize);
-            }
-        }
-
-        public static nuint HUF_decompress4X_DCtx(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            if (dstSize == 0)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-            if (cSrcSize > dstSize)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
-            if (cSrcSize == dstSize)
-            {
-                memcpy(dst, cSrc, (uint)dstSize);
-                return dstSize;
-            }
-
-            if (cSrcSize == 1)
-            {
-                memset(dst, *(byte*)cSrc, (uint)dstSize);
-                return dstSize;
-            }
-
-            {
-                uint algoNb = HUF_selectDecoder(dstSize, cSrcSize);
-                return algoNb != 0 ? HUF_decompress4X2_DCtx(dctx, dst, dstSize, cSrc, cSrcSize) : HUF_decompress4X1_DCtx(dctx, dst, dstSize, cSrc, cSrcSize);
-            }
-        }
-
-        public static nuint HUF_decompress4X_hufOnly(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* workSpace = stackalloc uint[640];
-            return HUF_decompress4X_hufOnly_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, sizeof(uint) * 640);
-        }
-
-        public static nuint HUF_decompress1X_DCtx(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize)
-        {
-            uint* workSpace = stackalloc uint[640];
-            return HUF_decompress1X_DCtx_wksp(dctx, dst, dstSize, cSrc, cSrcSize, workSpace, sizeof(uint) * 640);
         }
     }
 }

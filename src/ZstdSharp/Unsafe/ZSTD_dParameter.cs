@@ -23,6 +23,7 @@ namespace ZstdSharp.Unsafe
          * ZSTD_d_stableOutBuffer
          * ZSTD_d_forceIgnoreChecksum
          * ZSTD_d_refMultipleDDicts
+         * ZSTD_d_disableHuffmanAssembly
          * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
          * note : never ever use experimentalParam? names directly
          */
@@ -34,6 +35,7 @@ namespace ZstdSharp.Unsafe
          * ZSTD_d_stableOutBuffer
          * ZSTD_d_forceIgnoreChecksum
          * ZSTD_d_refMultipleDDicts
+         * ZSTD_d_disableHuffmanAssembly
          * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
          * note : never ever use experimentalParam? names directly
          */
@@ -45,6 +47,7 @@ namespace ZstdSharp.Unsafe
          * ZSTD_d_stableOutBuffer
          * ZSTD_d_forceIgnoreChecksum
          * ZSTD_d_refMultipleDDicts
+         * ZSTD_d_disableHuffmanAssembly
          * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
          * note : never ever use experimentalParam? names directly
          */
@@ -56,9 +59,22 @@ namespace ZstdSharp.Unsafe
          * ZSTD_d_stableOutBuffer
          * ZSTD_d_forceIgnoreChecksum
          * ZSTD_d_refMultipleDDicts
+         * ZSTD_d_disableHuffmanAssembly
          * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
          * note : never ever use experimentalParam? names directly
          */
-        ZSTD_d_experimentalParam4 = 1003
+        ZSTD_d_experimentalParam4 = 1003,
+        /* note : additional experimental parameters are also available
+         * within the experimental section of the API.
+         * At the time of this writing, they include :
+         * ZSTD_d_format
+         * ZSTD_d_stableOutBuffer
+         * ZSTD_d_forceIgnoreChecksum
+         * ZSTD_d_refMultipleDDicts
+         * ZSTD_d_disableHuffmanAssembly
+         * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
+         * note : never ever use experimentalParam? names directly
+         */
+        ZSTD_d_experimentalParam5 = 1004
     }
 }

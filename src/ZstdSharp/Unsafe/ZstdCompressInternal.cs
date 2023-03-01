@@ -1,7 +1,5 @@
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
-using System;
-using System.Numerics;
 
 namespace ZstdSharp.Unsafe
 {
@@ -124,14 +122,14 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! ZSTD_storeSeq() :
-         *  Store a sequence (litlen, litPtr, offCode and matchLength) into seqStore_t.
-         *  @offBase_minus1 : Users should use employ macros STORE_REPCODE_X and STORE_OFFSET().
+         *  Store a sequence (litlen, litPtr, offBase and matchLength) into seqStore_t.
+         *  @offBase : Users should employ macros REPCODE_TO_OFFBASE() and OFFSET_TO_OFFBASE().
          *  @matchLength : must be >= MINMATCH
-         *  Allowed to overread literals up to litLimit.
+         *  Allowed to over-read literals up to litLimit.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static void ZSTD_storeSeq(seqStore_t* seqStorePtr, nuint litLength, byte* literals, byte* litLimit, uint offBase_minus1, nuint matchLength)
+        private static void ZSTD_storeSeq(seqStore_t* seqStorePtr, nuint litLength, byte* literals, byte* litLimit, uint offBase, nuint matchLength)
         {
             byte* litLimit_w = litLimit - 32;
             byte* litEnd = literals + litLength;
@@ -141,7 +139,6 @@ namespace ZstdSharp.Unsafe
             assert(literals + litLength <= litLimit);
             if (litEnd <= litLimit_w)
             {
-                assert(32 >= 16);
                 ZSTD_copy16(seqStorePtr->lit, literals);
                 if (litLength > 16)
                 {
@@ -162,7 +159,7 @@ namespace ZstdSharp.Unsafe
             }
 
             seqStorePtr->sequences[0].litLength = (ushort)litLength;
-            seqStorePtr->sequences[0].offBase = offBase_minus1 + 1;
+            seqStorePtr->sequences[0].offBase = offBase;
             assert(matchLength >= 3);
             {
                 nuint mlBase = matchLength - 3;
@@ -181,22 +178,22 @@ namespace ZstdSharp.Unsafe
 
         /* ZSTD_updateRep() :
          * updates in-place @rep (array of repeat offsets)
-         * @offBase_minus1 : sum-type, with same numeric representation as ZSTD_storeSeq()
+         * @offBase : sum-type, using numeric representation of ZSTD_storeSeq()
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ZSTD_updateRep(uint* rep, uint offBase_minus1, uint ll0)
+        private static void ZSTD_updateRep(uint* rep, uint offBase, uint ll0)
         {
-            if (offBase_minus1 > 3 - 1)
+            if (offBase > 3)
             {
                 rep[2] = rep[1];
                 rep[1] = rep[0];
-                assert(offBase_minus1 > 3 - 1);
-                rep[0] = offBase_minus1 - (3 - 1);
+                assert(offBase > 3);
+                rep[0] = offBase - 3;
             }
             else
             {
-                assert(offBase_minus1 <= 3 - 1);
-                uint repCode = offBase_minus1 + 1 - 1 + ll0;
+                assert(1 <= offBase && offBase <= 3);
+                uint repCode = offBase - 1 + ll0;
                 if (repCode > 0)
                 {
                     uint currentOffset = repCode == 3 ? rep[0] - 1 : rep[repCode];
@@ -208,29 +205,17 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static repcodes_s ZSTD_newRep(uint* rep, uint offBase_minus1, uint ll0)
+        private static repcodes_s ZSTD_newRep(uint* rep, uint offBase, uint ll0)
         {
             repcodes_s newReps;
             memcpy(&newReps, rep, (uint)sizeof(repcodes_s));
-            ZSTD_updateRep(newReps.rep, offBase_minus1, ll0);
+            ZSTD_updateRep(newReps.rep, offBase, ll0);
             return newReps;
         }
 
         /*-*************************************
          *  Match length counter
          ***************************************/
-        [InlineMethod.Inline]
-        private static uint ZSTD_NbCommonBytes(nuint val)
-        {
-            assert(val != 0);
-            if (BitConverter.IsLittleEndian)
-            {
-                return MEM_64bits ? (uint)BitOperations.TrailingZeroCount(val) >> 3 : (uint)BitOperations.TrailingZeroCount((uint)val) >> 3;
-            }
-
-            return MEM_64bits ? (uint)BitOperations.LeadingZeroCount(val) >> 3 : (uint)BitOperations.LeadingZeroCount((uint)val) >> 3;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_count(byte* pIn, byte* pMatch, byte* pInLimit)
         {
@@ -296,6 +281,7 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static uint ZSTD_hash3(uint u, uint h)
         {
+            assert(h <= 32);
             return (u << 32 - 24) * prime3bytes >> (int)(32 - h);
         }
 
@@ -310,19 +296,21 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static uint ZSTD_hash4(uint u, uint h)
         {
+            assert(h <= 32);
             return u * prime4bytes >> (int)(32 - h);
         }
 
         [InlineMethod.Inline]
         private static nuint ZSTD_hash4Ptr(void* ptr, uint h)
         {
-            return ZSTD_hash4(MEM_read32(ptr), h);
+            return ZSTD_hash4(MEM_readLE32(ptr), h);
         }
 
         public const ulong prime5bytes = 889523592379UL;
         [InlineMethod.Inline]
         private static nuint ZSTD_hash5(ulong u, uint h)
         {
+            assert(h <= 64);
             return (nuint)((u << 64 - 40) * prime5bytes >> (int)(64 - h));
         }
 
@@ -336,6 +324,7 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static nuint ZSTD_hash6(ulong u, uint h)
         {
+            assert(h <= 64);
             return (nuint)((u << 64 - 48) * prime6bytes >> (int)(64 - h));
         }
 
@@ -349,6 +338,7 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static nuint ZSTD_hash7(ulong u, uint h)
         {
+            assert(h <= 64);
             return (nuint)((u << 64 - 56) * prime7bytes >> (int)(64 - h));
         }
 
@@ -362,6 +352,7 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static nuint ZSTD_hash8(ulong u, uint h)
         {
+            assert(h <= 64);
             return (nuint)(u * prime8bytes >> (int)(64 - h));
         }
 
@@ -374,6 +365,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_hashPtr(void* p, uint hBits, uint mls)
         {
+            assert(hBits <= 32);
             if (mls == 5)
                 return ZSTD_hash5Ptr(p, hBits);
             if (mls == 6)
@@ -661,7 +653,7 @@ namespace ZstdSharp.Unsafe
                 uint blockEndIdx = (uint)((byte*)blockEnd - window->@base);
                 uint loadedDictEnd = *loadedDictEndPtr;
                 assert(blockEndIdx >= loadedDictEnd);
-                if (blockEndIdx > loadedDictEnd + maxDist)
+                if (blockEndIdx > loadedDictEnd + maxDist || loadedDictEnd != window->dictLimit)
                 {
                     *loadedDictEndPtr = 0;
                     *dictMatchStatePtr = null;
@@ -756,6 +748,27 @@ namespace ZstdSharp.Unsafe
              */
             uint matchLowest = isDictionary != 0 ? lowestValid : withinWindow;
             return matchLowest;
+        }
+
+        /* Helper function for ZSTD_fillHashTable and ZSTD_fillDoubleHashTable.
+         * Unpacks hashAndTag into (hash, tag), then packs (index, tag) into hashTable[hash]. */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ZSTD_writeTaggedIndex(uint* hashTable, nuint hashAndTag, uint index)
+        {
+            nuint hash = hashAndTag >> 8;
+            uint tag = (uint)(hashAndTag & (1U << 8) - 1);
+            assert(index >> 32 - 8 == 0);
+            hashTable[hash] = index << 8 | tag;
+        }
+
+        /* Helper function for short cache matchfinders.
+         * Unpacks tag1 and tag2 from lower bits of packedTag1 and packedTag2, then checks if the tags match. */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_comparePackedTags(nuint packedTag1, nuint packedTag2)
+        {
+            uint tag1 = (uint)(packedTag1 & (1U << 8) - 1);
+            uint tag2 = (uint)(packedTag2 & (1U << 8) - 1);
+            return tag1 == tag2 ? 1 : 0;
         }
     }
 }

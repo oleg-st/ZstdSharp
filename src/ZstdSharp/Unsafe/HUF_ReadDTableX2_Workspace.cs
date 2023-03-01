@@ -10,7 +10,7 @@ namespace ZstdSharp.Unsafe
         public fixed uint rankStart0[15];
         public _sortedSymbol_e__FixedBuffer sortedSymbol;
         public fixed byte weightList[256];
-        public fixed uint calleeWksp[218];
+        public fixed uint calleeWksp[219];
         public unsafe struct _rankVal_e__FixedBuffer
         {
             public rankValCol_t e0;

@@ -81,7 +81,7 @@ namespace ZstdSharp.Unsafe
          *  note : symbol not declared but exposed for fullbench */
         public static nuint ZSTD_decodeLiteralsBlock(ZSTD_DCtx_s* dctx, void* src, nuint srcSize, void* dst, nuint dstCapacity, streaming_operation streaming)
         {
-            if (srcSize < 1 + 1 + 1)
+            if (srcSize < 1 + 1)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             }
@@ -111,6 +111,7 @@ namespace ZstdSharp.Unsafe
                             uint lhc = MEM_readLE32(istart);
                             nuint hufSuccess;
                             nuint expectedWriteSize = 1 << 17 < dstCapacity ? 1 << 17 : dstCapacity;
+                            int flags = 0 | (ZSTD_DCtx_get_bmi2(dctx) != 0 ? (int)HUF_flags_e.HUF_flags_bmi2 : 0) | (dctx->disableHufAsm != 0 ? (int)HUF_flags_e.HUF_flags_disableAsm : 0);
                             switch (lhlCode)
                             {
                                 case 0:
@@ -143,6 +144,12 @@ namespace ZstdSharp.Unsafe
                                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                             }
 
+                            if (singleStream == 0)
+                                if (litSize < 6)
+                                {
+                                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_literals_headerWrong));
+                                }
+
                             if (litCSize + lhSize > srcSize)
                             {
                                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
@@ -169,22 +176,23 @@ namespace ZstdSharp.Unsafe
                             {
                                 if (singleStream != 0)
                                 {
-                                    hufSuccess = HUF_decompress1X_usingDTable_bmi2(dctx->litBuffer, litSize, istart + lhSize, litCSize, dctx->HUFptr, ZSTD_DCtx_get_bmi2(dctx));
+                                    hufSuccess = HUF_decompress1X_usingDTable(dctx->litBuffer, litSize, istart + lhSize, litCSize, dctx->HUFptr, flags);
                                 }
                                 else
                                 {
-                                    hufSuccess = HUF_decompress4X_usingDTable_bmi2(dctx->litBuffer, litSize, istart + lhSize, litCSize, dctx->HUFptr, ZSTD_DCtx_get_bmi2(dctx));
+                                    assert(litSize >= 6);
+                                    hufSuccess = HUF_decompress4X_usingDTable(dctx->litBuffer, litSize, istart + lhSize, litCSize, dctx->HUFptr, flags);
                                 }
                             }
                             else
                             {
                                 if (singleStream != 0)
                                 {
-                                    hufSuccess = HUF_decompress1X1_DCtx_wksp_bmi2(dctx->entropy.hufTable, dctx->litBuffer, litSize, istart + lhSize, litCSize, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));
+                                    hufSuccess = HUF_decompress1X1_DCtx_wksp(dctx->entropy.hufTable, dctx->litBuffer, litSize, istart + lhSize, litCSize, dctx->workspace, sizeof(uint) * 640, flags);
                                 }
                                 else
                                 {
-                                    hufSuccess = HUF_decompress4X_hufOnly_wksp_bmi2(dctx->entropy.hufTable, dctx->litBuffer, litSize, istart + lhSize, litCSize, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));
+                                    hufSuccess = HUF_decompress4X_hufOnly_wksp(dctx->entropy.hufTable, dctx->litBuffer, litSize, istart + lhSize, litCSize, dctx->workspace, sizeof(uint) * 640, flags);
                                 }
                             }
 
@@ -228,6 +236,11 @@ namespace ZstdSharp.Unsafe
                                     break;
                                 case 3:
                                     lhSize = 3;
+                                    if (srcSize < 3)
+                                    {
+                                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                                    }
+
                                     litSize = MEM_readLE24(istart) >> 4;
                                     break;
                             }
@@ -287,16 +300,21 @@ namespace ZstdSharp.Unsafe
                                     break;
                                 case 1:
                                     lhSize = 2;
+                                    if (srcSize < 3)
+                                    {
+                                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                                    }
+
                                     litSize = (nuint)(MEM_readLE16(istart) >> 4);
                                     break;
                                 case 3:
                                     lhSize = 3;
-                                    litSize = MEM_readLE24(istart) >> 4;
                                     if (srcSize < 4)
                                     {
                                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                                     }
 
+                                    litSize = MEM_readLE24(istart) >> 4;
                                     break;
                             }
 
@@ -419,6 +437,7 @@ namespace ZstdSharp.Unsafe
                             MEM_write64(spread + pos + i, sv);
                         }
 
+                        assert(n >= 0);
                         pos += (nuint)n;
                     }
                 }
@@ -470,7 +489,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint symbol = tableDecode[u].baseValue;
                     uint nextState = symbolNext[symbol]++;
-                    tableDecode[u].nbBits = (byte)(tableLog - BIT_highbit32(nextState));
+                    tableDecode[u].nbBits = (byte)(tableLog - ZSTD_highbit32(nextState));
                     tableDecode[u].nextState = (ushort)((nextState << tableDecode[u].nbBits) - tableSize);
                     assert(nbAdditionalBits[symbol] < 255);
                     tableDecode[u].nbAdditionalBits = nbAdditionalBits[symbol];
@@ -1079,19 +1098,22 @@ namespace ZstdSharp.Unsafe
                 uint llnbBits = llDInfo->nbBits;
                 uint mlnbBits = mlDInfo->nbBits;
                 uint ofnbBits = ofDInfo->nbBits;
+                assert(llBits <= 16);
+                assert(mlBits <= 16);
+                assert(ofBits <= 31);
                 {
                     nuint offset;
                     if (ofBits > 1)
                     {
-                        assert(ofBits <= 31);
                         if (MEM_32bits && longOffsets != default && ofBits >= 25)
                         {
-                            uint extraBits = ofBits - (ofBits < 32 - seqState->DStream.bitsConsumed ? ofBits : 32 - seqState->DStream.bitsConsumed);
+                            /* Always read extra bits, this keeps the logic simple,
+                             * avoids branches, and avoids accidentally reading 0 bits.
+                             */
+                            uint extraBits = 30 > 25 ? 30 - 25 : 0;
                             offset = ofBase + (BIT_readBitsFast(&seqState->DStream, ofBits - extraBits) << (int)extraBits);
                             BIT_reloadDStream(&seqState->DStream);
-                            if (extraBits != 0)
-                                offset += BIT_readBitsFast(&seqState->DStream, extraBits);
-                            assert(extraBits <= (30 > 25 ? 30 - 25 : 0));
+                            offset += BIT_readBitsFast(&seqState->DStream, extraBits);
                         }
                         else
                         {
@@ -1605,27 +1627,69 @@ namespace ZstdSharp.Unsafe
             return ZSTD_decompressSequencesLong_default(dctx, dst, maxDstSize, seqStart, seqSize, nbSeq, isLongOffset, frame);
         }
 
-        /* ZSTD_getLongOffsetsShare() :
+        /**
+         * @returns The total size of the history referencable by zstd, including
+         * both the prefix and the extDict. At @p op any offset larger than this
+         * is invalid.
+         */
+        private static nuint ZSTD_totalHistorySize(byte* op, byte* virtualStart)
+        {
+            return (nuint)(op - virtualStart);
+        }
+
+        /* ZSTD_getOffsetInfo() :
          * condition : offTable must be valid
          * @return : "share" of long offsets (arbitrarily defined as > (1<<23))
-         *           compared to maximum possible of (1<<OffFSELog) */
-        private static uint ZSTD_getLongOffsetsShare(ZSTD_seqSymbol* offTable)
+         *           compared to maximum possible of (1<<OffFSELog),
+         *           as well as the maximum number additional bits required.
+         */
+        private static ZSTD_OffsetInfo ZSTD_getOffsetInfo(ZSTD_seqSymbol* offTable, int nbSeq)
         {
-            void* ptr = offTable;
-            uint tableLog = ((ZSTD_seqSymbol_header*)ptr)[0].tableLog;
-            ZSTD_seqSymbol* table = offTable + 1;
-            uint max = (uint)(1 << (int)tableLog);
-            uint u, total = 0;
-            assert(max <= 1 << 8);
-            for (u = 0; u < max; u++)
+            ZSTD_OffsetInfo info = new ZSTD_OffsetInfo { longOffsetShare = 0, maxNbAdditionalBits = 0 };
+            if (nbSeq != 0)
             {
-                if (table[u].nbAdditionalBits > 22)
-                    total += 1;
+                void* ptr = offTable;
+                uint tableLog = ((ZSTD_seqSymbol_header*)ptr)[0].tableLog;
+                ZSTD_seqSymbol* table = offTable + 1;
+                uint max = (uint)(1 << (int)tableLog);
+                uint u;
+                assert(max <= 1 << 8);
+                for (u = 0; u < max; u++)
+                {
+                    info.maxNbAdditionalBits = info.maxNbAdditionalBits > table[u].nbAdditionalBits ? info.maxNbAdditionalBits : table[u].nbAdditionalBits;
+                    if (table[u].nbAdditionalBits > 22)
+                        info.longOffsetShare += 1;
+                }
+
+                assert(tableLog <= 8);
+                info.longOffsetShare <<= (int)(8 - tableLog);
             }
 
-            assert(tableLog <= 8);
-            total <<= (int)(8 - tableLog);
-            return total;
+            return info;
+        }
+
+        /**
+         * @returns The maximum offset we can decode in one read of our bitstream, without
+         * reloading more bits in the middle of the offset bits read. Any offsets larger
+         * than this must use the long offset decoder.
+         */
+        private static nuint ZSTD_maxShortOffset()
+        {
+            if (MEM_64bits)
+            {
+                return unchecked((nuint)(-1));
+            }
+            else
+            {
+                /* The maximum offBase is (1 << (STREAM_ACCUMULATOR_MIN + 1)) - 1.
+                 * This offBase would require STREAM_ACCUMULATOR_MIN extra bits.
+                 * Then we have to subtract ZSTD_REP_NUM to get the maximum possible offset.
+                 */
+                nuint maxOffbase = ((nuint)1 << (int)((uint)(MEM_32bits ? 25 : 57) + 1)) - 1;
+                nuint maxOffset = maxOffbase - 3;
+                assert(ZSTD_highbit32((uint)maxOffbase) == (uint)(MEM_32bits ? 25 : 57));
+                return maxOffset;
+            }
         }
 
         /* ZSTD_decompressBlock_internal() :
@@ -1637,14 +1701,7 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_decompressBlock_internal(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize, int frame, streaming_operation streaming)
         {
             byte* ip = (byte*)src;
-            /* isLongOffset must be true if there are long offsets.
-             * Offsets are long if they are larger than 2^STREAM_ACCUMULATOR_MIN.
-             * We don't expect that to be the case in 64-bit mode.
-             * In block mode, window size is not known, so we have to be conservative.
-             * (note: but it could be evaluated from current-lowLimit)
-             */
-            ZSTD_longOffset_e isLongOffset = (ZSTD_longOffset_e)(MEM_32bits && (frame == 0 || dctx->fParams.windowSize > 1UL << (int)(uint)(MEM_32bits ? 25 : 57)) ? 1 : 0);
-            if (srcSize >= 1 << 17)
+            if (srcSize > 1 << 17)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
@@ -1658,6 +1715,23 @@ namespace ZstdSharp.Unsafe
             }
 
             {
+                /* Compute the maximum block size, which must also work when !frame and fParams are unset.
+                 * Additionally, take the min with dstCapacity to ensure that the totalHistorySize fits in a size_t.
+                 */
+                nuint blockSizeMax = dstCapacity < (frame != 0 ? dctx->fParams.blockSizeMax : 1 << 17) ? dstCapacity : frame != 0 ? dctx->fParams.blockSizeMax : 1 << 17;
+                nuint totalHistorySize = ZSTD_totalHistorySize((byte*)dst + blockSizeMax, (byte*)dctx->virtualStart);
+                /* isLongOffset must be true if there are long offsets.
+                 * Offsets are long if they are larger than ZSTD_maxShortOffset().
+                 * We don't expect that to be the case in 64-bit mode.
+                 *
+                 * We check here to see if our history is large enough to allow long offsets.
+                 * If it isn't, then we can't possible have (valid) long offsets. If the offset
+                 * is invalid, then it is okay to read it incorrectly.
+                 *
+                 * If isLongOffsets is true, then we will later check our decoding table to see
+                 * if it is even possible to generate long offsets.
+                 */
+                ZSTD_longOffset_e isLongOffset = (ZSTD_longOffset_e)(MEM_32bits && totalHistorySize > ZSTD_maxShortOffset() ? 1 : 0);
                 int usePrefetchDecoder = dctx->ddictIsCold;
                 int nbSeq;
                 nuint seqHSize = ZSTD_decodeSeqHeaders(dctx, &nbSeq, ip, srcSize);
@@ -1670,17 +1744,28 @@ namespace ZstdSharp.Unsafe
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
                 }
 
-                if (usePrefetchDecoder == 0 && (frame == 0 || dctx->fParams.windowSize > 1 << 24) && nbSeq > 8)
+                if (isLongOffset != default || usePrefetchDecoder == 0 && totalHistorySize > 1U << 24 && nbSeq > 8)
                 {
-                    uint shareLongOffsets = ZSTD_getLongOffsetsShare(dctx->OFTptr);
-                    /* heuristic values, correspond to 2.73% and 7.81% */
-                    uint minShare = (uint)(MEM_64bits ? 7 : 20);
-                    usePrefetchDecoder = shareLongOffsets >= minShare ? 1 : 0;
+                    ZSTD_OffsetInfo info = ZSTD_getOffsetInfo(dctx->OFTptr, nbSeq);
+                    if (isLongOffset != default && info.maxNbAdditionalBits <= (uint)(MEM_32bits ? 25 : 57))
+                    {
+                        isLongOffset = ZSTD_longOffset_e.ZSTD_lo_isRegularOffset;
+                    }
+
+                    if (usePrefetchDecoder == 0)
+                    {
+                        /* heuristic values, correspond to 2.73% and 7.81% */
+                        uint minShare = (uint)(MEM_64bits ? 7 : 20);
+                        usePrefetchDecoder = info.longOffsetShare >= minShare ? 1 : 0;
+                    }
                 }
 
                 dctx->ddictIsCold = 0;
                 if (usePrefetchDecoder != 0)
+                {
                     return ZSTD_decompressSequencesLong(dctx, dst, dstCapacity, ip, srcSize, nbSeq, isLongOffset, frame);
+                }
+
                 if (dctx->litBufferLocation == ZSTD_litLocation_e.ZSTD_split)
                     return ZSTD_decompressSequencesSplitLitBuffer(dctx, dst, dstCapacity, ip, srcSize, nbSeq, isLongOffset, frame);
                 else

@@ -42,5 +42,18 @@ namespace ZstdSharp.Unsafe
         public int deterministicRefPrefix;
         /* Internal use, for createCCtxParams() and freeCCtxParams() only */
         public ZSTD_customMem customMem;
+        /* Controls prefetching in some dictMatchState matchfinders */
+        public ZSTD_paramSwitch_e prefetchCDictTables;
+        /* Controls whether zstd will fall back to an internal matchfinder
+         * if the external matchfinder returns an error code. */
+        public int enableMatchFinderFallback;
+        /* Indicates whether an external matchfinder has been referenced.
+         * Users can't set this externally.
+         * It is set internally in ZSTD_registerSequenceProducer(). */
+        public int useSequenceProducer;
+        /* Adjust the max block size*/
+        public nuint maxBlockSize;
+        /* Controls repcode search in external sequence parsing */
+        public ZSTD_paramSwitch_e searchForExternalRepcodes;
     }
 }

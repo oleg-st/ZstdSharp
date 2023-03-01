@@ -55,6 +55,8 @@ namespace ZstdSharp.Unsafe
         public uint frameEnded;
         /* Stable in/out buffer verification */
         public ZSTD_inBuffer_s expectedInBuffer;
+        /* nb bytes within stable input buffer that are said to be consumed but are not */
+        public nuint stableIn_notConsumed;
         public nuint expectedOutBufferSize;
         /* Dictionary */
         public ZSTD_localDict localDict;
@@ -63,5 +65,7 @@ namespace ZstdSharp.Unsafe
         public ZSTD_prefixDict_s prefixDict;
         /* Workspace for block splitter */
         public ZSTD_blockSplitCtx blockSplitCtx;
+        /* Workspace for external matchfinder */
+        public ZSTD_externalMatchCtx externalMatchCtx;
     }
 }

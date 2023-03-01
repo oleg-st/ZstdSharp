@@ -52,7 +52,7 @@ namespace ZstdSharp.Unsafe
 
         /* FSE_getMaxNbBits() :
          * Approximate maximum cost of a symbol, in bits.
-         * Fractional get rounded up (i.e : a symbol with a normalized frequency of 3 gives the same result as a frequency of 2)
+         * Fractional get rounded up (i.e. a symbol with a normalized frequency of 3 gives the same result as a frequency of 2)
          * note 1 : assume symbolValue is valid (<= maxSymbolValue)
          * note 2 : if freq[symbolValue]==0, @return a fake cost of tableLog+1 bits */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -220,7 +220,7 @@ namespace ZstdSharp.Unsafe
         {
             if (ddict == null)
                 return 0;
-            return ZSTD_getDictID_fromDict(ddict->dictContent, ddict->dictSize);
+            return ddict->dictID;
         }
     }
 }

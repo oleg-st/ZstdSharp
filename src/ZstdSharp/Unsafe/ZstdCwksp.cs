@@ -306,7 +306,7 @@ namespace ZstdSharp.Unsafe
             assert(ws->tableValidEnd <= ws->allocStart);
             if (ws->tableValidEnd < ws->tableEnd)
             {
-                memset(ws->tableValidEnd, 0, (uint)((byte*)ws->tableEnd - (byte*)ws->tableValidEnd));
+                memset(ws->tableValidEnd, 0, (uint)(nuint)((byte*)ws->tableEnd - (byte*)ws->tableValidEnd));
             }
 
             ZSTD_cwksp_mark_tables_clean(ws);

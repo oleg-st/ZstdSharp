@@ -1,6 +1,5 @@
-using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
-using System.Numerics;
+using System.Runtime.CompilerServices;
 #if NETCOREAPP3_0_OR_GREATER
 using System.Runtime.Intrinsics.X86;
 #endif
@@ -9,17 +8,6 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        /*-**************************************************************
-         *  Internal functions
-         ****************************************************************/
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        private static uint BIT_highbit32(uint val)
-        {
-            assert(val != 0);
-            return (uint)BitOperations.Log2(val);
-        }
-
         public static readonly uint* BIT_mask = GetArrayPointer(new uint[32] { 0, 1, 3, 7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF, 0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF, 0x1FFFFF, 0x3FFFFF, 0x7FFFFF, 0xFFFFFF, 0x1FFFFFF, 0x3FFFFFF, 0x7FFFFFF, 0xFFFFFFF, 0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF });
         /*-**************************************************************
          *  bitStream encoding
@@ -41,6 +29,25 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint BIT_getLowerBits(nuint bitContainer, uint nbBits)
+        {
+            assert(nbBits < sizeof(uint) * 32 / sizeof(uint));
+#if NETCOREAPP3_1_OR_GREATER
+            if (Bmi2.X64.IsSupported)
+            {
+                return (nuint)Bmi2.X64.ZeroHighBits(bitContainer, nbBits);
+            }
+
+            if (Bmi2.IsSupported)
+            {
+                return Bmi2.ZeroHighBits((uint)bitContainer, nbBits);
+            }
+#endif
+
+            return bitContainer & BIT_mask[nbBits];
+        }
+
         /*! BIT_addBits() :
          *  can add up to 31 bits into `bitC`.
          *  Note : does not check for register overflow ! */
@@ -49,7 +56,7 @@ namespace ZstdSharp.Unsafe
         {
             assert(nbBits < sizeof(uint) * 32 / sizeof(uint));
             assert(nbBits + bitC->bitPos < (uint)(sizeof(nuint) * 8));
-            bitC->bitContainer |= (value & BIT_mask[nbBits]) << (int)bitC->bitPos;
+            bitC->bitContainer |= BIT_getLowerBits(value, nbBits) << (int)bitC->bitPos;
             bitC->bitPos += nbBits;
         }
 
@@ -138,7 +145,7 @@ namespace ZstdSharp.Unsafe
                 bitD->bitContainer = MEM_readLEST(bitD->ptr);
                 {
                     byte lastByte = ((byte*)srcBuffer)[srcSize - 1];
-                    bitD->bitsConsumed = lastByte != 0 ? 8 - BIT_highbit32(lastByte) : 0;
+                    bitD->bitsConsumed = lastByte != 0 ? 8 - ZSTD_highbit32(lastByte) : 0;
                     if (lastByte == 0)
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
                 }
@@ -173,7 +180,7 @@ namespace ZstdSharp.Unsafe
 
                 {
                     byte lastByte = ((byte*)srcBuffer)[srcSize - 1];
-                    bitD->bitsConsumed = lastByte != 0 ? 8 - BIT_highbit32(lastByte) : 0;
+                    bitD->bitsConsumed = lastByte != 0 ? 8 - ZSTD_highbit32(lastByte) : 0;
                     if (lastByte == 0)
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 }
@@ -208,25 +215,6 @@ namespace ZstdSharp.Unsafe
 #endif
 
             return (nuint)(bitContainer >> (int)(start & regMask) & ((ulong)1 << (int)nbBits) - 1);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint BIT_getLowerBits(nuint bitContainer, uint nbBits)
-        {
-            assert(nbBits < sizeof(uint) * 32 / sizeof(uint));
-#if NETCOREAPP3_1_OR_GREATER
-            if (Bmi2.X64.IsSupported)
-            {
-                return (nuint)Bmi2.X64.ZeroHighBits(bitContainer, nbBits);
-            }
-
-            if (Bmi2.IsSupported)
-            {
-                return Bmi2.ZeroHighBits((uint)bitContainer, nbBits);
-            }
-#endif
-
-            return bitContainer & BIT_mask[nbBits];
         }
 
         /*! BIT_lookBits() :
@@ -272,7 +260,7 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! BIT_readBitsFast() :
-         *  unsafe version; only works only if nbBits >= 1 */
+         *  unsafe version; only works if nbBits >= 1 */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint BIT_readBitsFast(BIT_DStream_t* bitD, uint nbBits)
         {

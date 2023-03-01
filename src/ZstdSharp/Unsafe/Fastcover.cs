@@ -179,7 +179,7 @@ namespace ZstdSharp.Unsafe
 
         /**
          * Prepare a context for dictionary building.
-         * The context is only dependent on the parameter `d` and can used multiple
+         * The context is only dependent on the parameter `d` and can be used multiple
          * times.
          * Returns 0 on success or error code on error.
          * The context must be destroyed with `FASTCOVER_ctx_destroy()`.

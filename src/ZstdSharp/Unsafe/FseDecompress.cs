@@ -5,19 +5,6 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        /* Function templates */
-        public static uint* FSE_createDTable(uint tableLog)
-        {
-            if (tableLog > 15)
-                tableLog = 15;
-            return (uint*)malloc((ulong)((1 + (1 << (int)tableLog)) * sizeof(uint)));
-        }
-
-        public static void FSE_freeDTable(uint* dt)
-        {
-            free(dt);
-        }
-
         private static nuint FSE_buildDTable_internal(uint* dt, short* normalizedCounter, uint maxSymbolValue, uint tableLog, void* workSpace, nuint wkspSize)
         {
             /* because *dt is unsigned, 32-bits aligned on 32-bits */
@@ -130,7 +117,7 @@ namespace ZstdSharp.Unsafe
                 {
                     byte symbol = tableDecode[u].symbol;
                     uint nextState = symbolNext[symbol]++;
-                    tableDecode[u].nbBits = (byte)(tableLog - BIT_highbit32(nextState));
+                    tableDecode[u].nbBits = (byte)(tableLog - ZSTD_highbit32(nextState));
                     tableDecode[u].newState = (ushort)((nextState << tableDecode[u].nbBits) - tableSize);
                 }
             }
@@ -146,44 +133,6 @@ namespace ZstdSharp.Unsafe
         /*-*******************************************************
          *  Decompression (Byte symbols)
          *********************************************************/
-        public static nuint FSE_buildDTable_rle(uint* dt, byte symbolValue)
-        {
-            void* ptr = dt;
-            FSE_DTableHeader* DTableH = (FSE_DTableHeader*)ptr;
-            void* dPtr = dt + 1;
-            FSE_decode_t* cell = (FSE_decode_t*)dPtr;
-            DTableH->tableLog = 0;
-            DTableH->fastMode = 0;
-            cell->newState = 0;
-            cell->symbol = symbolValue;
-            cell->nbBits = 0;
-            return 0;
-        }
-
-        public static nuint FSE_buildDTable_raw(uint* dt, uint nbBits)
-        {
-            void* ptr = dt;
-            FSE_DTableHeader* DTableH = (FSE_DTableHeader*)ptr;
-            void* dPtr = dt + 1;
-            FSE_decode_t* dinfo = (FSE_decode_t*)dPtr;
-            uint tableSize = (uint)(1 << (int)nbBits);
-            uint tableMask = tableSize - 1;
-            uint maxSV1 = tableMask + 1;
-            uint s;
-            if (nbBits < 1)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
-            DTableH->tableLog = (ushort)nbBits;
-            DTableH->fastMode = 1;
-            for (s = 0; s < maxSV1; s++)
-            {
-                dinfo[s].newState = 0;
-                dinfo[s].symbol = (byte)s;
-                dinfo[s].nbBits = (byte)nbBits;
-            }
-
-            return 0;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint FSE_decompress_usingDTable_generic(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* dt, uint fast)
         {
@@ -247,26 +196,6 @@ namespace ZstdSharp.Unsafe
             return (nuint)(op - ostart);
         }
 
-        /*! FSE_decompress_usingDTable():
-        Decompress compressed source `cSrc` of size `cSrcSize` using `dt`
-        into `dst` which must be already allocated.
-        @return : size of regenerated data (necessarily <= `dstCapacity`),
-        or an errorCode, which can be tested using FSE_isError() */
-        public static nuint FSE_decompress_usingDTable(void* dst, nuint originalSize, void* cSrc, nuint cSrcSize, uint* dt)
-        {
-            void* ptr = dt;
-            FSE_DTableHeader* DTableH = (FSE_DTableHeader*)ptr;
-            uint fastMode = DTableH->fastMode;
-            if (fastMode != 0)
-                return FSE_decompress_usingDTable_generic(dst, originalSize, cSrc, cSrcSize, dt, 1);
-            return FSE_decompress_usingDTable_generic(dst, originalSize, cSrc, cSrcSize, dt, 0);
-        }
-
-        public static nuint FSE_decompress_wksp(void* dst, nuint dstCapacity, void* cSrc, nuint cSrcSize, uint maxLog, void* workSpace, nuint wkspSize)
-        {
-            return FSE_decompress_wksp_bmi2(dst, dstCapacity, cSrc, cSrcSize, maxLog, workSpace, wkspSize, 0);
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint FSE_decompress_wksp_body(void* dst, nuint dstCapacity, void* cSrc, nuint cSrcSize, uint maxLog, void* workSpace, nuint wkspSize, int bmi2)
         {
@@ -288,9 +217,10 @@ namespace ZstdSharp.Unsafe
                 cSrcSize -= NCountLength;
             }
 
-            if (((uint)(1 + (1 << (int)tableLog)) + (sizeof(short) * (maxSymbolValue + 1) + (1UL << (int)tableLog) + 8 + sizeof(uint) - 1) / sizeof(uint) + (255 + 1) / 2 + 1) * sizeof(uint) > wkspSize)
+            if (((uint)(1 + (1 << (int)tableLog) + 1) + (sizeof(short) * (maxSymbolValue + 1) + (1UL << (int)tableLog) + 8 + sizeof(uint) - 1) / sizeof(uint) + (255 + 1) / 2 + 1) * sizeof(uint) > wkspSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
-            workSpace = wksp->dtable + (1 + (1 << (int)tableLog));
+            assert((uint)(sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint)) <= wkspSize);
+            workSpace = (byte*)workSpace + sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint);
             wkspSize -= (nuint)(sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint));
             {
                 nuint _var_err__ = FSE_buildDTable_internal(wksp->dtable, wksp->ncount, maxSymbolValue, tableLog, workSpace, wkspSize);
@@ -317,31 +247,6 @@ namespace ZstdSharp.Unsafe
         public static nuint FSE_decompress_wksp_bmi2(void* dst, nuint dstCapacity, void* cSrc, nuint cSrcSize, uint maxLog, void* workSpace, nuint wkspSize, int bmi2)
         {
             return FSE_decompress_wksp_body_default(dst, dstCapacity, cSrc, cSrcSize, maxLog, workSpace, wkspSize);
-        }
-
-        /*! FSE_buildDTable():
-        Builds 'dt', which must be already allocated, using FSE_createDTable().
-        return : 0, or an errorCode, which can be tested using FSE_isError() */
-        public static nuint FSE_buildDTable(uint* dt, short* normalizedCounter, uint maxSymbolValue, uint tableLog)
-        {
-            uint* wksp = stackalloc uint[8322];
-            return FSE_buildDTable_wksp(dt, normalizedCounter, maxSymbolValue, tableLog, wksp, sizeof(uint) * 8322);
-        }
-
-        /*! FSE_decompress():
-        Decompress FSE data from buffer 'cSrc', of size 'cSrcSize',
-        into already allocated destination buffer 'dst', of size 'dstCapacity'.
-        @return : size of regenerated data (<= maxDstSize),
-        or an error code, which can be tested using FSE_isError() .
-         ** Important ** : FSE_decompress() does not decompress non-compressible nor RLE data !!!
-        Why ? : making this distinction requires a header.
-        Header management is intentionally delegated to the user layer, which can better manage special cases.
-         */
-        public static nuint FSE_decompress(void* dst, nuint dstCapacity, void* cSrc, nuint cSrcSize)
-        {
-            /* Static analyzer seems unable to understand this table will be properly initialized later */
-            uint* wksp = stackalloc uint[5380];
-            return FSE_decompress_wksp(dst, dstCapacity, cSrc, cSrcSize, 14 - 2, wksp, sizeof(uint) * 5380);
         }
     }
 }
