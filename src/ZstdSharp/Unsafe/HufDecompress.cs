@@ -483,15 +483,24 @@ namespace ZstdSharp.Unsafe
 
         private static void HUF_decompress4X1_usingDTable_internal_fast_c_loop(HUF_DecompressFastArgs* args)
         {
-            ulong* bits = stackalloc ulong[4];
-            byte** ip = stackalloc byte*[4];
-            byte** op = stackalloc byte*[4];
+            ulong bits0, bits1, bits2, bits3;
+            byte* ip0, ip1, ip2, ip3;
+            byte* op0, op1, op2, op3;
             ushort* dtable = (ushort*)args->dt;
             byte* oend = args->oend;
             byte* ilimit = args->ilimit;
-            memcpy(&bits[0], &args->bits[0], sizeof(ulong) * 4);
-            memcpy(&ip[0], &args->ip, (uint)(sizeof(byte*) * 4));
-            memcpy(&op[0], &args->op, (uint)(sizeof(byte*) * 4));
+            bits0 = args->bits[0];
+            bits1 = args->bits[1];
+            bits2 = args->bits[2];
+            bits3 = args->bits[3];
+            ip0 = args->ip[0];
+            ip1 = args->ip[1];
+            ip2 = args->ip[2];
+            ip3 = args->ip[3];
+            op0 = args->op[0];
+            op1 = args->op[1];
+            op2 = args->op[2];
+            op3 = args->op[3];
             assert(BitConverter.IsLittleEndian);
             assert(!MEM_32bits);
             for (; ; )
@@ -499,72 +508,275 @@ namespace ZstdSharp.Unsafe
                 byte* olimit;
                 int stream;
                 int symbol;
-#if DEBUG
-                for (stream = 0; stream < 4; ++stream)
                 {
-                    assert(op[stream] <= (stream == 3 ? oend : op[stream + 1]));
-                    assert(ip[stream] >= ilimit);
+                    assert(op0 <= op1);
+                    assert(ip0 >= ilimit);
                 }
-#endif
+
+                {
+                    assert(op1 <= op2);
+                    assert(ip1 >= ilimit);
+                }
+
+                {
+                    assert(op2 <= op3);
+                    assert(ip2 >= ilimit);
+                }
+
+                {
+                    assert(op3 <= oend);
+                    assert(ip3 >= ilimit);
+                }
 
                 {
                     /* Each iteration produces 5 output symbols per stream */
-                    nuint oiters = (nuint)(oend - op[3]) / 5;
+                    nuint oiters = (nuint)(oend - op3) / 5;
                     /* Each iteration consumes up to 11 bits * 5 = 55 bits < 7 bytes
                      * per stream.
                      */
-                    nuint iiters = (nuint)(ip[0] - ilimit) / 7;
+                    nuint iiters = (nuint)(ip0 - ilimit) / 7;
                     /* We can safely run iters iterations before running bounds checks */
                     nuint iters = oiters < iiters ? oiters : iiters;
                     nuint symbols = iters * 5;
-                    olimit = op[3] + symbols;
-                    if (op[3] + 20 > olimit)
+                    olimit = op3 + symbols;
+                    if (op3 + 20 > olimit)
                         break;
-                    for (stream = 1; stream < 4; ++stream)
                     {
-                        if (ip[stream] < ip[stream - 1])
+                        if (ip1 < ip0)
+                            goto _out;
+                    }
+
+                    {
+                        if (ip2 < ip1)
+                            goto _out;
+                    }
+
+                    {
+                        if (ip3 < ip2)
                             goto _out;
                     }
                 }
 
-#if DEBUG
-                for (stream = 1; stream < 4; ++stream)
                 {
-                    assert(ip[stream] >= ip[stream - 1]);
+                    assert(ip1 >= ip0);
                 }
-#endif
+
+                {
+                    assert(ip2 >= ip1);
+                }
+
+                {
+                    assert(ip3 >= ip2);
+                }
 
                 do
                 {
-                    for (symbol = 0; symbol < 5; ++symbol)
                     {
-                        for (stream = 0; stream < 4; ++stream)
                         {
-                            int index = (int)(bits[stream] >> 53);
+                            int index = (int)(bits0 >> 53);
                             int entry = dtable[index];
-                            bits[stream] <<= entry & 63;
-                            op[stream][symbol] = (byte)(entry >> 8 & 0xFF);
+                            bits0 <<= entry & 63;
+                            op0[0] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            int entry = dtable[index];
+                            bits1 <<= entry & 63;
+                            op1[0] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            int entry = dtable[index];
+                            bits2 <<= entry & 63;
+                            op2[0] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits3 >> 53);
+                            int entry = dtable[index];
+                            bits3 <<= entry & 63;
+                            op3[0] = (byte)(entry >> 8 & 0xFF);
                         }
                     }
 
-                    for (stream = 0; stream < 4; ++stream)
                     {
-                        int ctz = (int)ZSTD_countTrailingZeros64(bits[stream]);
+                        {
+                            int index = (int)(bits0 >> 53);
+                            int entry = dtable[index];
+                            bits0 <<= entry & 63;
+                            op0[1] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            int entry = dtable[index];
+                            bits1 <<= entry & 63;
+                            op1[1] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            int entry = dtable[index];
+                            bits2 <<= entry & 63;
+                            op2[1] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits3 >> 53);
+                            int entry = dtable[index];
+                            bits3 <<= entry & 63;
+                            op3[1] = (byte)(entry >> 8 & 0xFF);
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits0 >> 53);
+                            int entry = dtable[index];
+                            bits0 <<= entry & 63;
+                            op0[2] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            int entry = dtable[index];
+                            bits1 <<= entry & 63;
+                            op1[2] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            int entry = dtable[index];
+                            bits2 <<= entry & 63;
+                            op2[2] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits3 >> 53);
+                            int entry = dtable[index];
+                            bits3 <<= entry & 63;
+                            op3[2] = (byte)(entry >> 8 & 0xFF);
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits0 >> 53);
+                            int entry = dtable[index];
+                            bits0 <<= entry & 63;
+                            op0[3] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            int entry = dtable[index];
+                            bits1 <<= entry & 63;
+                            op1[3] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            int entry = dtable[index];
+                            bits2 <<= entry & 63;
+                            op2[3] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits3 >> 53);
+                            int entry = dtable[index];
+                            bits3 <<= entry & 63;
+                            op3[3] = (byte)(entry >> 8 & 0xFF);
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits0 >> 53);
+                            int entry = dtable[index];
+                            bits0 <<= entry & 63;
+                            op0[4] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            int entry = dtable[index];
+                            bits1 <<= entry & 63;
+                            op1[4] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            int entry = dtable[index];
+                            bits2 <<= entry & 63;
+                            op2[4] = (byte)(entry >> 8 & 0xFF);
+                        }
+
+                        {
+                            int index = (int)(bits3 >> 53);
+                            int entry = dtable[index];
+                            bits3 <<= entry & 63;
+                            op3[4] = (byte)(entry >> 8 & 0xFF);
+                        }
+                    }
+
+                    {
+                        int ctz = (int)ZSTD_countTrailingZeros64(bits0);
                         int nbBits = ctz & 7;
                         int nbBytes = ctz >> 3;
-                        op[stream] += 5;
-                        ip[stream] -= nbBytes;
-                        bits[stream] = MEM_read64(ip[stream]) | 1;
-                        bits[stream] <<= nbBits;
+                        op0 += 5;
+                        ip0 -= nbBytes;
+                        bits0 = MEM_read64(ip0) | 1;
+                        bits0 <<= nbBits;
+                    }
+
+                    {
+                        int ctz = (int)ZSTD_countTrailingZeros64(bits1);
+                        int nbBits = ctz & 7;
+                        int nbBytes = ctz >> 3;
+                        op1 += 5;
+                        ip1 -= nbBytes;
+                        bits1 = MEM_read64(ip1) | 1;
+                        bits1 <<= nbBits;
+                    }
+
+                    {
+                        int ctz = (int)ZSTD_countTrailingZeros64(bits2);
+                        int nbBits = ctz & 7;
+                        int nbBytes = ctz >> 3;
+                        op2 += 5;
+                        ip2 -= nbBytes;
+                        bits2 = MEM_read64(ip2) | 1;
+                        bits2 <<= nbBits;
+                    }
+
+                    {
+                        int ctz = (int)ZSTD_countTrailingZeros64(bits3);
+                        int nbBits = ctz & 7;
+                        int nbBytes = ctz >> 3;
+                        op3 += 5;
+                        ip3 -= nbBytes;
+                        bits3 = MEM_read64(ip3) | 1;
+                        bits3 <<= nbBits;
                     }
                 }
-                while (op[3] < olimit);
+                while (op3 < olimit);
             }
 
         _out:
-            memcpy(&args->bits[0], &bits[0], sizeof(ulong) * 4);
-            memcpy(&args->ip, &ip[0], (uint)(sizeof(byte*) * 4));
-            memcpy(&args->op, &op[0], (uint)(sizeof(byte*) * 4));
+            args->bits[0] = bits0;
+            args->bits[1] = bits1;
+            args->bits[2] = bits2;
+            args->bits[3] = bits3;
+            args->ip[0] = ip0;
+            args->ip[1] = ip1;
+            args->ip[2] = ip2;
+            args->ip[3] = ip3;
+            args->op[0] = op0;
+            args->op[1] = op1;
+            args->op[2] = op2;
+            args->op[3] = op3;
         }
 
         /**
@@ -1206,19 +1418,28 @@ namespace ZstdSharp.Unsafe
 
         private static void HUF_decompress4X2_usingDTable_internal_fast_c_loop(HUF_DecompressFastArgs* args)
         {
-            ulong* bits = stackalloc ulong[4];
-            byte** ip = stackalloc byte*[4];
-            byte** op = stackalloc byte*[4];
-            byte** oend = stackalloc byte*[4];
+            ulong bits0, bits1, bits2, bits3;
+            byte* ip0, ip1, ip2, ip3;
+            byte* op0, op1, op2, op3;
+            byte* oend0, oend1, oend2, oend3;
             HUF_DEltX2* dtable = (HUF_DEltX2*)args->dt;
             byte* ilimit = args->ilimit;
-            memcpy(&bits[0], &args->bits[0], sizeof(ulong) * 4);
-            memcpy(&ip[0], &args->ip, (uint)(sizeof(byte*) * 4));
-            memcpy(&op[0], &args->op, (uint)(sizeof(byte*) * 4));
-            oend[0] = op[1];
-            oend[1] = op[2];
-            oend[2] = op[3];
-            oend[3] = args->oend;
+            bits0 = args->bits[0];
+            bits1 = args->bits[1];
+            bits2 = args->bits[2];
+            bits3 = args->bits[3];
+            ip0 = args->ip[0];
+            ip1 = args->ip[1];
+            ip2 = args->ip[2];
+            ip3 = args->ip[3];
+            op0 = args->op[0];
+            op1 = args->op[1];
+            op2 = args->op[2];
+            op3 = args->op[3];
+            oend0 = op1;
+            oend1 = op2;
+            oend2 = op3;
+            oend3 = args->oend;
             assert(BitConverter.IsLittleEndian);
             assert(!MEM_32bits);
             for (; ; )
@@ -1226,13 +1447,25 @@ namespace ZstdSharp.Unsafe
                 byte* olimit;
                 int stream;
                 int symbol;
-#if DEBUG
-                for (stream = 0; stream < 4; ++stream)
                 {
-                    assert(op[stream] <= oend[stream]);
-                    assert(ip[stream] >= ilimit);
+                    assert(op0 <= oend0);
+                    assert(ip0 >= ilimit);
                 }
-#endif
+
+                {
+                    assert(op1 <= oend1);
+                    assert(ip1 >= ilimit);
+                }
+
+                {
+                    assert(op2 <= oend2);
+                    assert(ip2 >= ilimit);
+                }
+
+                {
+                    assert(op3 <= oend3);
+                    assert(ip3 >= ilimit);
+                }
 
                 {
                     /* Each loop does 5 table lookups for each of the 4 streams.
@@ -1243,79 +1476,290 @@ namespace ZstdSharp.Unsafe
                      * We also know that each input pointer is >= ip[0]. So we can run
                      * iters loops before running out of input.
                      */
-                    nuint iters = (nuint)(ip[0] - ilimit) / 7;
-                    for (stream = 0; stream < 4; ++stream)
+                    nuint iters = (nuint)(ip0 - ilimit) / 7;
                     {
-                        nuint oiters = (nuint)(oend[stream] - op[stream]) / 10;
+                        nuint oiters = (nuint)(oend0 - op0) / 10;
                         iters = iters < oiters ? iters : oiters;
                     }
 
-                    olimit = op[3] + iters * 5;
-                    if (op[3] + 10 > olimit)
-                        break;
-                    for (stream = 1; stream < 4; ++stream)
                     {
-                        if (ip[stream] < ip[stream - 1])
+                        nuint oiters = (nuint)(oend1 - op1) / 10;
+                        iters = iters < oiters ? iters : oiters;
+                    }
+
+                    {
+                        nuint oiters = (nuint)(oend2 - op2) / 10;
+                        iters = iters < oiters ? iters : oiters;
+                    }
+
+                    {
+                        nuint oiters = (nuint)(oend3 - op3) / 10;
+                        iters = iters < oiters ? iters : oiters;
+                    }
+
+                    olimit = op3 + iters * 5;
+                    if (op3 + 10 > olimit)
+                        break;
+                    {
+                        if (ip1 < ip0)
+                            goto _out;
+                    }
+
+                    {
+                        if (ip2 < ip1)
+                            goto _out;
+                    }
+
+                    {
+                        if (ip3 < ip2)
                             goto _out;
                     }
                 }
 
-#if DEBUG
-                for (stream = 1; stream < 4; ++stream)
                 {
-                    assert(ip[stream] >= ip[stream - 1]);
+                    assert(ip1 >= ip0);
                 }
-#endif
+
+                {
+                    assert(ip2 >= ip1);
+                }
+
+                {
+                    assert(ip3 >= ip2);
+                }
 
                 do
                 {
-                    for (symbol = 0; symbol < 5; ++symbol)
                     {
-                        for (stream = 0; stream < 3; ++stream)
                         {
-                            int index = (int)(bits[stream] >> 53);
+                            int index = (int)(bits0 >> 53);
                             HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op[stream], entry.sequence);
-                            bits[stream] <<= entry.nbBits;
-                            op[stream] += entry.length;
+                            MEM_write16(op0, entry.sequence);
+                            bits0 <<= entry.nbBits;
+                            op0 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op1, entry.sequence);
+                            bits1 <<= entry.nbBits;
+                            op1 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op2, entry.sequence);
+                            bits2 <<= entry.nbBits;
+                            op2 += entry.length;
                         }
                     }
 
                     {
-                        int index = (int)(bits[3] >> 53);
+                        {
+                            int index = (int)(bits0 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op0, entry.sequence);
+                            bits0 <<= entry.nbBits;
+                            op0 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op1, entry.sequence);
+                            bits1 <<= entry.nbBits;
+                            op1 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op2, entry.sequence);
+                            bits2 <<= entry.nbBits;
+                            op2 += entry.length;
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits0 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op0, entry.sequence);
+                            bits0 <<= entry.nbBits;
+                            op0 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op1, entry.sequence);
+                            bits1 <<= entry.nbBits;
+                            op1 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op2, entry.sequence);
+                            bits2 <<= entry.nbBits;
+                            op2 += entry.length;
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits0 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op0, entry.sequence);
+                            bits0 <<= entry.nbBits;
+                            op0 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op1, entry.sequence);
+                            bits1 <<= entry.nbBits;
+                            op1 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op2, entry.sequence);
+                            bits2 <<= entry.nbBits;
+                            op2 += entry.length;
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits0 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op0, entry.sequence);
+                            bits0 <<= entry.nbBits;
+                            op0 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits1 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op1, entry.sequence);
+                            bits1 <<= entry.nbBits;
+                            op1 += entry.length;
+                        }
+
+                        {
+                            int index = (int)(bits2 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op2, entry.sequence);
+                            bits2 <<= entry.nbBits;
+                            op2 += entry.length;
+                        }
+                    }
+
+                    {
+                        int index = (int)(bits3 >> 53);
                         HUF_DEltX2 entry = dtable[index];
-                        MEM_write16(op[3], entry.sequence);
-                        bits[3] <<= entry.nbBits;
-                        op[3] += entry.length;
+                        MEM_write16(op3, entry.sequence);
+                        bits3 <<= entry.nbBits;
+                        op3 += entry.length;
                     }
 
-                    for (stream = 0; stream < 4; ++stream)
                     {
                         {
-                            int index = (int)(bits[3] >> 53);
+                            int index = (int)(bits3 >> 53);
                             HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op[3], entry.sequence);
-                            bits[3] <<= entry.nbBits;
-                            op[3] += entry.length;
+                            MEM_write16(op3, entry.sequence);
+                            bits3 <<= entry.nbBits;
+                            op3 += entry.length;
                         }
 
                         {
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits[stream]);
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits0);
                             int nbBits = ctz & 7;
                             int nbBytes = ctz >> 3;
-                            ip[stream] -= nbBytes;
-                            bits[stream] = MEM_read64(ip[stream]) | 1;
-                            bits[stream] <<= nbBits;
+                            ip0 -= nbBytes;
+                            bits0 = MEM_read64(ip0) | 1;
+                            bits0 <<= nbBits;
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits3 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op3, entry.sequence);
+                            bits3 <<= entry.nbBits;
+                            op3 += entry.length;
+                        }
+
+                        {
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits1);
+                            int nbBits = ctz & 7;
+                            int nbBytes = ctz >> 3;
+                            ip1 -= nbBytes;
+                            bits1 = MEM_read64(ip1) | 1;
+                            bits1 <<= nbBits;
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits3 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op3, entry.sequence);
+                            bits3 <<= entry.nbBits;
+                            op3 += entry.length;
+                        }
+
+                        {
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits2);
+                            int nbBits = ctz & 7;
+                            int nbBytes = ctz >> 3;
+                            ip2 -= nbBytes;
+                            bits2 = MEM_read64(ip2) | 1;
+                            bits2 <<= nbBits;
+                        }
+                    }
+
+                    {
+                        {
+                            int index = (int)(bits3 >> 53);
+                            HUF_DEltX2 entry = dtable[index];
+                            MEM_write16(op3, entry.sequence);
+                            bits3 <<= entry.nbBits;
+                            op3 += entry.length;
+                        }
+
+                        {
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits3);
+                            int nbBits = ctz & 7;
+                            int nbBytes = ctz >> 3;
+                            ip3 -= nbBytes;
+                            bits3 = MEM_read64(ip3) | 1;
+                            bits3 <<= nbBits;
                         }
                     }
                 }
-                while (op[3] < olimit);
+                while (op3 < olimit);
             }
 
         _out:
-            memcpy(&args->bits[0], &bits[0], sizeof(ulong) * 4);
-            memcpy(&args->ip, &ip[0], (uint)(sizeof(byte*) * 4));
-            memcpy(&args->op, &op[0], (uint)(sizeof(byte*) * 4));
+            args->bits[0] = bits0;
+            args->bits[1] = bits1;
+            args->bits[2] = bits2;
+            args->bits[3] = bits3;
+            args->ip[0] = ip0;
+            args->ip[1] = ip1;
+            args->ip[2] = ip2;
+            args->ip[3] = ip3;
+            args->op[0] = op0;
+            args->op[1] = op1;
+            args->op[2] = op2;
+            args->op[3] = op3;
         }
 
         private static nuint HUF_decompress4X2_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, delegate* managed<HUF_DecompressFastArgs*, void> loopFn)
