@@ -499,11 +499,13 @@ namespace ZstdSharp.Unsafe
                 byte* olimit;
                 int stream;
                 int symbol;
+#if DEBUG
                 for (stream = 0; stream < 4; ++stream)
                 {
                     assert(op[stream] <= (stream == 3 ? oend : op[stream + 1]));
                     assert(ip[stream] >= ilimit);
                 }
+#endif
 
                 {
                     /* Each iteration produces 5 output symbols per stream */
@@ -525,10 +527,12 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
+#if DEBUG
                 for (stream = 1; stream < 4; ++stream)
                 {
                     assert(ip[stream] >= ip[stream - 1]);
                 }
+#endif
 
                 do
                 {
@@ -1222,11 +1226,13 @@ namespace ZstdSharp.Unsafe
                 byte* olimit;
                 int stream;
                 int symbol;
+#if DEBUG
                 for (stream = 0; stream < 4; ++stream)
                 {
                     assert(op[stream] <= oend[stream]);
                     assert(ip[stream] >= ilimit);
                 }
+#endif
 
                 {
                     /* Each loop does 5 table lookups for each of the 4 streams.
@@ -1254,10 +1260,12 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
+#if DEBUG
                 for (stream = 1; stream < 4; ++stream)
                 {
                     assert(ip[stream] >= ip[stream - 1]);
                 }
+#endif
 
                 do
                 {

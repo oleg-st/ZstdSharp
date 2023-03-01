@@ -161,8 +161,10 @@ namespace ZstdSharp.Unsafe
             switch (lhSize)
             {
                 case 3:
+#if DEBUG
                     if (singleStream == 0)
                         assert(srcSize >= 6);
+#endif
                     {
                         uint lhc = (uint)hType + ((singleStream == 0 ? 1U : 0U) << 2) + ((uint)srcSize << 4) + ((uint)cLitSize << 14);
                         MEM_writeLE24(ostart, lhc);

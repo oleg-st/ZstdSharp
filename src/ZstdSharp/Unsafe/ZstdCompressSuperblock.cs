@@ -123,10 +123,12 @@ namespace ZstdSharp.Unsafe
             }
 
             assert(litLengthSum <= litSize);
+#if DEBUG
             if (lastSequence == 0)
             {
                 assert(litLengthSum == litSize);
             }
+#endif
 
             return matchLengthSum + litSize;
         }

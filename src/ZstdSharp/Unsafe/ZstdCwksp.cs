@@ -1,11 +1,13 @@
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
+using System.Diagnostics;
 
 namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Conditional("DEBUG")]
         private static void ZSTD_cwksp_assert_internal_consistency(ZSTD_cwksp* ws)
         {
             assert(ws->workspace <= ws->objectEnd);

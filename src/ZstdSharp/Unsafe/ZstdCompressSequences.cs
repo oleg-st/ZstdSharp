@@ -163,11 +163,13 @@ namespace ZstdSharp.Unsafe
                 nuint repeatCost = *repeatMode != FSE_repeat.FSE_repeat_none ? ZSTD_fseBitCost(prevCTable, count, max) : unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
                 nuint NCountCost = ZSTD_NCountCost(count, max, nbSeq, FSELog);
                 nuint compressedCost = (NCountCost << 3) + ZSTD_entropyCost(count, max, nbSeq);
+#if DEBUG
                 if (isDefaultAllowed != default)
                 {
                     assert(!ERR_isError(basicCost));
                     assert(!(*repeatMode == FSE_repeat.FSE_repeat_valid && ERR_isError(repeatCost)));
                 }
+#endif
 
                 assert(!ERR_isError(NCountCost));
                 assert(compressedCost < unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_maxCode)));

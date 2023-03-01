@@ -1880,11 +1880,13 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
+#if DEBUG
             if (isDxS != 0)
             {
                 assert(offset_1 <= dictAndPrefixLength);
                 assert(offset_2 <= dictAndPrefixLength);
             }
+#endif
 
             if (searchMethod == searchMethod_e.search_rowHash)
             {

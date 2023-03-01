@@ -630,8 +630,10 @@ namespace ZstdSharp.Unsafe
                 {
                     assert(matchIndex + matchLength >= dictLimit);
                     match = @base + matchIndex;
+#if DEBUG
                     if (matchIndex >= dictLimit)
                         assert(memcmp(match, ip, matchLength) == 0);
+#endif
                     matchLength += ZSTD_count(ip + matchLength, match + matchLength, iLimit);
                 }
                 else
