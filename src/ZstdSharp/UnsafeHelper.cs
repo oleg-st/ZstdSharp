@@ -155,6 +155,7 @@ namespace ZstdSharp
              * but unfortunately reduces inlining
              */
             Ldarg_0();
+            Conv_U();
             return IL.ReturnPointer<TTo>();
         }
     }
