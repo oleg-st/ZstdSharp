@@ -39,6 +39,7 @@ namespace ZstdSharp.Unsafe
                 get
                 {
                     Ldarg_0();
+                    Conv_U();
                     Ldarg_1();
                     Conv_I();
                     Sizeof(new TypeRef(typeof(byte*)));
@@ -56,6 +57,7 @@ namespace ZstdSharp.Unsafe
                 get
                 {
                     Ldarg_0();
+                    Conv_U();
                     Ldarg_1();
                     Conv_I();
                     Sizeof(new TypeRef(typeof(byte*)));
@@ -71,6 +73,7 @@ namespace ZstdSharp.Unsafe
             public static implicit operator byte**(in _ip_e__FixedBuffer t)
             {
                 Ldarg_0();
+                Conv_U();
                 return (byte**)IL.ReturnPointer();
             }
 
@@ -79,6 +82,7 @@ namespace ZstdSharp.Unsafe
             public static byte** operator +(in _ip_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
+                Conv_U();
                 Ldarg_1();
                 Conv_I();
                 Sizeof(new TypeRef(typeof(byte*)));
@@ -102,6 +106,7 @@ namespace ZstdSharp.Unsafe
                 get
                 {
                     Ldarg_0();
+                    Conv_U();
                     Ldarg_1();
                     Conv_I();
                     Sizeof(new TypeRef(typeof(byte*)));
@@ -119,6 +124,7 @@ namespace ZstdSharp.Unsafe
                 get
                 {
                     Ldarg_0();
+                    Conv_U();
                     Ldarg_1();
                     Conv_I();
                     Sizeof(new TypeRef(typeof(byte*)));
@@ -134,6 +140,7 @@ namespace ZstdSharp.Unsafe
             public static implicit operator byte**(in _op_e__FixedBuffer t)
             {
                 Ldarg_0();
+                Conv_U();
                 return (byte**)IL.ReturnPointer();
             }
 
@@ -142,6 +149,7 @@ namespace ZstdSharp.Unsafe
             public static byte** operator +(in _op_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
+                Conv_U();
                 Ldarg_1();
                 Conv_I();
                 Sizeof(new TypeRef(typeof(byte*)));
@@ -165,6 +173,7 @@ namespace ZstdSharp.Unsafe
                 get
                 {
                     Ldarg_0();
+                    Conv_U();
                     Ldarg_1();
                     Conv_I();
                     Sizeof(new TypeRef(typeof(byte*)));
@@ -182,6 +191,7 @@ namespace ZstdSharp.Unsafe
                 get
                 {
                     Ldarg_0();
+                    Conv_U();
                     Ldarg_1();
                     Conv_I();
                     Sizeof(new TypeRef(typeof(byte*)));
@@ -197,6 +207,7 @@ namespace ZstdSharp.Unsafe
             public static implicit operator byte**(in _iend_e__FixedBuffer t)
             {
                 Ldarg_0();
+                Conv_U();
                 return (byte**)IL.ReturnPointer();
             }
 
@@ -205,6 +216,7 @@ namespace ZstdSharp.Unsafe
             public static byte** operator +(in _iend_e__FixedBuffer t, nuint index)
             {
                 Ldarg_0();
+                Conv_U();
                 Ldarg_1();
                 Conv_I();
                 Sizeof(new TypeRef(typeof(byte*)));
