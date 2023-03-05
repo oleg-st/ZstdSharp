@@ -917,18 +917,21 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_execSequence(byte* op, byte* oend, seq_t sequence, byte** litPtr, byte* litLimit, byte* prefixStart, byte* virtualStart, byte* dictEnd)
         {
-            byte* oLitEnd = op + sequence.litLength;
-            nuint sequenceLength = sequence.litLength + sequence.matchLength;
+            var sequence_litLength = sequence.litLength;
+            var sequence_matchLength = sequence.matchLength;
+            var sequence_offset = sequence.offset;
+            byte* oLitEnd = op + sequence_litLength;
+            nuint sequenceLength = sequence_litLength + sequence_matchLength;
             /* risk : address space overflow (32-bits) */
             byte* oMatchEnd = op + sequenceLength;
             /* risk : address space underflow on oend=NULL */
             byte* oend_w = oend - 32;
-            byte* iLitEnd = *litPtr + sequence.litLength;
-            byte* match = oLitEnd - sequence.offset;
+            byte* iLitEnd = *litPtr + sequence_litLength;
+            byte* match = oLitEnd - sequence_offset;
             assert(op != null);
             assert(oend_w < oend);
             if (iLitEnd > litLimit || oMatchEnd > oend_w || MEM_32bits && (nuint)(oend - op) < sequenceLength + 32)
-                return ZSTD_execSequenceEnd(op, oend, sequence, litPtr, litLimit, prefixStart, virtualStart, dictEnd);
+                return ZSTD_execSequenceEnd(op, oend, new seq_t { litLength = sequence_litLength, matchLength = sequence_matchLength, offset = sequence_offset }, litPtr, litLimit, prefixStart, virtualStart, dictEnd);
             assert(op <= oLitEnd);
             assert(oLitEnd < oMatchEnd);
             assert(oMatchEnd <= oend);
@@ -937,24 +940,24 @@ namespace ZstdSharp.Unsafe
             assert(oMatchEnd <= oend_w);
             assert(32 >= 16);
             ZSTD_copy16(op, *litPtr);
-            if (sequence.litLength > 16)
+            if (sequence_litLength > 16)
             {
-                ZSTD_wildcopy(op + 16, *litPtr + 16, (nint)(sequence.litLength - 16), ZSTD_overlap_e.ZSTD_no_overlap);
+                ZSTD_wildcopy(op + 16, *litPtr + 16, (nint)(sequence_litLength - 16), ZSTD_overlap_e.ZSTD_no_overlap);
             }
 
             op = oLitEnd;
             *litPtr = iLitEnd;
-            if (sequence.offset > (nuint)(oLitEnd - prefixStart))
+            if (sequence_offset > (nuint)(oLitEnd - prefixStart))
             {
-                if (sequence.offset > (nuint)(oLitEnd - virtualStart))
+                if (sequence_offset > (nuint)(oLitEnd - virtualStart))
                 {
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 }
 
                 match = dictEnd + (match - prefixStart);
-                if (match + sequence.matchLength <= dictEnd)
+                if (match + sequence_matchLength <= dictEnd)
                 {
-                    memmove(oLitEnd, match, sequence.matchLength);
+                    memmove(oLitEnd, match, sequence_matchLength);
                     return sequenceLength;
                 }
 
@@ -962,7 +965,7 @@ namespace ZstdSharp.Unsafe
                     nuint length1 = (nuint)(dictEnd - match);
                     memmove(oLitEnd, match, length1);
                     op = oLitEnd + length1;
-                    sequence.matchLength -= length1;
+                    sequence_matchLength -= length1;
                     match = prefixStart;
                 }
             }
@@ -970,19 +973,19 @@ namespace ZstdSharp.Unsafe
             assert(op <= oMatchEnd);
             assert(oMatchEnd <= oend_w);
             assert(match >= prefixStart);
-            assert(sequence.matchLength >= 1);
-            if (sequence.offset >= 16)
+            assert(sequence_matchLength >= 1);
+            if (sequence_offset >= 16)
             {
-                ZSTD_wildcopy(op, match, (nint)sequence.matchLength, ZSTD_overlap_e.ZSTD_no_overlap);
+                ZSTD_wildcopy(op, match, (nint)sequence_matchLength, ZSTD_overlap_e.ZSTD_no_overlap);
                 return sequenceLength;
             }
 
-            assert(sequence.offset < 16);
-            ZSTD_overlapCopy8(&op, &match, sequence.offset);
-            if (sequence.matchLength > 8)
+            assert(sequence_offset < 16);
+            ZSTD_overlapCopy8(ref op, ref match, sequence_offset);
+            if (sequence_matchLength > 8)
             {
                 assert(op < oMatchEnd);
-                ZSTD_wildcopy(op, match, (nint)sequence.matchLength - 8, ZSTD_overlap_e.ZSTD_overlap_src_before_dst);
+                ZSTD_wildcopy(op, match, (nint)sequence_matchLength - 8, ZSTD_overlap_e.ZSTD_overlap_src_before_dst);
             }
 
             return sequenceLength;
@@ -1319,6 +1322,8 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_decompressSequences_body(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset, int frame)
         {
+            // HACK, force nbSeq to stack (better register usage)
+            System.Threading.Thread.VolatileRead(ref nbSeq);
             byte* ip = (byte*)seqStart;
             byte* iend = ip + seqSize;
             byte* ostart = (byte*)dst;
@@ -1352,7 +1357,88 @@ namespace ZstdSharp.Unsafe
                 for (; ; )
                 {
                     seq_t sequence = ZSTD_decodeSequence(&seqState, isLongOffset);
-                    nuint oneSeqSize = ZSTD_execSequence(op, oend, sequence, &litPtr, litEnd, prefixStart, vBase, dictEnd);
+                    nuint oneSeqSize;
+                    {
+                        var sequence_litLength = sequence.litLength;
+                        var sequence_matchLength = sequence.matchLength;
+                        var sequence_offset = sequence.offset;
+                        byte* oLitEnd = op + sequence_litLength;
+                        oneSeqSize = sequence_litLength + sequence_matchLength;
+                        /* risk : address space overflow (32-bits) */
+                        byte* oMatchEnd = op + oneSeqSize;
+                        /* risk : address space underflow on oend=NULL */
+                        byte* oend_w = oend - 32;
+                        byte* iLitEnd = litPtr + sequence_litLength;
+                        byte* match = oLitEnd - sequence_offset;
+                        assert(op != null);
+                        assert(oend_w < oend);
+                        if (iLitEnd > litEnd || oMatchEnd > oend_w || MEM_32bits && (nuint)(oend - op) < oneSeqSize + 32)
+                        {
+                            oneSeqSize = ZSTD_execSequenceEnd(op, oend, new seq_t { litLength = sequence_litLength, matchLength = sequence_matchLength, offset = sequence_offset }, &litPtr, litEnd, prefixStart, vBase, dictEnd);
+                            goto returnOneSeqSize;
+                        }
+
+                        assert(op <= oLitEnd);
+                        assert(oLitEnd < oMatchEnd);
+                        assert(oMatchEnd <= oend);
+                        assert(iLitEnd <= litEnd);
+                        assert(oLitEnd <= oend_w);
+                        assert(oMatchEnd <= oend_w);
+                        assert(32 >= 16);
+                        ZSTD_copy16(op, litPtr);
+                        if (sequence_litLength > 16)
+                        {
+                            ZSTD_wildcopy(op + 16, litPtr + 16, (nint)(sequence_litLength - 16), ZSTD_overlap_e.ZSTD_no_overlap);
+                        }
+
+                        byte* opInner = oLitEnd;
+                        litPtr = iLitEnd;
+                        if (sequence_offset > (nuint)(oLitEnd - prefixStart))
+                        {
+                            if (sequence_offset > (nuint)(oLitEnd - vBase))
+                            {
+                                oneSeqSize = unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                                goto returnOneSeqSize;
+                            }
+
+                            match = dictEnd + (match - prefixStart);
+                            if (match + sequence_matchLength <= dictEnd)
+                            {
+                                memmove(oLitEnd, match, sequence_matchLength);
+                                goto returnOneSeqSize;
+                            }
+
+                            {
+                                nuint length1 = (nuint)(dictEnd - match);
+                                memmove(oLitEnd, match, length1);
+                                opInner = oLitEnd + length1;
+                                sequence_matchLength -= length1;
+                                match = prefixStart;
+                            }
+                        }
+
+                        assert(opInner <= oMatchEnd);
+                        assert(oMatchEnd <= oend_w);
+                        assert(match >= prefixStart);
+                        assert(sequence_matchLength >= 1);
+                        if (sequence_offset >= 16)
+                        {
+                            ZSTD_wildcopy(opInner, match, (nint)sequence_matchLength, ZSTD_overlap_e.ZSTD_no_overlap);
+                            goto returnOneSeqSize;
+                        }
+
+                        assert(sequence_offset < 16);
+                        ZSTD_overlapCopy8(ref opInner, ref match, sequence_offset);
+                        if (sequence_matchLength > 8)
+                        {
+                            assert(opInner < oMatchEnd);
+                            ZSTD_wildcopy(opInner, match, (nint)sequence_matchLength - 8, ZSTD_overlap_e.ZSTD_overlap_src_before_dst);
+                        }
+
+                    returnOneSeqSize:
+                        ;
+                    }
+
                     if (ERR_isError(oneSeqSize))
                         return oneSeqSize;
                     op += oneSeqSize;
@@ -1796,6 +1882,38 @@ namespace ZstdSharp.Unsafe
             dSize = ZSTD_decompressBlock_internal(dctx, dst, dstCapacity, src, srcSize, 0, streaming_operation.not_streaming);
             dctx->previousDstEnd = (sbyte*)dst + dSize;
             return dSize;
+        }
+
+        /*! ZSTD_overlapCopy8() :
+         *  Copies 8 bytes from ip to op and updates op and ip where ip <= op.
+         *  If the offset is < 8 then the offset is spread to at least 8 bytes.
+         *
+         *  Precondition: *ip <= *op
+         *  Postcondition: *op - *op >= 8
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ZSTD_overlapCopy8(ref byte* op, ref byte* ip, nuint offset)
+        {
+            assert(ip <= op);
+            if (offset < 8)
+            {
+                int sub2 = dec64table[offset];
+                op[0] = ip[0];
+                op[1] = ip[1];
+                op[2] = ip[2];
+                op[3] = ip[3];
+                ip += dec32table[offset];
+                ZSTD_copy4(op + 4, ip);
+                ip -= sub2;
+            }
+            else
+            {
+                ZSTD_copy8(op, ip);
+            }
+
+            ip += 8;
+            op += 8;
+            assert(op - ip >= 8);
         }
     }
 }
