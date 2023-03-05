@@ -59,27 +59,26 @@ BenchmarkDotNet=v0.13.2, OS=Windows 10 (10.0.19044.2604/21H2/November2021Update)
 Compression level 1
 |           Method |      Mean |     Error |    StdDev | Ratio |
 |----------------- |----------:|----------:|----------:|------:|
-|   CompressNative | 22.749 ms | 0.0257 ms | 0.0214 ms |  1.00 |
-|    CompressSharp | 32.547 ms | 0.0603 ms | 0.0535 ms |  1.43 |
+|   CompressNative | 24.628 ms | 0.0589 ms | 0.0550 ms |  1.00 |
+|    CompressSharp | 32.838 ms | 0.0749 ms | 0.0625 ms |  1.33 |
 |                  |           |           |           |       |
-| DecompressNative |  5.931 ms | 0.0094 ms | 0.0083 ms |  1.00 |
-|  DecompressSharp |  7.352 ms | 0.0141 ms | 0.0118 ms |  1.24 |
-
+| DecompressNative |  5.536 ms | 0.0121 ms | 0.0108 ms |  1.00 |
+|  DecompressSharp |  6.962 ms | 0.0404 ms | 0.0377 ms |  1.26 |
 
 Compression level 5
 |           Method |      Mean |     Error |    StdDev | Ratio |
 |----------------- |----------:|----------:|----------:|------:|
-|   CompressNative | 69.107 ms | 0.6110 ms | 0.5715 ms |  1.00 |
-|    CompressSharp | 91.785 ms | 0.5487 ms | 0.4582 ms |  1.33 |
+|   CompressNative | 69.860 ms | 0.2097 ms | 0.1962 ms |  1.00 |
+|    CompressSharp | 91.441 ms | 0.2084 ms | 0.1847 ms |  1.31 |
 |                  |           |           |           |       |
-| DecompressNative |  6.709 ms | 0.0343 ms | 0.0304 ms |  1.00 |
-|  DecompressSharp |  9.126 ms | 0.0377 ms | 0.0334 ms |  1.36 |
+| DecompressNative |  6.101 ms | 0.0251 ms | 0.0222 ms |  1.00 |
+|  DecompressSharp |  8.299 ms | 0.0344 ms | 0.0287 ms |  1.36 |
 
 Compression level 15
 |           Method |         Mean |      Error |     StdDev | Ratio |
 |----------------- |-------------:|-----------:|-----------:|------:|
-|   CompressNative | 2,018.248 ms | 15.9045 ms | 14.8771 ms |  1.00 |
-|    CompressSharp | 2,093.249 ms | 10.4420 ms |  9.7674 ms |  1.04 |
+|   CompressNative | 2,238.109 ms | 10.3414 ms |  9.1674 ms |  1.00 |
+|    CompressSharp | 2,275.256 ms | 12.6440 ms | 11.8272 ms |  1.02 |
 |                  |              |            |            |       |
-| DecompressNative |     5.692 ms |  0.0495 ms |  0.0439 ms |  1.00 |
-|  DecompressSharp |     7.287 ms |  0.0200 ms |  0.0187 ms |  1.28 |
+| DecompressNative |     5.476 ms |  0.0224 ms |  0.0210 ms |  1.00 |
+|  DecompressSharp |     6.894 ms |  0.0137 ms |  0.0122 ms |  1.26 |
