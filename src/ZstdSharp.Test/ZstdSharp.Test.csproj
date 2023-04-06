@@ -33,4 +33,10 @@
     <ProjectReference Include="..\ZstdSharp\ZstdSharp.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="golden-compression\PR-3517-block-splitter-corruption-test">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

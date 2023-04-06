@@ -103,6 +103,24 @@ namespace ZstdSharp.Test
         }
 
         [Fact]
+        public void BlockSplitterCorruptionTest()
+        {
+            var bytes = File.ReadAllBytes("golden-compression/PR-3517-block-splitter-corruption-test");
+            var compressor = new Compressor(19);
+            compressor.SetParameter(ZSTD_cParameter.ZSTD_c_minMatch, 7);
+            // ZSTD_c_experimentalParam13 -> ZSTD_c_useBlockSplitter
+            compressor.SetParameter(ZSTD_cParameter.ZSTD_c_experimentalParam13,
+                (int) ZSTD_paramSwitch_e.ZSTD_ps_enable);
+            var compressed = compressor.Wrap(bytes);
+
+            var decompressor = new Decompressor();
+            var decompressed = decompressor.Unwrap(compressed).ToArray();
+
+            Assert.Equal(decompressed.Length, bytes.Length);
+            Assert.True(decompressed.SequenceEqual(bytes));
+        }
+
+        [Fact]
         public void CheckAttributes()
         {
             foreach (var method in typeof(Methods).Module.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.DeclaredOnly |
@@ -113,6 +131,12 @@ namespace ZstdSharp.Test
                 var exception = Record.Exception(() => method.GetCustomAttributes(true));
                 Assert.True(exception == null, $"Method {method.Name} has invalid attributes");
             }
+        }
+
+        [Fact]
+        public void VersionMatch()
+        {
+            Assert.Equal(Methods.ZSTD_versionNumber(), ExternMethods.ZSTD_versionNumber());
         }
     }
 }
