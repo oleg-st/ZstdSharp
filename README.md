@@ -4,7 +4,7 @@
 [![NuGet package](https://img.shields.io/nuget/dt/ZstdSharp.Port?logo=NuGet)](https://www.nuget.org/packages/ZstdSharp.Port)
 
 ZstdSharp is a port of [zstd compression library](https://github.com/facebook/zstd) to С#  
-Based on Zstandard v1.5.4  
+Based on Zstandard v1.5.5  
 Supports .NET Core 3.1, .NET 5+, .NET Standard 2.0+, .NET Framework 4.6.1+
 
 # Usage  
@@ -59,26 +59,26 @@ BenchmarkDotNet=v0.13.2, OS=Windows 10 (10.0.19044.2604/21H2/November2021Update)
 Compression level 1
 |           Method |      Mean |     Error |    StdDev | Ratio |
 |----------------- |----------:|----------:|----------:|------:|
-|   CompressNative | 24.628 ms | 0.0589 ms | 0.0550 ms |  1.00 |
-|    CompressSharp | 32.838 ms | 0.0749 ms | 0.0625 ms |  1.33 |
+|   CompressNative | 24.709 ms | 0.0282 ms | 0.0250 ms |  1.00 |
+|    CompressSharp | 33.090 ms | 0.0500 ms | 0.0443 ms |  1.34 |
 |                  |           |           |           |       |
-| DecompressNative |  5.536 ms | 0.0121 ms | 0.0108 ms |  1.00 |
-|  DecompressSharp |  6.962 ms | 0.0404 ms | 0.0377 ms |  1.26 |
+| DecompressNative |  5.568 ms | 0.0166 ms | 0.0155 ms |  1.00 |
+|  DecompressSharp |  6.974 ms | 0.0086 ms | 0.0076 ms |  1.25 |
 
 Compression level 5
 |           Method |      Mean |     Error |    StdDev | Ratio |
 |----------------- |----------:|----------:|----------:|------:|
-|   CompressNative | 69.860 ms | 0.2097 ms | 0.1962 ms |  1.00 |
-|    CompressSharp | 91.441 ms | 0.2084 ms | 0.1847 ms |  1.31 |
+|   CompressNative | 70.781 ms | 0.1872 ms | 0.1563 ms |  1.00 |
+|    CompressSharp | 94.276 ms | 0.2301 ms | 0.2040 ms |  1.33 |
 |                  |           |           |           |       |
-| DecompressNative |  6.101 ms | 0.0251 ms | 0.0222 ms |  1.00 |
-|  DecompressSharp |  8.299 ms | 0.0344 ms | 0.0287 ms |  1.36 |
+| DecompressNative |  6.221 ms | 0.0094 ms | 0.0078 ms |  1.00 |
+|  DecompressSharp |  8.484 ms | 0.0134 ms | 0.0105 ms |  1.36 |
 
 Compression level 15
 |           Method |         Mean |      Error |     StdDev | Ratio |
 |----------------- |-------------:|-----------:|-----------:|------:|
-|   CompressNative | 2,238.109 ms | 10.3414 ms |  9.1674 ms |  1.00 |
-|    CompressSharp | 2,275.256 ms | 12.6440 ms | 11.8272 ms |  1.02 |
+|   CompressNative | 2,304.967 ms | 19.6909 ms | 17.4555 ms |  1.00 |
+|    CompressSharp | 2,336.182 ms | 19.8808 ms | 17.6238 ms |  1.01 |
 |                  |              |            |            |       |
-| DecompressNative |     5.476 ms |  0.0224 ms |  0.0210 ms |  1.00 |
-|  DecompressSharp |     6.894 ms |  0.0137 ms |  0.0122 ms |  1.26 |
+| DecompressNative |     5.541 ms |  0.0174 ms |  0.0145 ms |  1.00 |
+|  DecompressSharp |     6.987 ms |  0.0227 ms |  0.0201 ms |  1.26 |
