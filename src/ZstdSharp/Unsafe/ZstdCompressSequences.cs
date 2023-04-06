@@ -240,7 +240,7 @@ namespace ZstdSharp.Unsafe
                         }
 
                         assert(nbSeq_1 > 1);
-                        assert(entropyWorkspaceSize >= (uint)sizeof(ZSTD_BuildCTableWksp));
+                        assert(entropyWorkspaceSize >= (nuint)sizeof(ZSTD_BuildCTableWksp));
                         {
                             nuint err_code = FSE_normalizeCount(wksp->norm, tableLog, count, nbSeq_1, max, ZSTD_useLowProbCount(nbSeq_1));
                             if (ERR_isError(err_code))

@@ -51,7 +51,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_DDictHashSet_expand(ZSTD_DDictHashSet* hashSet, ZSTD_customMem customMem)
         {
             nuint newTableSize = hashSet->ddictPtrTableSize * 2;
-            ZSTD_DDict_s** newTable = (ZSTD_DDict_s**)ZSTD_customCalloc((uint)sizeof(ZSTD_DDict_s*) * newTableSize, customMem);
+            ZSTD_DDict_s** newTable = (ZSTD_DDict_s**)ZSTD_customCalloc((nuint)sizeof(ZSTD_DDict_s*) * newTableSize, customMem);
             ZSTD_DDict_s** oldTable = hashSet->ddictPtrTable;
             nuint oldTableSize = hashSet->ddictPtrTableSize;
             nuint i;
@@ -172,7 +172,7 @@ namespace ZstdSharp.Unsafe
         {
             if (dctx == null)
                 return 0;
-            return (uint)sizeof(ZSTD_DCtx_s) + ZSTD_sizeof_DDict(dctx->ddictLocal) + dctx->inBuffSize + dctx->outBuffSize;
+            return (nuint)sizeof(ZSTD_DCtx_s) + ZSTD_sizeof_DDict(dctx->ddictLocal) + dctx->inBuffSize + dctx->outBuffSize;
         }
 
         public static nuint ZSTD_estimateDCtxSize()
@@ -221,7 +221,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_DCtx_s* dctx = (ZSTD_DCtx_s*)workspace;
             if (((nuint)workspace & 7) != 0)
                 return null;
-            if (workspaceSize < (uint)sizeof(ZSTD_DCtx_s))
+            if (workspaceSize < (nuint)sizeof(ZSTD_DCtx_s))
                 return null;
             ZSTD_initDCtx_internal(dctx);
             dctx->staticSize = workspaceSize;
@@ -372,7 +372,7 @@ namespace ZstdSharp.Unsafe
                 uint dictID = (uint)(fhd & 3);
                 uint singleSegment = (uint)(fhd >> 5 & 1);
                 uint fcsId = (uint)(fhd >> 6);
-                return minInputSize + (uint)(singleSegment == 0 ? 1 : 0) + ZSTD_did_fieldSize[dictID] + ZSTD_fcs_fieldSize[fcsId] + (uint)(singleSegment != 0 && fcsId == 0 ? 1 : 0);
+                return minInputSize + (nuint)(singleSegment == 0 ? 1 : 0) + ZSTD_did_fieldSize[dictID] + ZSTD_fcs_fieldSize[fcsId] + (nuint)(singleSegment != 0 && fcsId == 0 ? 1 : 0);
             }
         }
 
@@ -480,7 +480,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                     windowSize = 1UL << (int)windowLog;
-                    windowSize += (windowSize >> 3) * (uint)(wlByte & 7);
+                    windowSize += (windowSize >> 3) * (ulong)(wlByte & 7);
                 }
 
                 switch (dictIDSizeCode)
@@ -595,48 +595,55 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! ZSTD_readSkippableFrame() :
-         * Retrieves a zstd skippable frame containing data given by src, and writes it to dst buffer.
+         * Retrieves content of a skippable frame, and writes it to dst buffer.
          *
          * The parameter magicVariant will receive the magicVariant that was supplied when the frame was written,
          * i.e. magicNumber - ZSTD_MAGIC_SKIPPABLE_START.  This can be NULL if the caller is not interested
          * in the magicVariant.
          *
-         * Returns an error if destination buffer is not large enough, or if the frame is not skippable.
+         * Returns an error if destination buffer is not large enough, or if this is not a valid skippable frame.
          *
          * @return : number of bytes written or a ZSTD error.
          */
         public static nuint ZSTD_readSkippableFrame(void* dst, nuint dstCapacity, uint* magicVariant, void* src, nuint srcSize)
         {
-            uint magicNumber = MEM_readLE32(src);
-            nuint skippableFrameSize = readSkippableFrameSize(src, srcSize);
-            nuint skippableContentSize = skippableFrameSize - 8;
-            if (ZSTD_isSkippableFrame(src, srcSize) == 0)
-            {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_frameParameter_unsupported));
-            }
-
-            if (skippableFrameSize < 8 || skippableFrameSize > srcSize)
+            if (srcSize < 8)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
-            if (skippableContentSize > dstCapacity)
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-            }
+                uint magicNumber = MEM_readLE32(src);
+                nuint skippableFrameSize = readSkippableFrameSize(src, srcSize);
+                nuint skippableContentSize = skippableFrameSize - 8;
+                if (ZSTD_isSkippableFrame(src, srcSize) == 0)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_frameParameter_unsupported));
+                }
 
-            if (skippableContentSize > 0 && dst != null)
-                memcpy(dst, (byte*)src + 8, (uint)skippableContentSize);
-            if (magicVariant != null)
-                *magicVariant = magicNumber - 0x184D2A50;
-            return skippableContentSize;
+                if (skippableFrameSize < 8 || skippableFrameSize > srcSize)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
+                }
+
+                if (skippableContentSize > dstCapacity)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
+
+                if (skippableContentSize > 0 && dst != null)
+                    memcpy(dst, (byte*)src + 8, (uint)skippableContentSize);
+                if (magicVariant != null)
+                    *magicVariant = magicNumber - 0x184D2A50;
+                return skippableContentSize;
+            }
         }
 
         /** ZSTD_findDecompressedSize() :
-         *  compatible with legacy mode
          *  `srcSize` must be the exact length of some number of ZSTD compressed and/or
          *      skippable frames
-         *  @return : decompressed size of the frames contained */
+         *  note: compatible with legacy mode
+         * @return : decompressed size of the frames contained */
         public static ulong ZSTD_findDecompressedSize(void* src, nuint srcSize)
         {
             ulong totalDstSize = 0;
@@ -647,10 +654,7 @@ namespace ZstdSharp.Unsafe
                 {
                     nuint skippableSize = readSkippableFrameSize(src, srcSize);
                     if (ERR_isError(skippableSize))
-                    {
                         return unchecked(0UL - 2);
-                    }
-
                     assert(skippableSize <= srcSize);
                     src = (byte*)src + skippableSize;
                     srcSize -= skippableSize;
@@ -658,21 +662,19 @@ namespace ZstdSharp.Unsafe
                 }
 
                 {
-                    ulong ret = ZSTD_getFrameContentSize(src, srcSize);
-                    if (ret >= unchecked(0UL - 2))
-                        return ret;
-                    if (totalDstSize + ret < totalDstSize)
+                    ulong fcs = ZSTD_getFrameContentSize(src, srcSize);
+                    if (fcs >= unchecked(0UL - 2))
+                        return fcs;
+                    if (totalDstSize + fcs < totalDstSize)
                         return unchecked(0UL - 2);
-                    totalDstSize += ret;
+                    totalDstSize += fcs;
                 }
 
                 {
                     nuint frameSrcSize = ZSTD_findFrameCompressedSize(src, srcSize);
                     if (ERR_isError(frameSrcSize))
-                    {
                         return unchecked(0UL - 2);
-                    }
-
+                    assert(frameSrcSize <= srcSize);
                     src = (byte*)src + frameSrcSize;
                     srcSize -= frameSrcSize;
                 }
@@ -959,7 +961,7 @@ namespace ZstdSharp.Unsafe
             byte* oend = dstCapacity != 0 ? ostart + dstCapacity : ostart;
             byte* op = ostart;
             nuint remainingSrcSize = *srcSizePtr;
-            if (remainingSrcSize < (uint)(dctx->format == ZSTD_format_e.ZSTD_f_zstd1 ? 6 : 2) + ZSTD_blockHeaderSize)
+            if (remainingSrcSize < (nuint)(dctx->format == ZSTD_format_e.ZSTD_f_zstd1 ? 6 : 2) + ZSTD_blockHeaderSize)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
@@ -1085,10 +1087,12 @@ namespace ZstdSharp.Unsafe
 
             while (srcSize >= ZSTD_startingInputLength(dctx->format))
             {
+                if (srcSize >= 4)
                 {
                     uint magicNumber = MEM_readLE32(src);
                     if ((magicNumber & 0xFFFFFFF0) == 0x184D2A50)
                     {
+                        /* skippable frame detected : skip it */
                         nuint skippableSize = readSkippableFrameSize(src, srcSize);
                         {
                             nuint err_code = skippableSize;
@@ -2278,6 +2282,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_sizeof_DCtx(dctx);
         }
 
+        /*=====   Buffer-less streaming decompression functions  =====*/
         public static nuint ZSTD_decodingBufferSize_min(ulong windowSize, ulong frameContentSize)
         {
             nuint blockSize = (nuint)(windowSize < 1 << 17 ? windowSize : 1 << 17);
@@ -2580,8 +2585,8 @@ namespace ZstdSharp.Unsafe
                                     nuint bufferSize = neededInBuffSize + neededOutBuffSize;
                                     if (zds->staticSize != 0)
                                     {
-                                        assert(zds->staticSize >= (uint)sizeof(ZSTD_DCtx_s));
-                                        if (bufferSize > zds->staticSize - (uint)sizeof(ZSTD_DCtx_s))
+                                        assert(zds->staticSize >= (nuint)sizeof(ZSTD_DCtx_s));
+                                        if (bufferSize > zds->staticSize - (nuint)sizeof(ZSTD_DCtx_s))
                                         {
                                             return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
                                         }
@@ -2769,7 +2774,7 @@ namespace ZstdSharp.Unsafe
                     return 1;
                 }
 
-                nextSrcSizeHint += ZSTD_blockHeaderSize * (uint)(ZSTD_nextInputType(zds) == ZSTD_nextInputType_e.ZSTDnit_block ? 1 : 0);
+                nextSrcSizeHint += ZSTD_blockHeaderSize * (nuint)(ZSTD_nextInputType(zds) == ZSTD_nextInputType_e.ZSTDnit_block ? 1 : 0);
                 assert(zds->inPos <= nextSrcSizeHint);
                 nextSrcSizeHint -= zds->inPos;
                 return nextSrcSizeHint;

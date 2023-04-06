@@ -38,7 +38,7 @@ namespace ZstdSharp.Unsafe
         {
             FSE_symbolCompressionTransform symbolTT = ((FSE_symbolCompressionTransform*)statePtr->symbolTT)[symbol];
             ushort* stateTable = (ushort*)statePtr->stateTable;
-            uint nbBitsOut = (uint)((nuint)statePtr->value + symbolTT.deltaNbBits >> 16);
+            uint nbBitsOut = (uint)statePtr->value + symbolTT.deltaNbBits >> 16;
             BIT_addBits(bitC, (nuint)statePtr->value, nbBitsOut);
             statePtr->value = stateTable[(statePtr->value >> (int)nbBitsOut) + symbolTT.deltaFindState];
         }

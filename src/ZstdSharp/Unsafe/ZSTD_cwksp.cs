@@ -40,8 +40,8 @@ namespace ZstdSharp.Unsafe
      *
      * Workspace Layout:
      *
-     * [                        ... workspace ...                         ]
-     * [objects][tables ... ->] free space [<- ... aligned][<- ... buffers]
+     * [                        ... workspace ...                           ]
+     * [objects][tables ->] free space [<- buffers][<- aligned][<- init once]
      *
      * The various objects that live in the workspace are divided into the
      * following categories, and are allocated separately:
@@ -65,9 +65,18 @@ namespace ZstdSharp.Unsafe
      *   uint32_t arrays, all of whose values are between 0 and (nextSrc - base).
      *   Their sizes depend on the cparams. These tables are 64-byte aligned.
      *
-     * - Aligned: these buffers are used for various purposes that require 4 byte
-     *   alignment, but don't require any initialization before they're used. These
-     *   buffers are each aligned to 64 bytes.
+     * - Init once: these buffers require to be initialized at least once before
+     *   use. They should be used when we want to skip memory initialization
+     *   while not triggering memory checkers (like Valgrind) when reading from
+     *   from this memory without writing to it first.
+     *   These buffers should be used carefully as they might contain data
+     *   from previous compressions.
+     *   Buffers are aligned to 64 bytes.
+     *
+     * - Aligned: these buffers don't require any initialization before they're
+     *   used. The user of the buffer should make sure they write into a buffer
+     *   location before reading from it.
+     *   Buffers are aligned to 64 bytes.
      *
      * - Buffers: these buffers are used for various purposes that don't require
      *   any alignment or initialization before they're used. This means they can
@@ -79,8 +88,9 @@ namespace ZstdSharp.Unsafe
      * correctly packed into the workspace buffer. That order is:
      *
      * 1. Objects
-     * 2. Buffers
-     * 3. Aligned/Tables
+     * 2. Init once / Tables
+     * 3. Aligned / Tables
+     * 4. Buffers / Tables
      *
      * Attempts to reserve objects of different types out of order will fail.
      */
@@ -92,6 +102,7 @@ namespace ZstdSharp.Unsafe
         public void* tableEnd;
         public void* tableValidEnd;
         public void* allocStart;
+        public void* initOnceStart;
         public byte allocFailed;
         public int workspaceOversizedDuration;
         public ZSTD_cwksp_alloc_phase_e phase;

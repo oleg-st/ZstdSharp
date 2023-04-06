@@ -1714,7 +1714,7 @@ namespace ZstdSharp.Unsafe
         }
 
         /**
-         * @returns The total size of the history referencable by zstd, including
+         * @returns The total size of the history referenceable by zstd, including
          * both the prefix and the extDict. At @p op any offset larger than this
          * is invalid.
          */
@@ -1825,7 +1825,12 @@ namespace ZstdSharp.Unsafe
                     return seqHSize;
                 ip += seqHSize;
                 srcSize -= seqHSize;
-                if (dst == null && nbSeq > 0)
+                if ((dst == null || dstCapacity == 0) && nbSeq > 0)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
+
+                if (MEM_64bits && sizeof(nuint) == sizeof(void*) && unchecked((nuint)(-1)) - (nuint)dst < 1 << 20)
                 {
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
                 }
@@ -1875,13 +1880,20 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static nuint ZSTD_decompressBlock(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize)
+        /* Internal definition of ZSTD_decompressBlock() to avoid deprecation warnings. */
+        public static nuint ZSTD_decompressBlock_deprecated(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
             nuint dSize;
             ZSTD_checkContinuity(dctx, dst, dstCapacity);
             dSize = ZSTD_decompressBlock_internal(dctx, dst, dstCapacity, src, srcSize, 0, streaming_operation.not_streaming);
             dctx->previousDstEnd = (sbyte*)dst + dSize;
             return dSize;
+        }
+
+        /* NOTE: Must just wrap ZSTD_decompressBlock_deprecated() */
+        public static nuint ZSTD_decompressBlock(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize)
+        {
+            return ZSTD_decompressBlock_deprecated(dctx, dst, dstCapacity, src, srcSize);
         }
 
         /*! ZSTD_overlapCopy8() :

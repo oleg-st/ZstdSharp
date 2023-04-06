@@ -8,6 +8,9 @@ namespace Zstd.Extern
         private const string DllName = "libzstd";
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern uint ZSTD_versionNumber();
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr ZSTD_createCCtx();
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]

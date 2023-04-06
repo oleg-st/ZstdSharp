@@ -259,7 +259,7 @@ namespace ZstdSharp.Unsafe
             }
 
             {
-                nuint cSize = (nuint)((ulong)(op - ostart) - ZSTD_blockHeaderSize);
+                nuint cSize = (nuint)(op - ostart) - ZSTD_blockHeaderSize;
                 uint cBlockHeader24 = lastBlock + ((uint)blockType_e.bt_compressed << 1) + (uint)(cSize << 3);
                 MEM_writeLE24(ostart, cBlockHeader24);
             }

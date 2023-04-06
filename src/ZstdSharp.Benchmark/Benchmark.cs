@@ -9,7 +9,6 @@ using ZstdSharp.Unsafe;
 namespace ZstdSharp.Benchmark
 {
     [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
-    [HardwareCounters(HardwareCounter.InstructionRetired)]
     //[HardwareCounters(HardwareCounter.InstructionRetired)]
     public unsafe class Benchmark
     {

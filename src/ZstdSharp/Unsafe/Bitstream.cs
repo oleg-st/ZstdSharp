@@ -24,7 +24,7 @@ namespace ZstdSharp.Unsafe
             bitC->startPtr = (sbyte*)startPtr;
             bitC->ptr = bitC->startPtr;
             bitC->endPtr = bitC->startPtr + dstCapacity - sizeof(nuint);
-            if (dstCapacity <= (uint)sizeof(nuint))
+            if (dstCapacity <= (nuint)sizeof(nuint))
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             return 0;
         }
@@ -139,7 +139,7 @@ namespace ZstdSharp.Unsafe
 
             bitD->start = (sbyte*)srcBuffer;
             bitD->limitPtr = bitD->start + sizeof(nuint);
-            if (srcSize >= (uint)sizeof(nuint))
+            if (srcSize >= (nuint)sizeof(nuint))
             {
                 bitD->ptr = (sbyte*)srcBuffer + srcSize - sizeof(nuint);
                 bitD->bitContainer = MEM_readLEST(bitD->ptr);
@@ -185,7 +185,7 @@ namespace ZstdSharp.Unsafe
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 }
 
-                bitD->bitsConsumed += (uint)((uint)sizeof(nuint) - srcSize) * 8;
+                bitD->bitsConsumed += (uint)((nuint)sizeof(nuint) - srcSize) * 8;
             }
 
             return srcSize;

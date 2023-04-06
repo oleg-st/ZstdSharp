@@ -204,7 +204,7 @@ namespace ZstdSharp.Unsafe
             uint tableLog;
             uint maxSymbolValue = 255;
             FSE_DecompressWksp* wksp = (FSE_DecompressWksp*)workSpace;
-            if (wkspSize < (uint)sizeof(FSE_DecompressWksp))
+            if (wkspSize < (nuint)sizeof(FSE_DecompressWksp))
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
             {
                 nuint NCountLength = FSE_readNCount_bmi2(wksp->ncount, &maxSymbolValue, &tableLog, istart, cSrcSize, bmi2);
@@ -217,9 +217,9 @@ namespace ZstdSharp.Unsafe
                 cSrcSize -= NCountLength;
             }
 
-            if (((uint)(1 + (1 << (int)tableLog) + 1) + (sizeof(short) * (maxSymbolValue + 1) + (1UL << (int)tableLog) + 8 + sizeof(uint) - 1) / sizeof(uint) + (255 + 1) / 2 + 1) * sizeof(uint) > wkspSize)
+            if (((ulong)(1 + (1 << (int)tableLog) + 1) + (sizeof(short) * (maxSymbolValue + 1) + (1UL << (int)tableLog) + 8 + sizeof(uint) - 1) / sizeof(uint) + (255 + 1) / 2 + 1) * sizeof(uint) > wkspSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
-            assert((uint)(sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint)) <= wkspSize);
+            assert((nuint)(sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint)) <= wkspSize);
             workSpace = (byte*)workSpace + sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint);
             wkspSize -= (nuint)(sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint));
             {

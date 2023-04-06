@@ -616,7 +616,7 @@ namespace ZstdSharp.Unsafe
         or an errorCode, which can be tested using FSE_isError() */
         public static nuint FSE_compress_usingCTable(void* dst, nuint dstSize, void* src, nuint srcSize, uint* ct)
         {
-            uint fast = dstSize >= srcSize + (srcSize >> 7) + 4 + (uint)sizeof(nuint) ? 1U : 0U;
+            uint fast = dstSize >= srcSize + (srcSize >> 7) + 4 + (nuint)sizeof(nuint) ? 1U : 0U;
             if (fast != 0)
                 return FSE_compress_usingCTable_generic(dst, dstSize, src, srcSize, ct, 1);
             else
@@ -628,7 +628,7 @@ namespace ZstdSharp.Unsafe
          ******************************************/
         public static nuint FSE_compressBound(nuint size)
         {
-            return 512 + (size + (size >> 7) + 4 + (uint)sizeof(nuint));
+            return 512 + (size + (size >> 7) + 4 + (nuint)sizeof(nuint));
         }
     }
 }

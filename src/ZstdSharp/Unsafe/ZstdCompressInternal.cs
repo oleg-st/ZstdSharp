@@ -279,87 +279,123 @@ namespace ZstdSharp.Unsafe
 
         public const uint prime3bytes = 506832829U;
         [InlineMethod.Inline]
-        private static uint ZSTD_hash3(uint u, uint h)
+        private static uint ZSTD_hash3(uint u, uint h, uint s)
         {
             assert(h <= 32);
-            return (u << 32 - 24) * prime3bytes >> (int)(32 - h);
+            return ((u << 32 - 24) * prime3bytes ^ s) >> (int)(32 - h);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
         private static nuint ZSTD_hash3Ptr(void* ptr, uint h)
         {
-            return ZSTD_hash3(MEM_readLE32(ptr), h);
+            return ZSTD_hash3(MEM_readLE32(ptr), h, 0);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_hash3PtrS(void* ptr, uint h, uint s)
+        {
+            return ZSTD_hash3(MEM_readLE32(ptr), h, s);
         }
 
         public const uint prime4bytes = 2654435761U;
         [InlineMethod.Inline]
-        private static uint ZSTD_hash4(uint u, uint h)
+        private static uint ZSTD_hash4(uint u, uint h, uint s)
         {
             assert(h <= 32);
-            return u * prime4bytes >> (int)(32 - h);
+            return (u * prime4bytes ^ s) >> (int)(32 - h);
         }
 
         [InlineMethod.Inline]
         private static nuint ZSTD_hash4Ptr(void* ptr, uint h)
         {
-            return ZSTD_hash4(MEM_readLE32(ptr), h);
+            return ZSTD_hash4(MEM_readLE32(ptr), h, 0);
+        }
+
+        [InlineMethod.Inline]
+        private static nuint ZSTD_hash4PtrS(void* ptr, uint h, uint s)
+        {
+            return ZSTD_hash4(MEM_readLE32(ptr), h, s);
         }
 
         public const ulong prime5bytes = 889523592379UL;
         [InlineMethod.Inline]
-        private static nuint ZSTD_hash5(ulong u, uint h)
+        private static nuint ZSTD_hash5(ulong u, uint h, ulong s)
         {
             assert(h <= 64);
-            return (nuint)((u << 64 - 40) * prime5bytes >> (int)(64 - h));
+            return (nuint)(((u << 64 - 40) * prime5bytes ^ s) >> (int)(64 - h));
         }
 
         [InlineMethod.Inline]
         private static nuint ZSTD_hash5Ptr(void* p, uint h)
         {
-            return ZSTD_hash5(MEM_readLE64(p), h);
+            return ZSTD_hash5(MEM_readLE64(p), h, 0);
+        }
+
+        [InlineMethod.Inline]
+        private static nuint ZSTD_hash5PtrS(void* p, uint h, ulong s)
+        {
+            return ZSTD_hash5(MEM_readLE64(p), h, s);
         }
 
         public const ulong prime6bytes = 227718039650203UL;
         [InlineMethod.Inline]
-        private static nuint ZSTD_hash6(ulong u, uint h)
+        private static nuint ZSTD_hash6(ulong u, uint h, ulong s)
         {
             assert(h <= 64);
-            return (nuint)((u << 64 - 48) * prime6bytes >> (int)(64 - h));
+            return (nuint)(((u << 64 - 48) * prime6bytes ^ s) >> (int)(64 - h));
         }
 
         [InlineMethod.Inline]
         private static nuint ZSTD_hash6Ptr(void* p, uint h)
         {
-            return ZSTD_hash6(MEM_readLE64(p), h);
+            return ZSTD_hash6(MEM_readLE64(p), h, 0);
+        }
+
+        [InlineMethod.Inline]
+        private static nuint ZSTD_hash6PtrS(void* p, uint h, ulong s)
+        {
+            return ZSTD_hash6(MEM_readLE64(p), h, s);
         }
 
         public const ulong prime7bytes = 58295818150454627UL;
         [InlineMethod.Inline]
-        private static nuint ZSTD_hash7(ulong u, uint h)
+        private static nuint ZSTD_hash7(ulong u, uint h, ulong s)
         {
             assert(h <= 64);
-            return (nuint)((u << 64 - 56) * prime7bytes >> (int)(64 - h));
+            return (nuint)(((u << 64 - 56) * prime7bytes ^ s) >> (int)(64 - h));
         }
 
         [InlineMethod.Inline]
         private static nuint ZSTD_hash7Ptr(void* p, uint h)
         {
-            return ZSTD_hash7(MEM_readLE64(p), h);
+            return ZSTD_hash7(MEM_readLE64(p), h, 0);
+        }
+
+        [InlineMethod.Inline]
+        private static nuint ZSTD_hash7PtrS(void* p, uint h, ulong s)
+        {
+            return ZSTD_hash7(MEM_readLE64(p), h, s);
         }
 
         public const ulong prime8bytes = 0xCF1BBCDCB7A56463UL;
         [InlineMethod.Inline]
-        private static nuint ZSTD_hash8(ulong u, uint h)
+        private static nuint ZSTD_hash8(ulong u, uint h, ulong s)
         {
             assert(h <= 64);
-            return (nuint)(u * prime8bytes >> (int)(64 - h));
+            return (nuint)((u * prime8bytes ^ s) >> (int)(64 - h));
         }
 
         [InlineMethod.Inline]
         private static nuint ZSTD_hash8Ptr(void* p, uint h)
         {
-            return ZSTD_hash8(MEM_readLE64(p), h);
+            return ZSTD_hash8(MEM_readLE64(p), h, 0);
+        }
+
+        [InlineMethod.Inline]
+        private static nuint ZSTD_hash8PtrS(void* p, uint h, ulong s)
+        {
+            return ZSTD_hash8(MEM_readLE64(p), h, s);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -375,6 +411,21 @@ namespace ZstdSharp.Unsafe
             if (mls == 8)
                 return ZSTD_hash8Ptr(p, hBits);
             return ZSTD_hash4Ptr(p, hBits);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_hashPtrSalted(void* p, uint hBits, uint mls, ulong hashSalt)
+        {
+            assert(hBits <= 32);
+            if (mls == 5)
+                return ZSTD_hash5PtrS(p, hBits, hashSalt);
+            if (mls == 6)
+                return ZSTD_hash6PtrS(p, hBits, hashSalt);
+            if (mls == 7)
+                return ZSTD_hash7PtrS(p, hBits, hashSalt);
+            if (mls == 8)
+                return ZSTD_hash8PtrS(p, hBits, hashSalt);
+            return ZSTD_hash4PtrS(p, hBits, (uint)hashSalt);
         }
 
         /** ZSTD_ipow() :
@@ -435,7 +486,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong ZSTD_rollingHash_rotate(ulong hash, byte toRemove, byte toAdd, ulong primePower)
         {
-            hash -= (uint)(toRemove + 10) * primePower;
+            hash -= (ulong)(toRemove + 10) * primePower;
             hash *= prime8bytes;
             hash += (ulong)(toAdd + 10);
             return hash;

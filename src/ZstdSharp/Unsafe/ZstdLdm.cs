@@ -186,7 +186,7 @@ namespace ZstdSharp.Unsafe
             nuint ldmHSize = (nuint)1 << (int)@params.hashLog;
             nuint ldmBucketSizeLog = @params.bucketSizeLog < @params.hashLog ? @params.bucketSizeLog : @params.hashLog;
             nuint ldmBucketSize = (nuint)1 << (int)(@params.hashLog - ldmBucketSizeLog);
-            nuint totalSize = ZSTD_cwksp_alloc_size(ldmBucketSize) + ZSTD_cwksp_alloc_size(ldmHSize * (uint)sizeof(ldmEntry_t));
+            nuint totalSize = ZSTD_cwksp_alloc_size(ldmBucketSize) + ZSTD_cwksp_alloc_size(ldmHSize * (nuint)sizeof(ldmEntry_t));
             return @params.enableLdm == ZSTD_paramSwitch_e.ZSTD_ps_enable ? totalSize : 0;
         }
 
@@ -514,7 +514,7 @@ namespace ZstdSharp.Unsafe
             byte* istart = (byte*)src;
             byte* iend = istart + srcSize;
             const nuint kMaxChunkSize = 1 << 20;
-            nuint nbChunks = srcSize / kMaxChunkSize + (uint)(srcSize % kMaxChunkSize != 0 ? 1 : 0);
+            nuint nbChunks = srcSize / kMaxChunkSize + (nuint)(srcSize % kMaxChunkSize != 0 ? 1 : 0);
             nuint chunk;
             nuint leftoverSize = 0;
             assert(unchecked((uint)-1) - ((3U << 29) + (1U << (sizeof(nuint) == 4 ? 30 : 31))) >= kMaxChunkSize);

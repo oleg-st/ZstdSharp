@@ -19,9 +19,13 @@ namespace ZstdSharp.Unsafe
         /* For row-based matchfinder: Hashlog based on nb of rows in the hashTable.*/
         public uint rowHashLog;
         /* For row-based matchFinder: A row-based table containing the hashes and head index. */
-        public ushort* tagTable;
+        public byte* tagTable;
         /* For row-based matchFinder: a cache of hashes to improve speed */
         public fixed uint hashCache[8];
+        /* For row-based matchFinder: salts the hash for re-use of tag table */
+        public ulong hashSalt;
+        /* For row-based matchFinder: collects entropy for salt generation */
+        public uint hashSaltEntropy;
         public uint* hashTable;
         public uint* hashTable3;
         public uint* chainTable;
@@ -40,5 +44,11 @@ namespace ZstdSharp.Unsafe
          * This behavior is controlled from the cctx ms.
          * This parameter has no effect in the cdict ms. */
         public int prefetchCDictTables;
+        /* When == 0, lazy match finders insert every position.
+         * When != 0, lazy match finders only insert positions they search.
+         * This allows them to skip much faster over incompressible data,
+         * at a small cost to compression ratio.
+         */
+        public int lazySkipping;
     }
 }

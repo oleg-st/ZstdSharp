@@ -154,7 +154,7 @@ namespace ZstdSharp.Unsafe
             void* dtPtr = DTable + 1;
             HUF_DEltX1* dt = (HUF_DEltX1*)dtPtr;
             HUF_ReadDTableX1_Workspace* wksp = (HUF_ReadDTableX1_Workspace*)workSpace;
-            if ((uint)sizeof(HUF_ReadDTableX1_Workspace) > wkspSize)
+            if ((nuint)sizeof(HUF_ReadDTableX1_Workspace) > wkspSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
             iSize = HUF_readStats_wksp(wksp->huffWeight, 255 + 1, wksp->rankVal, &nbSymbols, &tableLog, src, srcSize, wksp->statsWksp, sizeof(uint) * 219, flags);
             if (ERR_isError(iSize))
@@ -417,7 +417,7 @@ namespace ZstdSharp.Unsafe
                         return _var_err__;
                 }
 
-                if ((nuint)(oend - op4) >= (uint)sizeof(nuint))
+                if ((nuint)(oend - op4) >= (nuint)sizeof(nuint))
                 {
                     for (; (endSignal & (uint)(op4 < olimit ? 1 : 0)) != 0;)
                     {
@@ -1093,7 +1093,7 @@ namespace ZstdSharp.Unsafe
             HUF_DEltX2* dt = (HUF_DEltX2*)dtPtr;
             uint* rankStart;
             HUF_ReadDTableX2_Workspace* wksp = (HUF_ReadDTableX2_Workspace*)workSpace;
-            if ((uint)sizeof(HUF_ReadDTableX2_Workspace) > wkspSize)
+            if ((nuint)sizeof(HUF_ReadDTableX2_Workspace) > wkspSize)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
             rankStart = wksp->rankStart0 + 1;
             memset(wksp->rankStats, 0, sizeof(uint) * 13);
@@ -1211,7 +1211,7 @@ namespace ZstdSharp.Unsafe
         private static nuint HUF_decodeStreamX2(byte* p, BIT_DStream_t* bitDPtr, byte* pEnd, HUF_DEltX2* dt, uint dtLog)
         {
             byte* pStart = p;
-            if ((nuint)(pEnd - p) >= (uint)sizeof(nuint))
+            if ((nuint)(pEnd - p) >= (nuint)sizeof(nuint))
             {
                 if (dtLog <= 11 && MEM_64bits)
                 {
@@ -1352,7 +1352,7 @@ namespace ZstdSharp.Unsafe
                         return _var_err__;
                 }
 
-                if ((nuint)(oend - op4) >= (uint)sizeof(nuint))
+                if ((nuint)(oend - op4) >= (nuint)sizeof(nuint))
                 {
                     for (; (endSignal & (uint)(op4 < olimit ? 1 : 0)) != 0;)
                     {

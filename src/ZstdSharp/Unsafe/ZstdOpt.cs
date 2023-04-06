@@ -980,6 +980,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_optimal_t lastSequence;
             SkipInit(out lastSequence);
             ZSTD_optLdm_t optLdm;
+            memset(&lastSequence, 0, (uint)sizeof(ZSTD_optimal_t));
             optLdm.seqStore = ms->ldmSeqStore != null ? *ms->ldmSeqStore : kNullRawSeqStore;
             optLdm.endPosInBlock = optLdm.startPosInBlock = optLdm.offset = 0;
             ZSTD_opt_getNextMatchAndUpdateSeqStore(&optLdm, (uint)(ip - istart), (uint)(iend - ip));

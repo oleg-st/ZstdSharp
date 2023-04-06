@@ -24,14 +24,14 @@ namespace ZstdSharp.Unsafe
             if (srcSize > blockSizeMax)
                 srcSize = blockSizeMax;
             {
-                nuint errorCode = ZSTD_compressBegin_usingCDict(esr.zc, esr.dict);
+                nuint errorCode = ZSTD_compressBegin_usingCDict_deprecated(esr.zc, esr.dict);
                 if (ERR_isError(errorCode))
                 {
                     return;
                 }
             }
 
-            cSize = ZSTD_compressBlock(esr.zc, esr.workPlace, 1 << 17, src, srcSize);
+            cSize = ZSTD_compressBlock_deprecated(esr.zc, esr.workPlace, 1 << 17, src, srcSize);
             if (ERR_isError(cSize))
             {
                 return;

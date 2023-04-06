@@ -591,7 +591,7 @@ namespace ZstdSharp.Unsafe
         /* Update chains up to ip (excluded)
         Assumption : always within prefix (i.e. not within extDict) */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_insertAndFindFirstIndex_internal(ZSTD_matchState_t* ms, ZSTD_compressionParameters* cParams, byte* ip, uint mls)
+        private static uint ZSTD_insertAndFindFirstIndex_internal(ZSTD_matchState_t* ms, ZSTD_compressionParameters* cParams, byte* ip, uint mls, uint lazySkipping)
         {
             uint* hashTable = ms->hashTable;
             uint hashLog = cParams->hashLog;
@@ -606,6 +606,8 @@ namespace ZstdSharp.Unsafe
                 chainTable[idx & chainMask] = hashTable[h];
                 hashTable[h] = idx;
                 idx++;
+                if (lazySkipping != 0)
+                    break;
             }
 
             ms->nextToUpdate = target;
@@ -615,7 +617,7 @@ namespace ZstdSharp.Unsafe
         public static uint ZSTD_insertAndFindFirstIndex(ZSTD_matchState_t* ms, byte* ip)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
-            return ZSTD_insertAndFindFirstIndex_internal(ms, cParams, ip, ms->cParams.minMatch);
+            return ZSTD_insertAndFindFirstIndex_internal(ms, cParams, ip, ms->cParams.minMatch, 0);
         }
 
         /* inlining is important to hardwire a hot branch (template emulation) */
@@ -650,7 +652,7 @@ namespace ZstdSharp.Unsafe
                 Prefetch0(entry);
             }
 
-            matchIndex = ZSTD_insertAndFindFirstIndex_internal(ms, cParams, ip, mls);
+            matchIndex = ZSTD_insertAndFindFirstIndex_internal(ms, cParams, ip, mls, (uint)ms->lazySkipping);
             for (; matchIndex >= lowLimit && nbAttempts > 0; nbAttempts--)
             {
                 nuint currentMl = 0;
@@ -740,12 +742,13 @@ namespace ZstdSharp.Unsafe
 
         /* ZSTD_row_nextIndex():
          * Returns the next index to insert at within a tagTable row, and updates the "head"
-         * value to reflect the update. Essentially cycles backwards from [0, {entries per row})
+         * value to reflect the update. Essentially cycles backwards from [1, {entries per row})
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_row_nextIndex(byte* tagRow, uint rowMask)
         {
             uint next = (uint)(*tagRow - 1) & rowMask;
+            next += next == 0 ? rowMask : 0;
             *tagRow = (byte)next;
             return next;
         }
@@ -764,7 +767,7 @@ namespace ZstdSharp.Unsafe
          * Performs prefetching for the hashTable and tagTable at a given row.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ZSTD_row_prefetch(uint* hashTable, ushort* tagTable, uint relRow, uint rowLog)
+        private static void ZSTD_row_prefetch(uint* hashTable, byte* tagTable, uint relRow, uint rowLog)
         {
             Prefetch0(hashTable + relRow);
             if (rowLog >= 5)
@@ -791,13 +794,13 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_row_fillHashCache(ZSTD_matchState_t* ms, byte* @base, uint rowLog, uint mls, uint idx, byte* iLimit)
         {
             uint* hashTable = ms->hashTable;
-            ushort* tagTable = ms->tagTable;
+            byte* tagTable = ms->tagTable;
             uint hashLog = ms->rowHashLog;
             uint maxElemsToPrefetch = @base + idx > iLimit ? 0 : (uint)(iLimit - (@base + idx) + 1);
             uint lim = idx + (8 < maxElemsToPrefetch ? 8 : maxElemsToPrefetch);
             for (; idx < lim; ++idx)
             {
-                uint hash = (uint)ZSTD_hashPtr(@base + idx, hashLog + 8, mls);
+                uint hash = (uint)ZSTD_hashPtrSalted(@base + idx, hashLog + 8, mls, ms->hashSalt);
                 uint row = hash >> 8 << (int)rowLog;
                 ZSTD_row_prefetch(hashTable, tagTable, row, rowLog);
                 ms->hashCache[idx & 8 - 1] = hash;
@@ -809,9 +812,9 @@ namespace ZstdSharp.Unsafe
          * base + idx + ZSTD_ROW_HASH_CACHE_SIZE. Also prefetches the appropriate rows from hashTable and tagTable.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_row_nextCachedHash(uint* cache, uint* hashTable, ushort* tagTable, byte* @base, uint idx, uint hashLog, uint rowLog, uint mls)
+        private static uint ZSTD_row_nextCachedHash(uint* cache, uint* hashTable, byte* tagTable, byte* @base, uint idx, uint hashLog, uint rowLog, uint mls, ulong hashSalt)
         {
-            uint newHash = (uint)ZSTD_hashPtr(@base + idx + 8, hashLog + 8, mls);
+            uint newHash = (uint)ZSTD_hashPtrSalted(@base + idx + 8, hashLog + 8, mls, hashSalt);
             uint row = newHash >> 8 << (int)rowLog;
             ZSTD_row_prefetch(hashTable, tagTable, row, rowLog);
             {
@@ -828,20 +831,18 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_row_update_internalImpl(ZSTD_matchState_t* ms, uint updateStartIdx, uint updateEndIdx, uint mls, uint rowLog, uint rowMask, uint useCache)
         {
             uint* hashTable = ms->hashTable;
-            ushort* tagTable = ms->tagTable;
+            byte* tagTable = ms->tagTable;
             uint hashLog = ms->rowHashLog;
             byte* @base = ms->window.@base;
             for (; updateStartIdx < updateEndIdx; ++updateStartIdx)
             {
-                uint hash = useCache != 0 ? ZSTD_row_nextCachedHash(ms->hashCache, hashTable, tagTable, @base, updateStartIdx, hashLog, rowLog, mls) : (uint)ZSTD_hashPtr(@base + updateStartIdx, hashLog + 8, mls);
+                uint hash = useCache != 0 ? ZSTD_row_nextCachedHash(ms->hashCache, hashTable, tagTable, @base, updateStartIdx, hashLog, rowLog, mls, ms->hashSalt) : (uint)ZSTD_hashPtrSalted(@base + updateStartIdx, hashLog + 8, mls, ms->hashSalt);
                 uint relRow = hash >> 8 << (int)rowLog;
                 uint* row = hashTable + relRow;
-                /* Though tagTable is laid out as a table of U16, each tag is only 1 byte.
-                Explicit cast allows us to get exact desired position within each row */
-                byte* tagRow = (byte*)(tagTable + relRow);
+                byte* tagRow = tagTable + relRow;
                 uint pos = ZSTD_row_nextIndex(tagRow, rowMask);
-                assert(hash == ZSTD_hashPtr(@base + updateStartIdx, hashLog + 8, mls));
-                tagRow[pos + 16] = (byte)(hash & (1U << 8) - 1);
+                assert(hash == ZSTD_hashPtrSalted(@base + updateStartIdx, hashLog + 8, mls, ms->hashSalt));
+                tagRow[pos] = (byte)(hash & (1U << 8) - 1);
                 row[pos] = updateStartIdx;
             }
         }
@@ -934,7 +935,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong ZSTD_row_getMatchMask(byte* tagRow, byte tag, uint headGrouped, uint rowEntries)
         {
-            byte* src = tagRow + 16;
+            byte* src = tagRow;
             assert(rowEntries == 16 || rowEntries == 32 || rowEntries == 64);
             assert(rowEntries <= 64);
             assert(ZSTD_row_matchMaskGroupWidth(rowEntries) * rowEntries <= sizeof(ulong) * 8);
@@ -1047,7 +1048,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_RowFindBestMatch(ZSTD_matchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr, uint mls, ZSTD_dictMode_e dictMode, uint rowLog)
         {
             uint* hashTable = ms->hashTable;
-            ushort* tagTable = ms->tagTable;
+            byte* tagTable = ms->tagTable;
             uint* hashCache = ms->hashCache;
             uint hashLog = ms->rowHashLog;
             ZSTD_compressionParameters* cParams = &ms->cParams;
@@ -1067,8 +1068,10 @@ namespace ZstdSharp.Unsafe
             /* nb of searches is capped at nb entries per row */
             uint cappedSearchLog = cParams->searchLog < rowLog ? cParams->searchLog : rowLog;
             uint groupWidth = ZSTD_row_matchMaskGroupWidth(rowEntries);
+            ulong hashSalt = ms->hashSalt;
             uint nbAttempts = 1U << (int)cappedSearchLog;
             nuint ml = 4 - 1;
+            uint hash;
             /* DMS/DDS variables that may be referenced laster */
             ZSTD_matchState_t* dms = ms->dictMatchState;
             /* Initialize the following variables to satisfy static analyzer */
@@ -1093,31 +1096,43 @@ namespace ZstdSharp.Unsafe
             {
                 /* Prefetch DMS rows */
                 uint* dmsHashTable = dms->hashTable;
-                ushort* dmsTagTable = dms->tagTable;
+                byte* dmsTagTable = dms->tagTable;
                 uint dmsHash = (uint)ZSTD_hashPtr(ip, dms->rowHashLog + 8, mls);
                 uint dmsRelRow = dmsHash >> 8 << (int)rowLog;
                 dmsTag = dmsHash & (1U << 8) - 1;
-                dmsTagRow = (byte*)(dmsTagTable + dmsRelRow);
+                dmsTagRow = dmsTagTable + dmsRelRow;
                 dmsRow = dmsHashTable + dmsRelRow;
                 ZSTD_row_prefetch(dmsHashTable, dmsTagTable, dmsRelRow, rowLog);
             }
 
-            ZSTD_row_update_internal(ms, ip, mls, rowLog, rowMask, 1);
+            if (ms->lazySkipping == 0)
             {
-                uint hash = ZSTD_row_nextCachedHash(hashCache, hashTable, tagTable, @base, curr, hashLog, rowLog, mls);
+                ZSTD_row_update_internal(ms, ip, mls, rowLog, rowMask, 1);
+                hash = ZSTD_row_nextCachedHash(hashCache, hashTable, tagTable, @base, curr, hashLog, rowLog, mls, hashSalt);
+            }
+            else
+            {
+                hash = (uint)ZSTD_hashPtrSalted(ip, hashLog + 8, mls, hashSalt);
+                ms->nextToUpdate = curr;
+            }
+
+            ms->hashSaltEntropy += hash;
+            {
                 uint relRow = hash >> 8 << (int)rowLog;
                 uint tag = hash & (1U << 8) - 1;
                 uint* row = hashTable + relRow;
-                byte* tagRow = (byte*)(tagTable + relRow);
+                byte* tagRow = tagTable + relRow;
                 uint headGrouped = (*tagRow & rowMask) * groupWidth;
                 uint* matchBuffer = stackalloc uint[64];
                 nuint numMatches = 0;
                 nuint currMatch = 0;
                 ulong matches = ZSTD_row_getMatchMask(tagRow, (byte)tag, headGrouped, rowEntries);
-                for (; matches > 0 && nbAttempts > 0; --nbAttempts, matches &= matches - 1)
+                for (; matches > 0 && nbAttempts > 0; matches &= matches - 1)
                 {
                     uint matchPos = (headGrouped + ZSTD_VecMask_next(matches)) / groupWidth & rowMask;
                     uint matchIndex = row[matchPos];
+                    if (matchPos == 0)
+                        continue;
                     assert(numMatches < rowEntries);
                     if (matchIndex < lowLimit)
                         break;
@@ -1131,11 +1146,12 @@ namespace ZstdSharp.Unsafe
                     }
 
                     matchBuffer[numMatches++] = matchIndex;
+                    --nbAttempts;
                 }
 
                 {
                     uint pos = ZSTD_row_nextIndex(tagRow, rowMask);
-                    tagRow[pos + 16] = (byte)tag;
+                    tagRow[pos] = (byte)tag;
                     row[pos] = ms->nextToUpdate++;
                 }
 
@@ -1190,14 +1206,17 @@ namespace ZstdSharp.Unsafe
                     nuint numMatches = 0;
                     nuint currMatch = 0;
                     ulong matches = ZSTD_row_getMatchMask(dmsTagRow, (byte)dmsTag, headGrouped, rowEntries);
-                    for (; matches > 0 && nbAttempts > 0; --nbAttempts, matches &= matches - 1)
+                    for (; matches > 0 && nbAttempts > 0; matches &= matches - 1)
                     {
                         uint matchPos = (headGrouped + ZSTD_VecMask_next(matches)) / groupWidth & rowMask;
                         uint matchIndex = dmsRow[matchPos];
+                        if (matchPos == 0)
+                            continue;
                         if (matchIndex < dmsLowestIndex)
                             break;
                         Prefetch0(dmsBase + matchIndex);
                         matchBuffer[numMatches++] = matchIndex;
+                        --nbAttempts;
                     }
 
                     for (; currMatch < numMatches; ++currMatch)
@@ -1888,9 +1907,10 @@ namespace ZstdSharp.Unsafe
             }
 #endif
 
+            ms->lazySkipping = 0;
             if (searchMethod == searchMethod_e.search_rowHash)
             {
-                ZSTD_row_fillHashCache(ms, @base, rowLog, ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6, ms->nextToUpdate, ilimit);
+                ZSTD_row_fillHashCache(ms, @base, rowLog, mls, ms->nextToUpdate, ilimit);
             }
 
             while (ip < ilimit)
@@ -1933,7 +1953,10 @@ namespace ZstdSharp.Unsafe
 
                 if (matchLength < 4)
                 {
-                    ip += (ip - anchor >> 8) + 1;
+                    /* jump faster over incompressible sections */
+                    nuint step = ((nuint)(ip - anchor) >> 8) + 1;
+                    ip += step;
+                    ms->lazySkipping = step > 8 ? 1 : 0;
                     continue;
                 }
 
@@ -2087,6 +2110,16 @@ namespace ZstdSharp.Unsafe
                     nuint litLength = (nuint)(start - anchor);
                     ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)offBase, matchLength);
                     anchor = ip = start + matchLength;
+                }
+
+                if (ms->lazySkipping != 0)
+                {
+                    if (searchMethod == searchMethod_e.search_rowHash)
+                    {
+                        ZSTD_row_fillHashCache(ms, @base, rowLog, mls, ms->nextToUpdate, ilimit);
+                    }
+
+                    ms->lazySkipping = 0;
                 }
 
                 if (isDxS != 0)
@@ -2259,10 +2292,11 @@ namespace ZstdSharp.Unsafe
             uint mls = 4 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 4 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
             uint rowLog = 4 > (ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6) ? 4 : ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6;
             uint offset_1 = rep[0], offset_2 = rep[1];
+            ms->lazySkipping = 0;
             ip += ip == prefixStart ? 1 : 0;
             if (searchMethod == searchMethod_e.search_rowHash)
             {
-                ZSTD_row_fillHashCache(ms, @base, rowLog, ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6, ms->nextToUpdate, ilimit);
+                ZSTD_row_fillHashCache(ms, @base, rowLog, mls, ms->nextToUpdate, ilimit);
             }
 
             while (ip < ilimit)
@@ -2302,7 +2336,9 @@ namespace ZstdSharp.Unsafe
 
                 if (matchLength < 4)
                 {
-                    ip += (ip - anchor >> 8) + 1;
+                    nuint step = (nuint)(ip - anchor) >> 8;
+                    ip += step + 1;
+                    ms->lazySkipping = step > 8 ? 1 : 0;
                     continue;
                 }
 
@@ -2422,6 +2458,16 @@ namespace ZstdSharp.Unsafe
                     nuint litLength = (nuint)(start - anchor);
                     ZSTD_storeSeq(seqStore, litLength, anchor, iend, (uint)offBase, matchLength);
                     anchor = ip = start + matchLength;
+                }
+
+                if (ms->lazySkipping != 0)
+                {
+                    if (searchMethod == searchMethod_e.search_rowHash)
+                    {
+                        ZSTD_row_fillHashCache(ms, @base, rowLog, mls, ms->nextToUpdate, ilimit);
+                    }
+
+                    ms->lazySkipping = 0;
                 }
 
                 while (ip <= ilimit)
