@@ -1780,7 +1780,7 @@ namespace ZstdSharp.Unsafe
         /* ***  Initialization  *** */
         public static nuint ZSTD_DStreamInSize()
         {
-            return (1 << 17) + ZSTD_blockHeaderSize;
+            return (nuint)(1 << 17) + ZSTD_blockHeaderSize;
         }
 
         public static nuint ZSTD_DStreamOutSize()

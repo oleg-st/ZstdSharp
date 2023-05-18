@@ -14,7 +14,7 @@ namespace ZstdSharp.Unsafe
         public static readonly uint* repStartValue = GetArrayPointer(new uint[3] { 1, 4, 8 });
         public static readonly nuint* ZSTD_fcs_fieldSize = GetArrayPointer(new nuint[4] { 0, 2, 4, 8 });
         public static readonly nuint* ZSTD_did_fieldSize = GetArrayPointer(new nuint[4] { 0, 1, 2, 4 });
-        public const nuint ZSTD_blockHeaderSize = 3;
+        public const uint ZSTD_blockHeaderSize = 3;
         public static readonly byte* LL_bits = GetArrayPointer(new byte[36] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
         public static readonly short* LL_defaultNorm = GetArrayPointer(new short[36] { 4, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 1, 1, 1, 1, 1, -1, -1, -1, -1 });
         public const uint LL_defaultNormLog = 6;

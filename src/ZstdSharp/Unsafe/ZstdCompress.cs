@@ -3221,7 +3221,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_matchState_t* ms = &zc->blockState.matchState;
             assert(srcSize <= 1 << 17);
             ZSTD_assertEqualCParams(zc->appliedParams.cParams, ms->cParams);
-            if (srcSize < 1 + 1 + ZSTD_blockHeaderSize + 1 + 1)
+            if (srcSize < (nuint)(1 + 1) + ZSTD_blockHeaderSize + 1 + 1)
             {
                 if (zc->appliedParams.cParams.strategy >= ZSTD_strategy.ZSTD_btopt)
                 {
@@ -4422,7 +4422,7 @@ namespace ZstdSharp.Unsafe
             {
                 ZSTD_matchState_t* ms = &cctx->blockState.matchState;
                 uint lastBlock = lastFrameChunk & (uint)(blockSize >= remaining ? 1 : 0);
-                if (dstCapacity < ZSTD_blockHeaderSize + (1 + 1) + 1)
+                if (dstCapacity < ZSTD_blockHeaderSize + (nuint)(1 + 1) + 1)
                 {
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
                 }
@@ -7103,7 +7103,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 blockSize -= additionalByteAdjustment;
-                if (blockSize < 1 + 1 + ZSTD_blockHeaderSize + 1 + 1)
+                if (blockSize < (nuint)(1 + 1) + ZSTD_blockHeaderSize + 1 + 1)
                 {
                     cBlockSize = ZSTD_noCompressBlock(op, dstCapacity, ip, blockSize, lastBlock);
                     {
