@@ -8,7 +8,7 @@ namespace ZstdSharp
 {
     public static unsafe class DictBuilder
     {
-        public static byte[] TrainFromBuffer(IEnumerable<byte[]> samples, int dictCapacity = DefaultDictCapacity)
+        public static byte[] TrainFromBuffer(IEnumerable<byte[]> samples, int dictCapacity = DefaultDictCapacity, int compressionLevel = DefaultCompressionLevel)
         {
             var ms = new MemoryStream();
             var samplesSizes = samples.Select(sample =>
@@ -24,7 +24,7 @@ namespace ZstdSharp
             {
                 var dictSize = (int) Methods
                     .ZDICT_trainFromBuffer(dictBufferPtr, (nuint) dictCapacity, samplesBufferPtr, samplesSizesPtr,
-                        (uint) samplesSizes.Length)
+                        (uint) samplesSizes.Length, compressionLevel)
                     .EnsureZdictSuccess();
 
                 if (dictCapacity != dictSize)
@@ -35,5 +35,6 @@ namespace ZstdSharp
         }
 
         public const int DefaultDictCapacity = 112640; // Used by zstd utility by default
+        public const int DefaultCompressionLevel = 3;
     }
 }

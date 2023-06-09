@@ -473,13 +473,13 @@ namespace ZstdSharp.Unsafe
          *        In general, it's recommended to provide a few thousands samples, though this can vary a lot.
          *        It's recommended that total size of all samples be about ~x100 times the target size of dictionary.
          */
-        public static nuint ZDICT_trainFromBuffer(void* dictBuffer, nuint dictBufferCapacity, void* samplesBuffer, nuint* samplesSizes, uint nbSamples)
+        public static nuint ZDICT_trainFromBuffer(void* dictBuffer, nuint dictBufferCapacity, void* samplesBuffer, nuint* samplesSizes, uint nbSamples, int compressionLevel)
         {
             ZDICT_fastCover_params_t @params;
             memset(&@params, 0, (uint)sizeof(ZDICT_fastCover_params_t));
             @params.d = 8;
             @params.steps = 4;
-            @params.zParams.compressionLevel = 3;
+            @params.zParams.compressionLevel = compressionLevel;
             return ZDICT_optimizeTrainFromBuffer_fastCover(dictBuffer, dictBufferCapacity, samplesBuffer, samplesSizes, nbSamples, &@params);
         }
 
