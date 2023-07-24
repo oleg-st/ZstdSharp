@@ -33,9 +33,9 @@ namespace ZstdSharp
         public static void* malloc(ulong size)
         {
 #if DEBUG
-            return PoisonMemory((void*) Marshal.AllocHGlobal((nint) size), size);
+            return PoisonMemory((void*) Marshal.AllocHGlobal((IntPtr) size), size);
 #else
-            return (void*) Marshal.AllocHGlobal((nint) size);
+            return (void*) Marshal.AllocHGlobal((IntPtr) size);
 #endif
         }
 
@@ -44,7 +44,7 @@ namespace ZstdSharp
         {
             var total = num * size;
             assert(total <= uint.MaxValue);
-            var destination = (void*) Marshal.AllocHGlobal((nint) total);
+            var destination = (void*) Marshal.AllocHGlobal((IntPtr) total);
             memset(destination, 0, (uint) total);
             return destination;
         }
