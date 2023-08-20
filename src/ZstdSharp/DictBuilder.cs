@@ -8,7 +8,21 @@ namespace ZstdSharp
 {
     public static unsafe class DictBuilder
     {
-        public static byte[] TrainFromBuffer(IEnumerable<byte[]> samples, int dictCapacity = DefaultDictCapacity)
+        public static byte[] TrainFromBuffer(IEnumerable<byte[]> samples, int dictCapacity = DefaultDictCapacity) 
+            => TrainFromBufferFastCover(samples, Methods.ZSTD_defaultCLevel(), dictCapacity).ToArray();
+
+        public static Span<byte> TrainFromBufferFastCover(IEnumerable<byte[]> samples, int level, int dictCapacity = DefaultDictCapacity)
+        {
+            // same as in ZDICT_trainFromBuffer
+            return TrainFromBufferFastCover(samples, new ZDICT_fastCover_params_t
+            {
+                d = 8,
+                steps = 4,
+                zParams = new ZDICT_params_t {compressionLevel = level}
+            }, dictCapacity);
+        }
+
+        public static Span<byte> TrainFromBufferFastCover(IEnumerable<byte[]> samples, ZDICT_fastCover_params_t @params, int dictCapacity = DefaultDictCapacity)
         {
             var ms = new MemoryStream();
             var samplesSizes = samples.Select(sample =>
@@ -23,14 +37,11 @@ namespace ZstdSharp
             fixed (nuint* samplesSizesPtr = samplesSizes)
             {
                 var dictSize = (int) Methods
-                    .ZDICT_trainFromBuffer(dictBufferPtr, (nuint) dictCapacity, samplesBufferPtr, samplesSizesPtr,
-                        (uint) samplesSizes.Length)
+                    .ZDICT_optimizeTrainFromBuffer_fastCover(dictBufferPtr, (nuint) dictCapacity, samplesBufferPtr, samplesSizesPtr,
+                        (uint) samplesSizes.Length, &@params)
                     .EnsureZdictSuccess();
 
-                if (dictCapacity != dictSize)
-                    Array.Resize(ref dictBuffer, dictSize);
-
-                return dictBuffer;
+                return new Span<byte>(dictBuffer, 0, dictSize);
             }
         }
 
