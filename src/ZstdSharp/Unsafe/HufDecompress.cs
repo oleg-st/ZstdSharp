@@ -146,7 +146,7 @@ namespace ZstdSharp.Unsafe
             return targetTableLog;
         }
 
-        public static nuint HUF_readDTableX1_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
+        private static nuint HUF_readDTableX1_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
         {
             uint tableLog = 0;
             uint nbSymbols = 0;
@@ -1082,7 +1082,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static nuint HUF_readDTableX2_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
+        private static nuint HUF_readDTableX2_wksp(uint* DTable, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
         {
             uint tableLog, maxW, nbSymbols;
             DTableDesc dtd = HUF_getDTableDesc(DTable);
@@ -1836,7 +1836,7 @@ namespace ZstdSharp.Unsafe
             return HUF_decompress1X2_usingDTable_internal_body(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
-        public static nuint HUF_decompress1X2_DCtx_wksp(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
+        private static nuint HUF_decompress1X2_DCtx_wksp(uint* DCtx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             byte* ip = (byte*)cSrc;
             nuint hSize = HUF_readDTableX2_wksp(DCtx, cSrc, cSrcSize, workSpace, wkspSize, flags);
@@ -1862,13 +1862,13 @@ namespace ZstdSharp.Unsafe
             return HUF_decompress4X2_usingDTable_internal(dst, dstSize, ip, cSrcSize, dctx, flags);
         }
 
-        public static algo_time_t[][] algoTime = new algo_time_t[16][] { new algo_time_t[2] { new algo_time_t { tableTime = 0, decode256Time = 0 }, new algo_time_t { tableTime = 1, decode256Time = 1 } }, new algo_time_t[2] { new algo_time_t { tableTime = 0, decode256Time = 0 }, new algo_time_t { tableTime = 1, decode256Time = 1 } }, new algo_time_t[2] { new algo_time_t { tableTime = 150, decode256Time = 216 }, new algo_time_t { tableTime = 381, decode256Time = 119 } }, new algo_time_t[2] { new algo_time_t { tableTime = 170, decode256Time = 205 }, new algo_time_t { tableTime = 514, decode256Time = 112 } }, new algo_time_t[2] { new algo_time_t { tableTime = 177, decode256Time = 199 }, new algo_time_t { tableTime = 539, decode256Time = 110 } }, new algo_time_t[2] { new algo_time_t { tableTime = 197, decode256Time = 194 }, new algo_time_t { tableTime = 644, decode256Time = 107 } }, new algo_time_t[2] { new algo_time_t { tableTime = 221, decode256Time = 192 }, new algo_time_t { tableTime = 735, decode256Time = 107 } }, new algo_time_t[2] { new algo_time_t { tableTime = 256, decode256Time = 189 }, new algo_time_t { tableTime = 881, decode256Time = 106 } }, new algo_time_t[2] { new algo_time_t { tableTime = 359, decode256Time = 188 }, new algo_time_t { tableTime = 1167, decode256Time = 109 } }, new algo_time_t[2] { new algo_time_t { tableTime = 582, decode256Time = 187 }, new algo_time_t { tableTime = 1570, decode256Time = 114 } }, new algo_time_t[2] { new algo_time_t { tableTime = 688, decode256Time = 187 }, new algo_time_t { tableTime = 1712, decode256Time = 122 } }, new algo_time_t[2] { new algo_time_t { tableTime = 825, decode256Time = 186 }, new algo_time_t { tableTime = 1965, decode256Time = 136 } }, new algo_time_t[2] { new algo_time_t { tableTime = 976, decode256Time = 185 }, new algo_time_t { tableTime = 2131, decode256Time = 150 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1180, decode256Time = 186 }, new algo_time_t { tableTime = 2070, decode256Time = 175 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1377, decode256Time = 185 }, new algo_time_t { tableTime = 1731, decode256Time = 202 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1412, decode256Time = 185 }, new algo_time_t { tableTime = 1695, decode256Time = 202 } } };
+        private static algo_time_t[][] algoTime = new algo_time_t[16][] { new algo_time_t[2] { new algo_time_t { tableTime = 0, decode256Time = 0 }, new algo_time_t { tableTime = 1, decode256Time = 1 } }, new algo_time_t[2] { new algo_time_t { tableTime = 0, decode256Time = 0 }, new algo_time_t { tableTime = 1, decode256Time = 1 } }, new algo_time_t[2] { new algo_time_t { tableTime = 150, decode256Time = 216 }, new algo_time_t { tableTime = 381, decode256Time = 119 } }, new algo_time_t[2] { new algo_time_t { tableTime = 170, decode256Time = 205 }, new algo_time_t { tableTime = 514, decode256Time = 112 } }, new algo_time_t[2] { new algo_time_t { tableTime = 177, decode256Time = 199 }, new algo_time_t { tableTime = 539, decode256Time = 110 } }, new algo_time_t[2] { new algo_time_t { tableTime = 197, decode256Time = 194 }, new algo_time_t { tableTime = 644, decode256Time = 107 } }, new algo_time_t[2] { new algo_time_t { tableTime = 221, decode256Time = 192 }, new algo_time_t { tableTime = 735, decode256Time = 107 } }, new algo_time_t[2] { new algo_time_t { tableTime = 256, decode256Time = 189 }, new algo_time_t { tableTime = 881, decode256Time = 106 } }, new algo_time_t[2] { new algo_time_t { tableTime = 359, decode256Time = 188 }, new algo_time_t { tableTime = 1167, decode256Time = 109 } }, new algo_time_t[2] { new algo_time_t { tableTime = 582, decode256Time = 187 }, new algo_time_t { tableTime = 1570, decode256Time = 114 } }, new algo_time_t[2] { new algo_time_t { tableTime = 688, decode256Time = 187 }, new algo_time_t { tableTime = 1712, decode256Time = 122 } }, new algo_time_t[2] { new algo_time_t { tableTime = 825, decode256Time = 186 }, new algo_time_t { tableTime = 1965, decode256Time = 136 } }, new algo_time_t[2] { new algo_time_t { tableTime = 976, decode256Time = 185 }, new algo_time_t { tableTime = 2131, decode256Time = 150 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1180, decode256Time = 186 }, new algo_time_t { tableTime = 2070, decode256Time = 175 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1377, decode256Time = 185 }, new algo_time_t { tableTime = 1731, decode256Time = 202 } }, new algo_time_t[2] { new algo_time_t { tableTime = 1412, decode256Time = 185 }, new algo_time_t { tableTime = 1695, decode256Time = 202 } } };
         /** HUF_selectDecoder() :
          *  Tells which decoder is likely to decode faster,
          *  based on a set of pre-computed metrics.
          * @return : 0==HUF_decompress4X1, 1==HUF_decompress4X2 .
          *  Assumption : 0 < dstSize <= 128 KB */
-        public static uint HUF_selectDecoder(nuint dstSize, nuint cSrcSize)
+        private static uint HUF_selectDecoder(nuint dstSize, nuint cSrcSize)
         {
             assert(dstSize > 0);
             assert(dstSize <= 128 * 1024);
@@ -1883,7 +1883,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static nuint HUF_decompress1X_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
+        private static nuint HUF_decompress1X_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             if (dstSize == 0)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
@@ -1910,13 +1910,13 @@ namespace ZstdSharp.Unsafe
         /* BMI2 variants.
          * If the CPU has BMI2 support, pass bmi2=1, otherwise pass bmi2=0.
          */
-        public static nuint HUF_decompress1X_usingDTable(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
+        private static nuint HUF_decompress1X_usingDTable(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
             DTableDesc dtd = HUF_getDTableDesc(DTable);
             return dtd.tableType != 0 ? HUF_decompress1X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, flags) : HUF_decompress1X1_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, flags);
         }
 
-        public static nuint HUF_decompress1X1_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
+        private static nuint HUF_decompress1X1_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             byte* ip = (byte*)cSrc;
             nuint hSize = HUF_readDTableX1_wksp(dctx, cSrc, cSrcSize, workSpace, wkspSize, flags);
@@ -1929,13 +1929,13 @@ namespace ZstdSharp.Unsafe
             return HUF_decompress1X1_usingDTable_internal(dst, dstSize, ip, cSrcSize, dctx, flags);
         }
 
-        public static nuint HUF_decompress4X_usingDTable(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
+        private static nuint HUF_decompress4X_usingDTable(void* dst, nuint maxDstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
             DTableDesc dtd = HUF_getDTableDesc(DTable);
             return dtd.tableType != 0 ? HUF_decompress4X2_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, flags) : HUF_decompress4X1_usingDTable_internal(dst, maxDstSize, cSrc, cSrcSize, DTable, flags);
         }
 
-        public static nuint HUF_decompress4X_hufOnly_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
+        private static nuint HUF_decompress4X_hufOnly_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
         {
             if (dstSize == 0)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));

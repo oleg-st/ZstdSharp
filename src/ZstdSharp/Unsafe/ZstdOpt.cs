@@ -487,7 +487,7 @@ namespace ZstdSharp.Unsafe
         }
 
         /* used in ZSTD_loadDictionaryContent() */
-        public static void ZSTD_updateTree(ZSTD_matchState_t* ms, byte* ip, byte* iend)
+        private static void ZSTD_updateTree(ZSTD_matchState_t* ms, byte* ip, byte* iend)
         {
             ZSTD_updateTree_internal(ms, ip, iend, ms->cParams.minMatch, ZSTD_dictMode_e.ZSTD_noDict);
         }
@@ -1222,7 +1222,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_opt_generic(ms, seqStore, rep, src, srcSize, 2, dictMode);
         }
 
-        public static nuint ZSTD_compressBlock_btopt(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btopt(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_noDict);
         }
@@ -1249,12 +1249,12 @@ namespace ZstdSharp.Unsafe
             ms->nextToUpdate = ms->window.dictLimit;
         }
 
-        public static nuint ZSTD_compressBlock_btultra(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btultra(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_btultra2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btultra2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint curr = (uint)((byte*)src - ms->window.@base);
             assert(srcSize <= 1 << 17);
@@ -1266,22 +1266,22 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_btopt_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btopt_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_btultra_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btultra_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_btopt_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btopt_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_extDict);
         }
 
-        public static nuint ZSTD_compressBlock_btultra_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btultra_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_extDict);
         }

@@ -5,7 +5,7 @@ namespace ZstdSharp.Unsafe
     public static unsafe partial class Methods
     {
         /* --- Error management --- */
-        public static bool HIST_isError(nuint code)
+        private static bool HIST_isError(nuint code)
         {
             return ERR_isError(code);
         }
@@ -13,7 +13,7 @@ namespace ZstdSharp.Unsafe
         /*-**************************************************************
          *  Histogram functions
          ****************************************************************/
-        public static uint HIST_count_simple(uint* count, uint* maxSymbolValuePtr, void* src, nuint srcSize)
+        private static uint HIST_count_simple(uint* count, uint* maxSymbolValuePtr, void* src, nuint srcSize)
         {
             byte* ip = (byte*)src;
             byte* end = ip + srcSize;
@@ -140,7 +140,7 @@ namespace ZstdSharp.Unsafe
          * `workSpace` is a writable buffer which must be 4-bytes aligned,
          * `workSpaceSize` must be >= HIST_WKSP_SIZE
          */
-        public static nuint HIST_countFast_wksp(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize, void* workSpace, nuint workSpaceSize)
+        private static nuint HIST_countFast_wksp(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize, void* workSpace, nuint workSpaceSize)
         {
             if (sourceSize < 1500)
                 return HIST_count_simple(count, maxSymbolValuePtr, source, sourceSize);
@@ -154,7 +154,7 @@ namespace ZstdSharp.Unsafe
         /* HIST_count_wksp() :
          * Same as HIST_count(), but using an externally provided scratch buffer.
          * `workSpace` size must be table of >= HIST_WKSP_SIZE_U32 unsigned */
-        public static nuint HIST_count_wksp(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize, void* workSpace, nuint workSpaceSize)
+        private static nuint HIST_count_wksp(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize, void* workSpace, nuint workSpaceSize)
         {
             if (((nuint)workSpace & 3) != 0)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
@@ -167,7 +167,7 @@ namespace ZstdSharp.Unsafe
         }
 
         /* fast variant (unsafe : won't check if src contains values beyond count[] limit) */
-        public static nuint HIST_countFast(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize)
+        private static nuint HIST_countFast(uint* count, uint* maxSymbolValuePtr, void* source, nuint sourceSize)
         {
             uint* tmpCounters = stackalloc uint[1024];
             return HIST_countFast_wksp(count, maxSymbolValuePtr, source, sourceSize, tmpCounters, sizeof(uint) * 1024);
@@ -181,7 +181,7 @@ namespace ZstdSharp.Unsafe
          *           or an error code, which can be tested using HIST_isError().
          *           note : if return == srcSize, there is only one symbol.
          */
-        public static nuint HIST_count(uint* count, uint* maxSymbolValuePtr, void* src, nuint srcSize)
+        private static nuint HIST_count(uint* count, uint* maxSymbolValuePtr, void* src, nuint srcSize)
         {
             uint* tmpCounters = stackalloc uint[1024];
             return HIST_count_wksp(count, maxSymbolValuePtr, src, srcSize, tmpCounters, sizeof(uint) * 1024);

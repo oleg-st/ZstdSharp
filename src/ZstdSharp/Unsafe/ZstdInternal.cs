@@ -11,18 +11,18 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static readonly uint* repStartValue = GetArrayPointer(new uint[3] { 1, 4, 8 });
-        public static readonly nuint* ZSTD_fcs_fieldSize = GetArrayPointer(new nuint[4] { 0, 2, 4, 8 });
-        public static readonly nuint* ZSTD_did_fieldSize = GetArrayPointer(new nuint[4] { 0, 1, 2, 4 });
-        public const uint ZSTD_blockHeaderSize = 3;
-        public static readonly byte* LL_bits = GetArrayPointer(new byte[36] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
-        public static readonly short* LL_defaultNorm = GetArrayPointer(new short[36] { 4, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 1, 1, 1, 1, 1, -1, -1, -1, -1 });
-        public const uint LL_defaultNormLog = 6;
-        public static readonly byte* ML_bits = GetArrayPointer(new byte[53] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
-        public static readonly short* ML_defaultNorm = GetArrayPointer(new short[53] { 1, 4, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1 });
-        public const uint ML_defaultNormLog = 6;
-        public static readonly short* OF_defaultNorm = GetArrayPointer(new short[29] { 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1 });
-        public const uint OF_defaultNormLog = 5;
+        private static readonly uint* repStartValue = GetArrayPointer(new uint[3] { 1, 4, 8 });
+        private static readonly nuint* ZSTD_fcs_fieldSize = GetArrayPointer(new nuint[4] { 0, 2, 4, 8 });
+        private static readonly nuint* ZSTD_did_fieldSize = GetArrayPointer(new nuint[4] { 0, 1, 2, 4 });
+        private const uint ZSTD_blockHeaderSize = 3;
+        private static readonly byte* LL_bits = GetArrayPointer(new byte[36] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
+        private static readonly short* LL_defaultNorm = GetArrayPointer(new short[36] { 4, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 1, 1, 1, 1, 1, -1, -1, -1, -1 });
+        private const uint LL_defaultNormLog = 6;
+        private static readonly byte* ML_bits = GetArrayPointer(new byte[53] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
+        private static readonly short* ML_defaultNorm = GetArrayPointer(new short[53] { 1, 4, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1 });
+        private const uint ML_defaultNormLog = 6;
+        private static readonly short* OF_defaultNorm = GetArrayPointer(new short[29] { 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1 });
+        private const uint OF_defaultNormLog = 5;
         /*-*******************************************
          *  Shared functions to include for inlining
          *********************************************/

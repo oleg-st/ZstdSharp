@@ -500,7 +500,7 @@ namespace ZstdSharp.Unsafe
         /* ZSTD_compressSuperBlock() :
          * Used to compress a super block when targetCBlockSize is being used.
          * The given block will be compressed into multiple sub blocks that are around targetCBlockSize. */
-        public static nuint ZSTD_compressSuperBlock(ZSTD_CCtx_s* zc, void* dst, nuint dstCapacity, void* src, nuint srcSize, uint lastBlock)
+        private static nuint ZSTD_compressSuperBlock(ZSTD_CCtx_s* zc, void* dst, nuint dstCapacity, void* src, nuint srcSize, uint lastBlock)
         {
             ZSTD_entropyCTablesMetadata_t entropyMetadata;
             {

@@ -27,7 +27,7 @@ namespace ZstdSharp.Unsafe
         /*-****************************************
          *  Error Strings
          ******************************************/
-        public static string ERR_getErrorString(ZSTD_ErrorCode code)
+        private static string ERR_getErrorString(ZSTD_ErrorCode code)
         {
             string notErrorCode = "Unspecified error code";
             switch (code)

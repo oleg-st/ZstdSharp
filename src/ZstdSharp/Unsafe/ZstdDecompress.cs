@@ -1496,7 +1496,7 @@ namespace ZstdSharp.Unsafe
         /*! ZSTD_loadDEntropy() :
          *  dict : must point at beginning of a valid zstd dictionary.
          * @return : size of entropy tables read */
-        public static nuint ZSTD_loadDEntropy(ZSTD_entropyDTables_t* entropy, void* dict, nuint dictSize)
+        private static nuint ZSTD_loadDEntropy(ZSTD_entropyDTables_t* entropy, void* dict, nuint dictSize)
         {
             byte* dictPtr = (byte*)dict;
             byte* dictEnd = dictPtr + dictSize;

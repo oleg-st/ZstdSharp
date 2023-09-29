@@ -20,7 +20,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_hash8Ptr(p, f);
         }
 
-        public static readonly FASTCOVER_accel_t* FASTCOVER_defaultAccelParameters = GetArrayPointer(new FASTCOVER_accel_t[11] { new FASTCOVER_accel_t { finalize = 100, skip = 0 }, new FASTCOVER_accel_t { finalize = 100, skip = 0 }, new FASTCOVER_accel_t { finalize = 50, skip = 1 }, new FASTCOVER_accel_t { finalize = 34, skip = 2 }, new FASTCOVER_accel_t { finalize = 25, skip = 3 }, new FASTCOVER_accel_t { finalize = 20, skip = 4 }, new FASTCOVER_accel_t { finalize = 17, skip = 5 }, new FASTCOVER_accel_t { finalize = 14, skip = 6 }, new FASTCOVER_accel_t { finalize = 13, skip = 7 }, new FASTCOVER_accel_t { finalize = 11, skip = 8 }, new FASTCOVER_accel_t { finalize = 10, skip = 9 } });
+        private static readonly FASTCOVER_accel_t* FASTCOVER_defaultAccelParameters = GetArrayPointer(new FASTCOVER_accel_t[11] { new FASTCOVER_accel_t { finalize = 100, skip = 0 }, new FASTCOVER_accel_t { finalize = 100, skip = 0 }, new FASTCOVER_accel_t { finalize = 50, skip = 1 }, new FASTCOVER_accel_t { finalize = 34, skip = 2 }, new FASTCOVER_accel_t { finalize = 25, skip = 3 }, new FASTCOVER_accel_t { finalize = 20, skip = 4 }, new FASTCOVER_accel_t { finalize = 17, skip = 5 }, new FASTCOVER_accel_t { finalize = 14, skip = 6 }, new FASTCOVER_accel_t { finalize = 13, skip = 7 }, new FASTCOVER_accel_t { finalize = 11, skip = 8 }, new FASTCOVER_accel_t { finalize = 10, skip = 9 } });
         /*-*************************************
          *  Helper functions
          ***************************************/

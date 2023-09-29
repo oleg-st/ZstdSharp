@@ -14,19 +14,19 @@ namespace ZstdSharp.Unsafe
          * ZSTD_estimateDDictSize()
          * ZSTD_getDictID_fromDict()
          */
-        public static void* ZSTD_DDict_dictContent(ZSTD_DDict_s* ddict)
+        private static void* ZSTD_DDict_dictContent(ZSTD_DDict_s* ddict)
         {
             assert(ddict != null);
             return ddict->dictContent;
         }
 
-        public static nuint ZSTD_DDict_dictSize(ZSTD_DDict_s* ddict)
+        private static nuint ZSTD_DDict_dictSize(ZSTD_DDict_s* ddict)
         {
             assert(ddict != null);
             return ddict->dictSize;
         }
 
-        public static void ZSTD_copyDDictParameters(ZSTD_DCtx_s* dctx, ZSTD_DDict_s* ddict)
+        private static void ZSTD_copyDDictParameters(ZSTD_DCtx_s* dctx, ZSTD_DDict_s* ddict)
         {
             assert(dctx != null);
             assert(ddict != null);

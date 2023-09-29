@@ -72,7 +72,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static void ZSTD_fillHashTable(ZSTD_matchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm, ZSTD_tableFillPurpose_e tfp)
+        private static void ZSTD_fillHashTable(ZSTD_matchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm, ZSTD_tableFillPurpose_e tfp)
         {
             if (tfp == ZSTD_tableFillPurpose_e.ZSTD_tfp_forCDict)
             {
@@ -380,7 +380,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 7, 0);
         }
 
-        public static nuint ZSTD_compressBlock_fast(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
             assert(ms->dictMatchState == null);
@@ -627,7 +627,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_fast_dictMatchState_generic(ms, seqStore, rep, src, srcSize, 7, 0);
         }
 
-        public static nuint ZSTD_compressBlock_fast_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
             assert(ms->dictMatchState != null);
@@ -890,7 +890,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_fast_extDict_generic(ms, seqStore, rep, src, srcSize, 7, 0);
         }
 
-        public static nuint ZSTD_compressBlock_fast_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
             assert(ms->dictMatchState == null);

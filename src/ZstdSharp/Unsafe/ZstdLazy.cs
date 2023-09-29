@@ -372,7 +372,7 @@ namespace ZstdSharp.Unsafe
         /***********************************
          * Dedicated dict search
          ***********************************/
-        public static void ZSTD_dedicatedDictSearch_lazy_loadDictionary(ZSTD_matchState_t* ms, byte* ip)
+        private static void ZSTD_dedicatedDictSearch_lazy_loadDictionary(ZSTD_matchState_t* ms, byte* ip)
         {
             byte* @base = ms->window.@base;
             uint target = (uint)(ip - @base);
@@ -614,7 +614,7 @@ namespace ZstdSharp.Unsafe
             return hashTable[ZSTD_hashPtr(ip, hashLog, mls)];
         }
 
-        public static uint ZSTD_insertAndFindFirstIndex(ZSTD_matchState_t* ms, byte* ip)
+        private static uint ZSTD_insertAndFindFirstIndex(ZSTD_matchState_t* ms, byte* ip)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             return ZSTD_insertAndFindFirstIndex_internal(ms, cParams, ip, ms->cParams.minMatch, 0);
@@ -880,7 +880,7 @@ namespace ZstdSharp.Unsafe
          * External wrapper for ZSTD_row_update_internal(). Used for filling the hashtable during dictionary
          * processing.
          */
-        public static void ZSTD_row_update(ZSTD_matchState_t* ms, byte* ip)
+        private static void ZSTD_row_update(ZSTD_matchState_t* ms, byte* ip)
         {
             uint rowLog = 4 > (ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6) ? 4 : ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6;
             uint rowMask = (1U << (int)rowLog) - 1;
@@ -2173,103 +2173,103 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! used in ZSTD_reduceIndex(). preemptively increase value of ZSTD_DUBT_UNSORTED_MARK */
-        public static nuint ZSTD_compressBlock_btlazy2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btlazy2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_binaryTree, 2, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_lazy2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 2, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_lazy(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 1, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_greedy(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_greedy(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 0, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_btlazy2_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btlazy2_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_binaryTree, 2, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_lazy2_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy2_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 2, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_lazy_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 1, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_greedy_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_greedy_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 0, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_lazy2_dedicatedDictSearch(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy2_dedicatedDictSearch(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 2, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static nuint ZSTD_compressBlock_lazy_dedicatedDictSearch(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy_dedicatedDictSearch(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 1, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static nuint ZSTD_compressBlock_greedy_dedicatedDictSearch(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_greedy_dedicatedDictSearch(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 0, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
         /* Row-based matchfinder */
-        public static nuint ZSTD_compressBlock_lazy2_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy2_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 2, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_lazy_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 1, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_greedy_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_greedy_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 0, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        public static nuint ZSTD_compressBlock_lazy2_dictMatchState_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy2_dictMatchState_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 2, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_lazy_dictMatchState_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy_dictMatchState_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 1, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_greedy_dictMatchState_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_greedy_dictMatchState_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 0, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        public static nuint ZSTD_compressBlock_lazy2_dedicatedDictSearch_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy2_dedicatedDictSearch_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 2, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static nuint ZSTD_compressBlock_lazy_dedicatedDictSearch_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy_dedicatedDictSearch_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 1, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
 
-        public static nuint ZSTD_compressBlock_greedy_dedicatedDictSearch_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_greedy_dedicatedDictSearch_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 0, ZSTD_dictMode_e.ZSTD_dedicatedDictSearch);
         }
@@ -2503,37 +2503,37 @@ namespace ZstdSharp.Unsafe
             return (nuint)(iend - anchor);
         }
 
-        public static nuint ZSTD_compressBlock_greedy_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_greedy_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_extDict_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 0);
         }
 
-        public static nuint ZSTD_compressBlock_lazy_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_extDict_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 1);
         }
 
-        public static nuint ZSTD_compressBlock_lazy2_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy2_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_extDict_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_hashChain, 2);
         }
 
-        public static nuint ZSTD_compressBlock_btlazy2_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btlazy2_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_extDict_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_binaryTree, 2);
         }
 
-        public static nuint ZSTD_compressBlock_greedy_extDict_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_greedy_extDict_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_extDict_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 0);
         }
 
-        public static nuint ZSTD_compressBlock_lazy_extDict_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy_extDict_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_extDict_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 1);
         }
 
-        public static nuint ZSTD_compressBlock_lazy2_extDict_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_lazy2_extDict_row(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_lazy_extDict_generic(ms, seqStore, rep, src, srcSize, searchMethod_e.search_rowHash, 2);
         }

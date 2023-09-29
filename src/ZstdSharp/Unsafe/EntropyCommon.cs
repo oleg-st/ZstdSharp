@@ -6,29 +6,29 @@ namespace ZstdSharp.Unsafe
     public static unsafe partial class Methods
     {
         /*===   Version   ===*/
-        public static uint FSE_versionNumber()
+        private static uint FSE_versionNumber()
         {
             return 0 * 100 * 100 + 9 * 100 + 0;
         }
 
         /*===   Error Management   ===*/
-        public static bool FSE_isError(nuint code)
+        private static bool FSE_isError(nuint code)
         {
             return ERR_isError(code);
         }
 
-        public static string FSE_getErrorName(nuint code)
+        private static string FSE_getErrorName(nuint code)
         {
             return ERR_getErrorName(code);
         }
 
         /* Error Management */
-        public static bool HUF_isError(nuint code)
+        private static bool HUF_isError(nuint code)
         {
             return ERR_isError(code);
         }
 
-        public static string HUF_getErrorName(nuint code)
+        private static string HUF_getErrorName(nuint code)
         {
             return ERR_getErrorName(code);
         }
@@ -206,7 +206,7 @@ namespace ZstdSharp.Unsafe
         /*! FSE_readNCount_bmi2():
          * Same as FSE_readNCount() but pass bmi2=1 when your CPU supports BMI2 and 0 otherwise.
          */
-        public static nuint FSE_readNCount_bmi2(short* normalizedCounter, uint* maxSVPtr, uint* tableLogPtr, void* headerBuffer, nuint hbSize, int bmi2)
+        private static nuint FSE_readNCount_bmi2(short* normalizedCounter, uint* maxSVPtr, uint* tableLogPtr, void* headerBuffer, nuint hbSize, int bmi2)
         {
             return FSE_readNCount_body_default(normalizedCounter, maxSVPtr, tableLogPtr, headerBuffer, hbSize);
         }
@@ -216,7 +216,7 @@ namespace ZstdSharp.Unsafe
         @return : size read from 'rBuffer',
         or an errorCode, which can be tested using FSE_isError().
         maxSymbolValuePtr[0] and tableLogPtr[0] will also be updated with their respective values */
-        public static nuint FSE_readNCount(short* normalizedCounter, uint* maxSVPtr, uint* tableLogPtr, void* headerBuffer, nuint hbSize)
+        private static nuint FSE_readNCount(short* normalizedCounter, uint* maxSVPtr, uint* tableLogPtr, void* headerBuffer, nuint hbSize)
         {
             return FSE_readNCount_bmi2(normalizedCounter, maxSVPtr, tableLogPtr, headerBuffer, hbSize, 0);
         }
@@ -228,7 +228,7 @@ namespace ZstdSharp.Unsafe
         @return : size read from `src` , or an error Code .
         Note : Needed by HUF_readCTable() and HUF_readDTableX?() .
          */
-        public static nuint HUF_readStats(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize)
+        private static nuint HUF_readStats(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize)
         {
             uint* wksp = stackalloc uint[219];
             return HUF_readStats_wksp(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, wksp, sizeof(uint) * 219, 0);
@@ -315,7 +315,7 @@ namespace ZstdSharp.Unsafe
             return HUF_readStats_body(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, workSpace, wkspSize, 0);
         }
 
-        public static nuint HUF_readStats_wksp(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
+        private static nuint HUF_readStats_wksp(byte* huffWeight, nuint hwSize, uint* rankStats, uint* nbSymbolsPtr, uint* tableLogPtr, void* src, nuint srcSize, void* workSpace, nuint wkspSize, int flags)
         {
             return HUF_readStats_body_default(huffWeight, hwSize, rankStats, nbSymbolsPtr, tableLogPtr, src, srcSize, workSpace, wkspSize);
         }

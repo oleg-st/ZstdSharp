@@ -7,7 +7,7 @@ namespace ZstdSharp.Unsafe
         /* **************************************************************
          *  Literals compression - special cases
          ****************************************************************/
-        public static nuint ZSTD_noCompressLiterals(void* dst, nuint dstCapacity, void* src, nuint srcSize)
+        private static nuint ZSTD_noCompressLiterals(void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
             byte* ostart = (byte*)dst;
             uint flSize = (uint)(1 + (srcSize > 31 ? 1 : 0) + (srcSize > 4095 ? 1 : 0));
@@ -57,7 +57,7 @@ namespace ZstdSharp.Unsafe
          * Conditions :
          * - All bytes in @src are identical
          * - dstCapacity >= 4 */
-        public static nuint ZSTD_compressRleLiteralsBlock(void* dst, nuint dstCapacity, void* src, nuint srcSize)
+        private static nuint ZSTD_compressRleLiteralsBlock(void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
             byte* ostart = (byte*)dst;
             uint flSize = (uint)(1 + (srcSize > 31 ? 1 : 0) + (srcSize > 4095 ? 1 : 0));
@@ -104,7 +104,7 @@ namespace ZstdSharp.Unsafe
          * @entropyWorkspaceSize : must be >= HUF_WORKSPACE_SIZE
          * @suspectUncompressible: sampling checks, to potentially skip huffman coding
          */
-        public static nuint ZSTD_compressLiterals(void* dst, nuint dstCapacity, void* src, nuint srcSize, void* entropyWorkspace, nuint entropyWorkspaceSize, ZSTD_hufCTables_t* prevHuf, ZSTD_hufCTables_t* nextHuf, ZSTD_strategy strategy, int disableLiteralCompression, int suspectUncompressible, int bmi2)
+        private static nuint ZSTD_compressLiterals(void* dst, nuint dstCapacity, void* src, nuint srcSize, void* entropyWorkspace, nuint entropyWorkspaceSize, ZSTD_hufCTables_t* prevHuf, ZSTD_hufCTables_t* nextHuf, ZSTD_strategy strategy, int disableLiteralCompression, int suspectUncompressible, int bmi2)
         {
             nuint lhSize = (nuint)(3 + (srcSize >= 1 * (1 << 10) ? 1 : 0) + (srcSize >= 16 * (1 << 10) ? 1 : 0));
             byte* ostart = (byte*)dst;

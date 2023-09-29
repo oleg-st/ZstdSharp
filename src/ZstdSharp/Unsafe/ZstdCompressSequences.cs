@@ -5,7 +5,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static readonly uint* kInverseProbabilityLog256 = GetArrayPointer(new uint[256] { 0, 2048, 1792, 1642, 1536, 1453, 1386, 1329, 1280, 1236, 1197, 1162, 1130, 1100, 1073, 1047, 1024, 1001, 980, 960, 941, 923, 906, 889, 874, 859, 844, 830, 817, 804, 791, 779, 768, 756, 745, 734, 724, 714, 704, 694, 685, 676, 667, 658, 650, 642, 633, 626, 618, 610, 603, 595, 588, 581, 574, 567, 561, 554, 548, 542, 535, 529, 523, 517, 512, 506, 500, 495, 489, 484, 478, 473, 468, 463, 458, 453, 448, 443, 438, 434, 429, 424, 420, 415, 411, 407, 402, 398, 394, 390, 386, 382, 377, 373, 370, 366, 362, 358, 354, 350, 347, 343, 339, 336, 332, 329, 325, 322, 318, 315, 311, 308, 305, 302, 298, 295, 292, 289, 286, 282, 279, 276, 273, 270, 267, 264, 261, 258, 256, 253, 250, 247, 244, 241, 239, 236, 233, 230, 228, 225, 222, 220, 217, 215, 212, 209, 207, 204, 202, 199, 197, 194, 192, 190, 187, 185, 182, 180, 178, 175, 173, 171, 168, 166, 164, 162, 159, 157, 155, 153, 151, 149, 146, 144, 142, 140, 138, 136, 134, 132, 130, 128, 126, 123, 121, 119, 117, 115, 114, 112, 110, 108, 106, 104, 102, 100, 98, 96, 94, 93, 91, 89, 87, 85, 83, 82, 80, 78, 76, 74, 73, 71, 69, 67, 66, 64, 62, 61, 59, 57, 55, 54, 52, 50, 49, 47, 46, 44, 42, 41, 39, 37, 36, 34, 33, 31, 30, 28, 26, 25, 23, 22, 20, 19, 17, 16, 14, 13, 11, 10, 8, 7, 5, 4, 2, 1 });
+        private static readonly uint* kInverseProbabilityLog256 = GetArrayPointer(new uint[256] { 0, 2048, 1792, 1642, 1536, 1453, 1386, 1329, 1280, 1236, 1197, 1162, 1130, 1100, 1073, 1047, 1024, 1001, 980, 960, 941, 923, 906, 889, 874, 859, 844, 830, 817, 804, 791, 779, 768, 756, 745, 734, 724, 714, 704, 694, 685, 676, 667, 658, 650, 642, 633, 626, 618, 610, 603, 595, 588, 581, 574, 567, 561, 554, 548, 542, 535, 529, 523, 517, 512, 506, 500, 495, 489, 484, 478, 473, 468, 463, 458, 453, 448, 443, 438, 434, 429, 424, 420, 415, 411, 407, 402, 398, 394, 390, 386, 382, 377, 373, 370, 366, 362, 358, 354, 350, 347, 343, 339, 336, 332, 329, 325, 322, 318, 315, 311, 308, 305, 302, 298, 295, 292, 289, 286, 282, 279, 276, 273, 270, 267, 264, 261, 258, 256, 253, 250, 247, 244, 241, 239, 236, 233, 230, 228, 225, 222, 220, 217, 215, 212, 209, 207, 204, 202, 199, 197, 194, 192, 190, 187, 185, 182, 180, 178, 175, 173, 171, 168, 166, 164, 162, 159, 157, 155, 153, 151, 149, 146, 144, 142, 140, 138, 136, 134, 132, 130, 128, 126, 123, 121, 119, 117, 115, 114, 112, 110, 108, 106, 104, 102, 100, 98, 96, 94, 93, 91, 89, 87, 85, 83, 82, 80, 78, 76, 74, 73, 71, 69, 67, 66, 64, 62, 61, 59, 57, 55, 54, 52, 50, 49, 47, 46, 44, 42, 41, 39, 37, 36, 34, 33, 31, 30, 28, 26, 25, 23, 22, 20, 19, 17, 16, 14, 13, 11, 10, 8, 7, 5, 4, 2, 1 });
         private static uint ZSTD_getFSEMaxSymbolValue(uint* ctable)
         {
             void* ptr = ctable;
@@ -68,7 +68,7 @@ namespace ZstdSharp.Unsafe
          * Returns the cost in bits of encoding the distribution in count using ctable.
          * Returns an error if ctable cannot represent all the symbols in count.
          */
-        public static nuint ZSTD_fseBitCost(uint* ctable, uint* count, uint max)
+        private static nuint ZSTD_fseBitCost(uint* ctable, uint* count, uint max)
         {
             const uint kAccuracyLog = 8;
             nuint cost = 0;
@@ -103,7 +103,7 @@ namespace ZstdSharp.Unsafe
          * table described by norm. The max symbol support by norm is assumed >= max.
          * norm must be valid for every symbol with non-zero probability in count.
          */
-        public static nuint ZSTD_crossEntropyCost(short* norm, uint accuracyLog, uint* count, uint max)
+        private static nuint ZSTD_crossEntropyCost(short* norm, uint accuracyLog, uint* count, uint max)
         {
             uint shift = 8 - accuracyLog;
             nuint cost = 0;
@@ -121,7 +121,7 @@ namespace ZstdSharp.Unsafe
             return cost >> 8;
         }
 
-        public static symbolEncodingType_e ZSTD_selectEncodingType(FSE_repeat* repeatMode, uint* count, uint max, nuint mostFrequent, nuint nbSeq, uint FSELog, uint* prevCTable, short* defaultNorm, uint defaultNormLog, ZSTD_defaultPolicy_e isDefaultAllowed, ZSTD_strategy strategy)
+        private static symbolEncodingType_e ZSTD_selectEncodingType(FSE_repeat* repeatMode, uint* count, uint max, nuint mostFrequent, nuint nbSeq, uint FSELog, uint* prevCTable, short* defaultNorm, uint defaultNormLog, ZSTD_defaultPolicy_e isDefaultAllowed, ZSTD_strategy strategy)
         {
             if (mostFrequent == nbSeq)
             {
@@ -193,7 +193,7 @@ namespace ZstdSharp.Unsafe
             return symbolEncodingType_e.set_compressed;
         }
 
-        public static nuint ZSTD_buildCTable(void* dst, nuint dstCapacity, uint* nextCTable, uint FSELog, symbolEncodingType_e type, uint* count, uint max, byte* codeTable, nuint nbSeq, short* defaultNorm, uint defaultNormLog, uint defaultMax, uint* prevCTable, nuint prevCTableSize, void* entropyWorkspace, nuint entropyWorkspaceSize)
+        private static nuint ZSTD_buildCTable(void* dst, nuint dstCapacity, uint* nextCTable, uint FSELog, symbolEncodingType_e type, uint* count, uint max, byte* codeTable, nuint nbSeq, short* defaultNorm, uint defaultNormLog, uint defaultMax, uint* prevCTable, nuint prevCTableSize, void* entropyWorkspace, nuint entropyWorkspaceSize)
         {
             byte* op = (byte*)dst;
             byte* oend = op + dstCapacity;
@@ -381,7 +381,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_encodeSequences_body(dst, dstCapacity, CTable_MatchLength, mlCodeTable, CTable_OffsetBits, ofCodeTable, CTable_LitLength, llCodeTable, sequences, nbSeq, longOffsets);
         }
 
-        public static nuint ZSTD_encodeSequences(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, seqDef_s* sequences, nuint nbSeq, int longOffsets, int bmi2)
+        private static nuint ZSTD_encodeSequences(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, seqDef_s* sequences, nuint nbSeq, int longOffsets, int bmi2)
         {
             return ZSTD_encodeSequences_default(dst, dstCapacity, CTable_MatchLength, mlCodeTable, CTable_OffsetBits, ofCodeTable, CTable_LitLength, llCodeTable, sequences, nbSeq, longOffsets);
         }

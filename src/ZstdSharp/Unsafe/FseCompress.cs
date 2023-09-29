@@ -9,7 +9,7 @@ namespace ZstdSharp.Unsafe
          * wkspSize should be sized to handle worst case situation, which is `1<<max_tableLog * sizeof(FSE_FUNCTION_TYPE)`
          * workSpace must also be properly aligned with FSE_FUNCTION_TYPE requirements
          */
-        public static nuint FSE_buildCTable_wksp(uint* ct, short* normalizedCounter, uint maxSymbolValue, uint tableLog, void* workSpace, nuint wkspSize)
+        private static nuint FSE_buildCTable_wksp(uint* ct, short* normalizedCounter, uint maxSymbolValue, uint tableLog, void* workSpace, nuint wkspSize)
         {
             uint tableSize = (uint)(1 << (int)tableLog);
             uint tableMask = tableSize - 1;
@@ -165,7 +165,7 @@ namespace ZstdSharp.Unsafe
         /*-**************************************************************
          *  FSE NCount encoding
          ****************************************************************/
-        public static nuint FSE_NCountWriteBound(uint maxSymbolValue, uint tableLog)
+        private static nuint FSE_NCountWriteBound(uint maxSymbolValue, uint tableLog)
         {
             nuint maxHeaderSize = ((maxSymbolValue + 1) * tableLog + 4 + 2) / 8 + 1 + 2;
             return maxSymbolValue != 0 ? maxHeaderSize : 512;
@@ -279,7 +279,7 @@ namespace ZstdSharp.Unsafe
         Compactly save 'normalizedCounter' into 'buffer'.
         @return : size of the compressed table,
         or an errorCode, which can be tested using FSE_isError(). */
-        public static nuint FSE_writeNCount(void* buffer, nuint bufferSize, short* normalizedCounter, uint maxSymbolValue, uint tableLog)
+        private static nuint FSE_writeNCount(void* buffer, nuint bufferSize, short* normalizedCounter, uint maxSymbolValue, uint tableLog)
         {
             if (tableLog > 14 - 2)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
@@ -303,7 +303,7 @@ namespace ZstdSharp.Unsafe
         /* *****************************************
          *  FSE advanced API
          ***************************************** */
-        public static uint FSE_optimalTableLog_internal(uint maxTableLog, nuint srcSize, uint maxSymbolValue, uint minus)
+        private static uint FSE_optimalTableLog_internal(uint maxTableLog, nuint srcSize, uint maxSymbolValue, uint minus)
         {
             uint maxBitsSrc = ZSTD_highbit32((uint)(srcSize - 1)) - minus;
             uint tableLog = maxTableLog;
@@ -326,7 +326,7 @@ namespace ZstdSharp.Unsafe
         dynamically downsize 'tableLog' when conditions are met.
         It saves CPU time, by using smaller tables, while preserving or even improving compression ratio.
         @return : recommended tableLog (necessarily <= 'maxTableLog') */
-        public static uint FSE_optimalTableLog(uint maxTableLog, nuint srcSize, uint maxSymbolValue)
+        private static uint FSE_optimalTableLog(uint maxTableLog, nuint srcSize, uint maxSymbolValue)
         {
             return FSE_optimalTableLog_internal(maxTableLog, srcSize, maxSymbolValue, 2);
         }
@@ -443,7 +443,7 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
-        public static readonly uint* rtbTable = GetArrayPointer(new uint[8] { 0, 473195, 504333, 520860, 550000, 700000, 750000, 830000 });
+        private static readonly uint* rtbTable = GetArrayPointer(new uint[8] { 0, 473195, 504333, 520860, 550000, 700000, 750000, 830000 });
         /*! FSE_normalizeCount():
         normalize counts so that sum(count[]) == Power_of_2 (2^tableLog)
         'normalizedCounter' is a table of short, of minimum size (maxSymbolValue+1).
@@ -455,7 +455,7 @@ namespace ZstdSharp.Unsafe
         Otherwise, useLowProbCount=1 is a good default, since the speed difference is small.
         @return : tableLog,
         or an errorCode, which can be tested using FSE_isError() */
-        public static nuint FSE_normalizeCount(short* normalizedCounter, uint tableLog, uint* count, nuint total, uint maxSymbolValue, uint useLowProbCount)
+        private static nuint FSE_normalizeCount(short* normalizedCounter, uint tableLog, uint* count, nuint total, uint maxSymbolValue, uint useLowProbCount)
         {
             if (tableLog == 0)
                 tableLog = 13 - 2;
@@ -526,7 +526,7 @@ namespace ZstdSharp.Unsafe
         }
 
         /* fake FSE_CTable, for rle input (always same symbol) */
-        public static nuint FSE_buildCTable_rle(uint* ct, byte symbolValue)
+        private static nuint FSE_buildCTable_rle(uint* ct, byte symbolValue)
         {
             void* ptr = ct;
             ushort* tableU16 = (ushort*)ptr + 2;
@@ -614,7 +614,7 @@ namespace ZstdSharp.Unsafe
         @return : size of compressed data (<= `dstCapacity`),
         or 0 if compressed data could not fit into `dst`,
         or an errorCode, which can be tested using FSE_isError() */
-        public static nuint FSE_compress_usingCTable(void* dst, nuint dstSize, void* src, nuint srcSize, uint* ct)
+        private static nuint FSE_compress_usingCTable(void* dst, nuint dstSize, void* src, nuint srcSize, uint* ct)
         {
             uint fast = dstSize >= srcSize + (srcSize >> 7) + 4 + (nuint)sizeof(nuint) ? 1U : 0U;
             if (fast != 0)
@@ -626,7 +626,7 @@ namespace ZstdSharp.Unsafe
         /*-*****************************************
          *  Tool functions
          ******************************************/
-        public static nuint FSE_compressBound(nuint size)
+        private static nuint FSE_compressBound(nuint size)
         {
             return 512 + (size + (size >> 7) + 4 + (nuint)sizeof(nuint));
         }

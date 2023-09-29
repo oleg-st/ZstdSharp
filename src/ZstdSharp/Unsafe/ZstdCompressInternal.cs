@@ -5,8 +5,8 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static readonly rawSeqStore_t kNullRawSeqStore = new rawSeqStore_t { seq = null, pos = 0, posInSequence = 0, size = 0, capacity = 0 };
-        public static readonly byte* LL_Code = GetArrayPointer(new byte[64] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24 });
+        private static readonly rawSeqStore_t kNullRawSeqStore = new rawSeqStore_t { seq = null, pos = 0, posInSequence = 0, size = 0, capacity = 0 };
+        private static readonly byte* LL_Code = GetArrayPointer(new byte[64] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24 });
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_LLcode(uint litLength)
         {
@@ -14,7 +14,7 @@ namespace ZstdSharp.Unsafe
             return litLength > 63 ? ZSTD_highbit32(litLength) + LL_deltaCode : LL_Code[litLength];
         }
 
-        public static readonly byte* ML_Code = GetArrayPointer(new byte[128] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 32, 33, 33, 34, 34, 35, 35, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 38, 38, 38, 38, 39, 39, 39, 39, 39, 39, 39, 39, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42 });
+        private static readonly byte* ML_Code = GetArrayPointer(new byte[128] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 32, 33, 33, 34, 34, 35, 35, 36, 36, 36, 36, 37, 37, 37, 37, 38, 38, 38, 38, 38, 38, 38, 38, 39, 39, 39, 39, 39, 39, 39, 39, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42 });
         /* ZSTD_MLcode() :
          * note : mlBase = matchLength - MINMATCH;
          *        because it's the format it's stored in seqStore->sequences */
@@ -277,7 +277,7 @@ namespace ZstdSharp.Unsafe
             return matchLength + ZSTD_count(ip + matchLength, iStart, iEnd);
         }
 
-        public const uint prime3bytes = 506832829U;
+        private const uint prime3bytes = 506832829U;
         [InlineMethod.Inline]
         private static uint ZSTD_hash3(uint u, uint h, uint s)
         {
@@ -298,7 +298,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_hash3(MEM_readLE32(ptr), h, s);
         }
 
-        public const uint prime4bytes = 2654435761U;
+        private const uint prime4bytes = 2654435761U;
         [InlineMethod.Inline]
         private static uint ZSTD_hash4(uint u, uint h, uint s)
         {
@@ -318,7 +318,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_hash4(MEM_readLE32(ptr), h, s);
         }
 
-        public const ulong prime5bytes = 889523592379UL;
+        private const ulong prime5bytes = 889523592379UL;
         [InlineMethod.Inline]
         private static nuint ZSTD_hash5(ulong u, uint h, ulong s)
         {
@@ -338,7 +338,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_hash5(MEM_readLE64(p), h, s);
         }
 
-        public const ulong prime6bytes = 227718039650203UL;
+        private const ulong prime6bytes = 227718039650203UL;
         [InlineMethod.Inline]
         private static nuint ZSTD_hash6(ulong u, uint h, ulong s)
         {
@@ -358,7 +358,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_hash6(MEM_readLE64(p), h, s);
         }
 
-        public const ulong prime7bytes = 58295818150454627UL;
+        private const ulong prime7bytes = 58295818150454627UL;
         [InlineMethod.Inline]
         private static nuint ZSTD_hash7(ulong u, uint h, ulong s)
         {
@@ -378,7 +378,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_hash7(MEM_readLE64(p), h, s);
         }
 
-        public const ulong prime8bytes = 0xCF1BBCDCB7A56463UL;
+        private const ulong prime8bytes = 0xCF1BBCDCB7A56463UL;
         [InlineMethod.Inline]
         private static nuint ZSTD_hash8(ulong u, uint h, ulong s)
         {

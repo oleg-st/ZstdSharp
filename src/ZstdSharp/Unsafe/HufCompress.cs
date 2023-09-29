@@ -122,7 +122,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static nuint HUF_writeCTable_wksp(void* dst, nuint maxDstSize, nuint* CTable, uint maxSymbolValue, uint huffLog, void* workspace, nuint workspaceSize)
+        private static nuint HUF_writeCTable_wksp(void* dst, nuint maxDstSize, nuint* CTable, uint maxSymbolValue, uint huffLog, void* workspace, nuint workspaceSize)
         {
             nuint* ct = CTable + 1;
             byte* op = (byte*)dst;
@@ -163,7 +163,7 @@ namespace ZstdSharp.Unsafe
 
         /** HUF_readCTable() :
          *  Loading a CTable saved with HUF_writeCTable() */
-        public static nuint HUF_readCTable(nuint* CTable, uint* maxSymbolValuePtr, void* src, nuint srcSize, uint* hasZeroWeights)
+        private static nuint HUF_readCTable(nuint* CTable, uint* maxSymbolValuePtr, void* src, nuint srcSize, uint* hasZeroWeights)
         {
             /* init not required, even though some static analyzer may complain */
             byte* huffWeight = stackalloc byte[256];
@@ -239,7 +239,7 @@ namespace ZstdSharp.Unsafe
         /** HUF_getNbBitsFromCTable() :
          *  Read nbBits from CTable symbolTable, for symbol `symbolValue` presumed <= HUF_SYMBOLVALUE_MAX
          *  Note 1 : is not inlined, as HUF_CElt definition is private */
-        public static uint HUF_getNbBitsFromCTable(nuint* CTable, uint symbolValue)
+        private static uint HUF_getNbBitsFromCTable(nuint* CTable, uint symbolValue)
         {
             nuint* ct = CTable + 1;
             assert(symbolValue <= 255);
@@ -609,7 +609,7 @@ namespace ZstdSharp.Unsafe
             CTable[0] = maxNbBits;
         }
 
-        public static nuint HUF_buildCTable_wksp(nuint* CTable, uint* count, uint maxSymbolValue, uint maxNbBits, void* workSpace, nuint wkspSize)
+        private static nuint HUF_buildCTable_wksp(nuint* CTable, uint* count, uint maxSymbolValue, uint maxNbBits, void* workSpace, nuint wkspSize)
         {
             HUF_buildCTable_wksp_tables* wksp_tables = (HUF_buildCTable_wksp_tables*)HUF_alignUpWorkspace(workSpace, &wkspSize, sizeof(uint));
             nodeElt_s* huffNode0 = (nodeElt_s*)wksp_tables->huffNodeTbl;
@@ -631,7 +631,7 @@ namespace ZstdSharp.Unsafe
             return maxNbBits;
         }
 
-        public static nuint HUF_estimateCompressedSize(nuint* CTable, uint* count, uint maxSymbolValue)
+        private static nuint HUF_estimateCompressedSize(nuint* CTable, uint* count, uint maxSymbolValue)
         {
             nuint* ct = CTable + 1;
             nuint nbBits = 0;
@@ -644,7 +644,7 @@ namespace ZstdSharp.Unsafe
             return nbBits >> 3;
         }
 
-        public static int HUF_validateCTable(nuint* CTable, uint* count, uint maxSymbolValue)
+        private static int HUF_validateCTable(nuint* CTable, uint* count, uint maxSymbolValue)
         {
             nuint* ct = CTable + 1;
             int bad = 0;
@@ -657,7 +657,7 @@ namespace ZstdSharp.Unsafe
             return bad == 0 ? 1 : 0;
         }
 
-        public static nuint HUF_compressBound(nuint size)
+        private static nuint HUF_compressBound(nuint size)
         {
             return 129 + (size + (size >> 8) + 8);
         }
@@ -927,7 +927,7 @@ namespace ZstdSharp.Unsafe
         /* ====================== */
         /* single stream variants */
         /* ====================== */
-        public static nuint HUF_compress1X_usingCTable(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable, int flags)
+        private static nuint HUF_compress1X_usingCTable(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable, int flags)
         {
             return HUF_compress1X_usingCTable_internal(dst, dstSize, src, srcSize, CTable, flags);
         }
@@ -996,7 +996,7 @@ namespace ZstdSharp.Unsafe
             return (nuint)(op - ostart);
         }
 
-        public static nuint HUF_compress4X_usingCTable(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable, int flags)
+        private static nuint HUF_compress4X_usingCTable(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable, int flags)
         {
             return HUF_compress4X_usingCTable_internal(dst, dstSize, src, srcSize, CTable, flags);
         }
@@ -1024,7 +1024,7 @@ namespace ZstdSharp.Unsafe
             return (nuint)(op - ostart);
         }
 
-        public static uint HUF_cardinality(uint* count, uint maxSymbolValue)
+        private static uint HUF_cardinality(uint* count, uint maxSymbolValue)
         {
             uint cardinality = 0;
             uint i;
@@ -1048,13 +1048,13 @@ namespace ZstdSharp.Unsafe
          *  For example, it's possible to compress several blocks using the same 'CTable',
          *  or to save and regenerate 'CTable' using external methods.
          */
-        public static uint HUF_minTableLog(uint symbolCardinality)
+        private static uint HUF_minTableLog(uint symbolCardinality)
         {
             uint minBitsSymbols = ZSTD_highbit32(symbolCardinality) + 1;
             return minBitsSymbols;
         }
 
-        public static uint HUF_optimalTableLog(uint maxTableLog, nuint srcSize, uint maxSymbolValue, void* workSpace, nuint wkspSize, nuint* table, uint* count, int flags)
+        private static uint HUF_optimalTableLog(uint maxTableLog, nuint srcSize, uint maxSymbolValue, void* workSpace, nuint wkspSize, nuint* table, uint* count, int flags)
         {
             assert(srcSize > 1);
             assert(wkspSize >= (nuint)sizeof(HUF_buildCTable_wksp_tables));
@@ -1232,7 +1232,7 @@ namespace ZstdSharp.Unsafe
          *  If it doesn't, it sets *repeat = HUF_repeat_none, and it sets hufTable to the table used.
          *  If preferRepeat then the old table will always be used if valid.
          *  If suspectUncompressible then some sampling checks will be run to potentially skip huffman coding */
-        public static nuint HUF_compress1X_repeat(void* dst, nuint dstSize, void* src, nuint srcSize, uint maxSymbolValue, uint huffLog, void* workSpace, nuint wkspSize, nuint* hufTable, HUF_repeat* repeat, int flags)
+        private static nuint HUF_compress1X_repeat(void* dst, nuint dstSize, void* src, nuint srcSize, uint maxSymbolValue, uint huffLog, void* workSpace, nuint wkspSize, nuint* hufTable, HUF_repeat* repeat, int flags)
         {
             return HUF_compress_internal(dst, dstSize, src, srcSize, maxSymbolValue, huffLog, HUF_nbStreams_e.HUF_singleStream, workSpace, wkspSize, hufTable, repeat, flags);
         }
@@ -1241,7 +1241,7 @@ namespace ZstdSharp.Unsafe
          * compress input using 4 streams.
          * consider skipping quickly
          * re-use an existing huffman compression table */
-        public static nuint HUF_compress4X_repeat(void* dst, nuint dstSize, void* src, nuint srcSize, uint maxSymbolValue, uint huffLog, void* workSpace, nuint wkspSize, nuint* hufTable, HUF_repeat* repeat, int flags)
+        private static nuint HUF_compress4X_repeat(void* dst, nuint dstSize, void* src, nuint srcSize, uint maxSymbolValue, uint huffLog, void* workSpace, nuint wkspSize, nuint* hufTable, HUF_repeat* repeat, int flags)
         {
             return HUF_compress_internal(dst, dstSize, src, srcSize, maxSymbolValue, huffLog, HUF_nbStreams_e.HUF_fourStreams, workSpace, wkspSize, hufTable, repeat, flags);
         }

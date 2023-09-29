@@ -47,7 +47,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static uint ZSTD_XXH_versionNumber()
+        private static uint ZSTD_XXH_versionNumber()
         {
             return 0 * 100 * 100 + 8 * 100 + 1;
         }
@@ -174,28 +174,28 @@ namespace ZstdSharp.Unsafe
             return XXH32_finalize(h32, input, len & 15, align);
         }
 
-        public static uint ZSTD_XXH32(void* input, nuint len, uint seed)
+        private static uint ZSTD_XXH32(void* input, nuint len, uint seed)
         {
             return XXH32_endian_align((byte*)input, len, seed, XXH_alignment.XXH_unaligned);
         }
 
-        public static XXH32_state_s* ZSTD_XXH32_createState()
+        private static XXH32_state_s* ZSTD_XXH32_createState()
         {
             return (XXH32_state_s*)XXH_malloc((nuint)sizeof(XXH32_state_s));
         }
 
-        public static XXH_errorcode ZSTD_XXH32_freeState(XXH32_state_s* statePtr)
+        private static XXH_errorcode ZSTD_XXH32_freeState(XXH32_state_s* statePtr)
         {
             XXH_free(statePtr);
             return XXH_errorcode.XXH_OK;
         }
 
-        public static void ZSTD_XXH32_copyState(XXH32_state_s* dstState, XXH32_state_s* srcState)
+        private static void ZSTD_XXH32_copyState(XXH32_state_s* dstState, XXH32_state_s* srcState)
         {
             XXH_memcpy(dstState, srcState, (nuint)sizeof(XXH32_state_s));
         }
 
-        public static XXH_errorcode ZSTD_XXH32_reset(XXH32_state_s* statePtr, uint seed)
+        private static XXH_errorcode ZSTD_XXH32_reset(XXH32_state_s* statePtr, uint seed)
         {
             memset(statePtr, 0, (uint)sizeof(XXH32_state_s));
             statePtr->v[0] = seed + 0x9E3779B1U + 0x85EBCA77U;
@@ -205,7 +205,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
-        public static XXH_errorcode ZSTD_XXH32_update(XXH32_state_s* state, void* input, nuint len)
+        private static XXH_errorcode ZSTD_XXH32_update(XXH32_state_s* state, void* input, nuint len)
         {
             if (input == null)
             {
@@ -269,7 +269,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
-        public static uint ZSTD_XXH32_digest(XXH32_state_s* state)
+        private static uint ZSTD_XXH32_digest(XXH32_state_s* state)
         {
             uint h32;
             if (state->large_len != 0)
@@ -285,14 +285,14 @@ namespace ZstdSharp.Unsafe
             return XXH32_finalize(h32, (byte*)state->mem32, state->memsize, XXH_alignment.XXH_aligned);
         }
 
-        public static void ZSTD_XXH32_canonicalFromHash(XXH32_canonical_t* dst, uint hash)
+        private static void ZSTD_XXH32_canonicalFromHash(XXH32_canonical_t* dst, uint hash)
         {
             if (BitConverter.IsLittleEndian)
                 hash = BinaryPrimitives.ReverseEndianness(hash);
             XXH_memcpy(dst, &hash, (nuint)sizeof(XXH32_canonical_t));
         }
 
-        public static uint ZSTD_XXH32_hashFromCanonical(XXH32_canonical_t* src)
+        private static uint ZSTD_XXH32_hashFromCanonical(XXH32_canonical_t* src)
         {
             return XXH_readBE32(src);
         }
@@ -413,28 +413,28 @@ namespace ZstdSharp.Unsafe
             return XXH64_finalize(h64, input, len, align);
         }
 
-        public static ulong ZSTD_XXH64(void* input, nuint len, ulong seed)
+        private static ulong ZSTD_XXH64(void* input, nuint len, ulong seed)
         {
             return XXH64_endian_align((byte*)input, len, seed, XXH_alignment.XXH_unaligned);
         }
 
-        public static XXH64_state_s* ZSTD_XXH64_createState()
+        private static XXH64_state_s* ZSTD_XXH64_createState()
         {
             return (XXH64_state_s*)XXH_malloc((nuint)sizeof(XXH64_state_s));
         }
 
-        public static XXH_errorcode ZSTD_XXH64_freeState(XXH64_state_s* statePtr)
+        private static XXH_errorcode ZSTD_XXH64_freeState(XXH64_state_s* statePtr)
         {
             XXH_free(statePtr);
             return XXH_errorcode.XXH_OK;
         }
 
-        public static void ZSTD_XXH64_copyState(XXH64_state_s* dstState, XXH64_state_s* srcState)
+        private static void ZSTD_XXH64_copyState(XXH64_state_s* dstState, XXH64_state_s* srcState)
         {
             XXH_memcpy(dstState, srcState, (nuint)sizeof(XXH64_state_s));
         }
 
-        public static XXH_errorcode ZSTD_XXH64_reset(XXH64_state_s* statePtr, ulong seed)
+        private static XXH_errorcode ZSTD_XXH64_reset(XXH64_state_s* statePtr, ulong seed)
         {
             memset(statePtr, 0, (uint)sizeof(XXH64_state_s));
             statePtr->v[0] = seed + 0x9E3779B185EBCA87UL + 0xC2B2AE3D27D4EB4FUL;
@@ -444,7 +444,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
-        public static XXH_errorcode ZSTD_XXH64_update(XXH64_state_s* state, void* input, nuint len)
+        private static XXH_errorcode ZSTD_XXH64_update(XXH64_state_s* state, void* input, nuint len)
         {
             if (input == null)
             {
@@ -500,7 +500,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
-        public static ulong ZSTD_XXH64_digest(XXH64_state_s* state)
+        private static ulong ZSTD_XXH64_digest(XXH64_state_s* state)
         {
             ulong h64;
             if (state->total_len >= 32)
@@ -520,14 +520,14 @@ namespace ZstdSharp.Unsafe
             return XXH64_finalize(h64, (byte*)state->mem64, (nuint)state->total_len, XXH_alignment.XXH_aligned);
         }
 
-        public static void ZSTD_XXH64_canonicalFromHash(XXH64_canonical_t* dst, ulong hash)
+        private static void ZSTD_XXH64_canonicalFromHash(XXH64_canonical_t* dst, ulong hash)
         {
             if (BitConverter.IsLittleEndian)
                 hash = BinaryPrimitives.ReverseEndianness(hash);
             XXH_memcpy(dst, &hash, (nuint)sizeof(XXH64_canonical_t));
         }
 
-        public static ulong ZSTD_XXH64_hashFromCanonical(XXH64_canonical_t* src)
+        private static ulong ZSTD_XXH64_hashFromCanonical(XXH64_canonical_t* src)
         {
             return XXH_readBE64(src);
         }

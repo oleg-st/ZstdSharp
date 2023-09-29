@@ -71,7 +71,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static void ZSTD_fillDoubleHashTable(ZSTD_matchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm, ZSTD_tableFillPurpose_e tfp)
+        private static void ZSTD_fillDoubleHashTable(ZSTD_matchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm, ZSTD_tableFillPurpose_e tfp)
         {
             if (tfp == ZSTD_tableFillPurpose_e.ZSTD_tfp_forCDict)
             {
@@ -609,7 +609,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_doubleFast_dictMatchState_generic(ms, seqStore, rep, src, srcSize, 7);
         }
 
-        public static nuint ZSTD_compressBlock_doubleFast(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_doubleFast(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
             switch (mls)
@@ -626,7 +626,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static nuint ZSTD_compressBlock_doubleFast_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_doubleFast_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
             switch (mls)
@@ -828,7 +828,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_doubleFast_extDict_generic(ms, seqStore, rep, src, srcSize, 7);
         }
 
-        public static nuint ZSTD_compressBlock_doubleFast_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_doubleFast_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
             switch (mls)

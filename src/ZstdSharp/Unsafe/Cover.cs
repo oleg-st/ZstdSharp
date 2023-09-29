@@ -4,11 +4,11 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        public static int g_displayLevel = 0;
+        private static int g_displayLevel = 0;
         /**
          * Returns the sum of the sample sizes.
          */
-        public static nuint COVER_sum(nuint* samplesSizes, uint nbSamples)
+        private static nuint COVER_sum(nuint* samplesSizes, uint nbSamples)
         {
             nuint sum = 0;
             uint i;
@@ -23,7 +23,7 @@ namespace ZstdSharp.Unsafe
         /**
          * Warns the user when their corpus is too small.
          */
-        public static void COVER_warnOnSmallCorpus(nuint maxDictSize, nuint nbDmers, int displayLevel)
+        private static void COVER_warnOnSmallCorpus(nuint maxDictSize, nuint nbDmers, int displayLevel)
         {
             double ratio = nbDmers / (double)maxDictSize;
             if (ratio >= 10)
@@ -45,7 +45,7 @@ namespace ZstdSharp.Unsafe
          * @param passes      The target number of passes over the dmer corpus.
          *                    More passes means a better dictionary.
          */
-        public static COVER_epoch_info_t COVER_computeEpochs(uint maxDictSize, uint nbDmers, uint k, uint passes)
+        private static COVER_epoch_info_t COVER_computeEpochs(uint maxDictSize, uint nbDmers, uint k, uint passes)
         {
             uint minEpochSize = k * 10;
             COVER_epoch_info_t epochs;
@@ -66,7 +66,7 @@ namespace ZstdSharp.Unsafe
         /**
          *  Checks total compressed size of a dictionary
          */
-        public static nuint COVER_checkTotalCompressedSize(ZDICT_cover_params_t parameters, nuint* samplesSizes, byte* samples, nuint* offsets, nuint nbTrainSamples, nuint nbSamples, byte* dict, nuint dictBufferCapacity)
+        private static nuint COVER_checkTotalCompressedSize(ZDICT_cover_params_t parameters, nuint* samplesSizes, byte* samples, nuint* offsets, nuint nbTrainSamples, nuint nbSamples, byte* dict, nuint dictBufferCapacity)
         {
             nuint totalCompressedSize = unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
             /* Pointers */
@@ -123,7 +123,7 @@ namespace ZstdSharp.Unsafe
         /**
          * Initialize the `COVER_best_t`.
          */
-        public static void COVER_best_init(COVER_best_s* best)
+        private static void COVER_best_init(COVER_best_s* best)
         {
             if (best == null)
                 return;
@@ -137,7 +137,7 @@ namespace ZstdSharp.Unsafe
         /**
          * Wait until liveJobs == 0.
          */
-        public static void COVER_best_wait(COVER_best_s* best)
+        private static void COVER_best_wait(COVER_best_s* best)
         {
             if (best == null)
             {
@@ -152,7 +152,7 @@ namespace ZstdSharp.Unsafe
         /**
          * Call COVER_best_wait() and then destroy the COVER_best_t.
          */
-        public static void COVER_best_destroy(COVER_best_s* best)
+        private static void COVER_best_destroy(COVER_best_s* best)
         {
             if (best == null)
             {
@@ -170,7 +170,7 @@ namespace ZstdSharp.Unsafe
          * Called when a thread is about to be launched.
          * Increments liveJobs.
          */
-        public static void COVER_best_start(COVER_best_s* best)
+        private static void COVER_best_start(COVER_best_s* best)
         {
             if (best == null)
             {
@@ -185,7 +185,7 @@ namespace ZstdSharp.Unsafe
          * Decrements liveJobs and signals any waiting threads if liveJobs == 0.
          * If this dictionary is the best so far save it and its parameters.
          */
-        public static void COVER_best_finish(COVER_best_s* best, ZDICT_cover_params_t parameters, COVER_dictSelection selection)
+        private static void COVER_best_finish(COVER_best_s* best, ZDICT_cover_params_t parameters, COVER_dictSelection selection)
         {
             void* dict = selection.dictContent;
             nuint compressedSize = selection.totalCompressedSize;
@@ -241,7 +241,7 @@ namespace ZstdSharp.Unsafe
          * Error function for COVER_selectDict function. Returns a struct where
          * return.totalCompressedSize is a ZSTD error.
          */
-        public static COVER_dictSelection COVER_dictSelectionError(nuint error)
+        private static COVER_dictSelection COVER_dictSelectionError(nuint error)
         {
             return setDictSelection(null, 0, error);
         }
@@ -250,7 +250,7 @@ namespace ZstdSharp.Unsafe
          * Error function for COVER_selectDict function. Checks if the return
          * value is an error.
          */
-        public static uint COVER_dictSelectionIsError(COVER_dictSelection selection)
+        private static uint COVER_dictSelectionIsError(COVER_dictSelection selection)
         {
             return ERR_isError(selection.totalCompressedSize) || selection.dictContent == null ? 1U : 0U;
         }
@@ -259,7 +259,7 @@ namespace ZstdSharp.Unsafe
          * Always call after selectDict is called to free up used memory from
          * newly created dictionary.
          */
-        public static void COVER_dictSelectionFree(COVER_dictSelection selection)
+        private static void COVER_dictSelectionFree(COVER_dictSelection selection)
         {
             free(selection.dictContent);
         }
@@ -270,7 +270,7 @@ namespace ZstdSharp.Unsafe
          * smallest dictionary within a specified regression of the compressed size
          * from the largest dictionary.
          */
-        public static COVER_dictSelection COVER_selectDict(byte* customDictContent, nuint dictBufferCapacity, nuint dictContentSize, byte* samplesBuffer, nuint* samplesSizes, uint nbFinalizeSamples, nuint nbCheckSamples, nuint nbSamples, ZDICT_cover_params_t @params, nuint* offsets, nuint totalCompressedSize)
+        private static COVER_dictSelection COVER_selectDict(byte* customDictContent, nuint dictBufferCapacity, nuint dictContentSize, byte* samplesBuffer, nuint* samplesSizes, uint nbFinalizeSamples, nuint nbCheckSamples, nuint nbSamples, ZDICT_cover_params_t @params, nuint* offsets, nuint totalCompressedSize)
         {
             nuint largestDict = 0;
             nuint largestCompressed = 0;

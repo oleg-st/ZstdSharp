@@ -125,7 +125,7 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
-        public static nuint FSE_buildDTable_wksp(uint* dt, short* normalizedCounter, uint maxSymbolValue, uint tableLog, void* workSpace, nuint wkspSize)
+        private static nuint FSE_buildDTable_wksp(uint* dt, short* normalizedCounter, uint maxSymbolValue, uint tableLog, void* workSpace, nuint wkspSize)
         {
             return FSE_buildDTable_internal(dt, normalizedCounter, maxSymbolValue, tableLog, workSpace, wkspSize);
         }
@@ -244,7 +244,7 @@ namespace ZstdSharp.Unsafe
             return FSE_decompress_wksp_body(dst, dstCapacity, cSrc, cSrcSize, maxLog, workSpace, wkspSize, 0);
         }
 
-        public static nuint FSE_decompress_wksp_bmi2(void* dst, nuint dstCapacity, void* cSrc, nuint cSrcSize, uint maxLog, void* workSpace, nuint wkspSize, int bmi2)
+        private static nuint FSE_decompress_wksp_bmi2(void* dst, nuint dstCapacity, void* cSrc, nuint cSrcSize, uint maxLog, void* workSpace, nuint wkspSize, int bmi2)
         {
             return FSE_decompress_wksp_body_default(dst, dstCapacity, cSrc, cSrcSize, maxLog, workSpace, wkspSize);
         }
