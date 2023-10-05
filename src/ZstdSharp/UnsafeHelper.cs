@@ -115,21 +115,10 @@ namespace ZstdSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int memcmp(void* buf1, void* buf2, ulong size)
         {
-            var p1 = (byte*) buf1;
-            var p2 = (byte*) buf2;
-
-            while (size > 0)
-            {
-                var diff = *p1++ - *p2++;
-                if (diff != 0)
-                {
-                    return diff;
-                }
-
-                size--;
-            }
-
-            return 0;
+            assert(size <= int.MaxValue);
+            var intSize = (int)size;
+            return new ReadOnlySpan<byte>(buf1, intSize)
+                .SequenceCompareTo(new ReadOnlySpan<byte>(buf2, intSize));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
