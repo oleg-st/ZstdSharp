@@ -86,8 +86,8 @@ namespace ZstdSharp.Unsafe
             return ZSTD_downscaleStats(table, lastEltIndex, ZSTD_highbit32(factor), base_directive_e.base_1guaranteed);
         }
 
-        public static readonly uint* baseLLfreqs = GetArrayPointer(new uint[36] { 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
-        public static readonly uint* baseOFCfreqs = GetArrayPointer(new uint[32] { 6, 2, 1, 1, 2, 3, 4, 4, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
+        private static readonly uint* baseLLfreqs = GetArrayPointer(new uint[36] { 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
+        private static readonly uint* baseOFCfreqs = GetArrayPointer(new uint[32] { 6, 2, 1, 1, 2, 3, 4, 4, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
         /* ZSTD_rescaleFreqs() :
          * if first block (detected by optPtr->litLengthSum == 0) : init statistics
          *    take hints from dictionary if there is one
@@ -817,7 +817,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_dictMatchState, 6);
         }
 
-        public static ZSTD_getAllMatchesFn[][] getAllMatchesFns = new ZSTD_getAllMatchesFn[3][] { new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_noDict_3, ZSTD_btGetAllMatches_noDict_4, ZSTD_btGetAllMatches_noDict_5, ZSTD_btGetAllMatches_noDict_6 }, new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_extDict_3, ZSTD_btGetAllMatches_extDict_4, ZSTD_btGetAllMatches_extDict_5, ZSTD_btGetAllMatches_extDict_6 }, new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_dictMatchState_3, ZSTD_btGetAllMatches_dictMatchState_4, ZSTD_btGetAllMatches_dictMatchState_5, ZSTD_btGetAllMatches_dictMatchState_6 } };
+        private static readonly ZSTD_getAllMatchesFn[][] getAllMatchesFns = new ZSTD_getAllMatchesFn[3][] { new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_noDict_3, ZSTD_btGetAllMatches_noDict_4, ZSTD_btGetAllMatches_noDict_5, ZSTD_btGetAllMatches_noDict_6 }, new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_extDict_3, ZSTD_btGetAllMatches_extDict_4, ZSTD_btGetAllMatches_extDict_5, ZSTD_btGetAllMatches_extDict_6 }, new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_dictMatchState_3, ZSTD_btGetAllMatches_dictMatchState_4, ZSTD_btGetAllMatches_dictMatchState_5, ZSTD_btGetAllMatches_dictMatchState_6 } };
         private static ZSTD_getAllMatchesFn ZSTD_selectBtGetAllMatches(ZSTD_matchState_t* ms, ZSTD_dictMode_e dictMode)
         {
             uint mls = 3 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 3 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
