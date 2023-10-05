@@ -120,7 +120,7 @@ namespace ZstdSharp.Unsafe
                         {
                             /* scale to 2K */
                             const uint scaleLog = 11;
-                            uint bitCost = HUF_getNbBitsFromCTable((nuint*)optPtr->symbolCosts->huf.CTable, lit);
+                            uint bitCost = HUF_getNbBitsFromCTable(&optPtr->symbolCosts->huf.CTable.e0, lit);
                             assert(bitCost <= scaleLog);
                             optPtr->litFreq[lit] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
                             optPtr->litSum += optPtr->litFreq[lit];

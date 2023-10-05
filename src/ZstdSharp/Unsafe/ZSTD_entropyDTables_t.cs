@@ -1,6 +1,3 @@
-using System.Runtime.CompilerServices;
-using static ZstdSharp.UnsafeHelper;
-
 namespace ZstdSharp.Unsafe
 {
     public unsafe struct ZSTD_entropyDTables_t
@@ -530,26 +527,6 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e510;
             public ZSTD_seqSymbol e511;
             public ZSTD_seqSymbol e512;
-            public ref ZSTD_seqSymbol this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_LLTable_e__FixedBuffer, ZSTD_seqSymbol>(this) + index);
-            }
-
-            public ref ZSTD_seqSymbol this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_LLTable_e__FixedBuffer, ZSTD_seqSymbol>(this) + index);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator ZSTD_seqSymbol*(in _LLTable_e__FixedBuffer t) => RefToPointer<_LLTable_e__FixedBuffer, ZSTD_seqSymbol>(t);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static ZSTD_seqSymbol* operator +(in _LLTable_e__FixedBuffer t, nuint index) => RefToPointer<_LLTable_e__FixedBuffer, ZSTD_seqSymbol>(t) + index;
         }
 
         public unsafe struct _OFTable_e__FixedBuffer
@@ -811,26 +788,6 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e254;
             public ZSTD_seqSymbol e255;
             public ZSTD_seqSymbol e256;
-            public ref ZSTD_seqSymbol this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_OFTable_e__FixedBuffer, ZSTD_seqSymbol>(this) + index);
-            }
-
-            public ref ZSTD_seqSymbol this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_OFTable_e__FixedBuffer, ZSTD_seqSymbol>(this) + index);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator ZSTD_seqSymbol*(in _OFTable_e__FixedBuffer t) => RefToPointer<_OFTable_e__FixedBuffer, ZSTD_seqSymbol>(t);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static ZSTD_seqSymbol* operator +(in _OFTable_e__FixedBuffer t, nuint index) => RefToPointer<_OFTable_e__FixedBuffer, ZSTD_seqSymbol>(t) + index;
         }
 
         public unsafe struct _MLTable_e__FixedBuffer
@@ -1348,26 +1305,6 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e510;
             public ZSTD_seqSymbol e511;
             public ZSTD_seqSymbol e512;
-            public ref ZSTD_seqSymbol this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_MLTable_e__FixedBuffer, ZSTD_seqSymbol>(this) + index);
-            }
-
-            public ref ZSTD_seqSymbol this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_MLTable_e__FixedBuffer, ZSTD_seqSymbol>(this) + index);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator ZSTD_seqSymbol*(in _MLTable_e__FixedBuffer t) => RefToPointer<_MLTable_e__FixedBuffer, ZSTD_seqSymbol>(t);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static ZSTD_seqSymbol* operator +(in _MLTable_e__FixedBuffer t, nuint index) => RefToPointer<_MLTable_e__FixedBuffer, ZSTD_seqSymbol>(t) + index;
         }
     }
 }

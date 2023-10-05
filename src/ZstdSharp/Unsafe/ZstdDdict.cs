@@ -39,9 +39,9 @@ namespace ZstdSharp.Unsafe
             {
                 dctx->litEntropy = 1;
                 dctx->fseEntropy = 1;
-                dctx->LLTptr = ddict->entropy.LLTable;
-                dctx->MLTptr = ddict->entropy.MLTable;
-                dctx->OFTptr = ddict->entropy.OFTable;
+                dctx->LLTptr = &ddict->entropy.LLTable.e0;
+                dctx->MLTptr = &ddict->entropy.MLTable.e0;
+                dctx->OFTptr = &ddict->entropy.OFTable.e0;
                 dctx->HUFptr = ddict->entropy.hufTable;
                 dctx->entropy.rep[0] = ddict->entropy.rep[0];
                 dctx->entropy.rep[1] = ddict->entropy.rep[1];

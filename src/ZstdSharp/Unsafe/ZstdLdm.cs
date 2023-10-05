@@ -291,7 +291,7 @@ namespace ZstdSharp.Unsafe
             byte* @base = ldmState->window.@base;
             byte* istart = ip;
             ldmRollingHashState_t hashState;
-            nuint* splits = (nuint*)ldmState->splitIndices;
+            nuint* splits = &ldmState->splitIndices.e0;
             uint numSplits;
             ZSTD_ldm_gear_init(&hashState, @params);
             while (ip < iend)
@@ -357,8 +357,8 @@ namespace ZstdSharp.Unsafe
             /* Rolling hash state */
             ldmRollingHashState_t hashState;
             /* Arrays for staged-processing */
-            nuint* splits = (nuint*)ldmState->splitIndices;
-            ldmMatchCandidate_t* candidates = (ldmMatchCandidate_t*)ldmState->matchCandidates;
+            nuint* splits = &ldmState->splitIndices.e0;
+            ldmMatchCandidate_t* candidates = &ldmState->matchCandidates.e0;
             uint numSplits;
             if (srcSize < minMatchLength)
                 return (nuint)(iend - anchor);

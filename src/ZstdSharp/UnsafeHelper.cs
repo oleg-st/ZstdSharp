@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InlineIL;
-using static InlineIL.IL.Emit;
+
 // ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo
 
@@ -141,22 +141,8 @@ namespace ZstdSharp
              * System.Runtime.CompilerServices.Unsafe.SkipInit(out value);
              * in .NET 5+
              */
-            Ret();
+            IL.Emit.Ret();
             throw IL.Unreachable();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static TTo* RefToPointer<TFrom, TTo>(in TFrom t) where TTo : unmanaged
-        {
-            /*
-             * Can be rewritten with
-             * (TTo*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref System.Runtime.CompilerServices.Unsafe.AsRef(t));
-             * but unfortunately reduces inlining
-             */
-            Ldarg_0();
-            Conv_U();
-            return IL.ReturnPointer<TTo>();
         }
     }
 }

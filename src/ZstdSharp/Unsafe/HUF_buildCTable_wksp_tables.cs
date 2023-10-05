@@ -1,6 +1,3 @@
-using System.Runtime.CompilerServices;
-using static ZstdSharp.UnsafeHelper;
-
 namespace ZstdSharp.Unsafe
 {
     public struct HUF_buildCTable_wksp_tables
@@ -521,26 +518,6 @@ namespace ZstdSharp.Unsafe
             public nodeElt_s e509;
             public nodeElt_s e510;
             public nodeElt_s e511;
-            public ref nodeElt_s this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_huffNodeTbl_e__FixedBuffer, nodeElt_s>(this) + index);
-            }
-
-            public ref nodeElt_s this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_huffNodeTbl_e__FixedBuffer, nodeElt_s>(this) + index);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator nodeElt_s*(in _huffNodeTbl_e__FixedBuffer t) => RefToPointer<_huffNodeTbl_e__FixedBuffer, nodeElt_s>(t);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static nodeElt_s* operator +(in _huffNodeTbl_e__FixedBuffer t, nuint index) => RefToPointer<_huffNodeTbl_e__FixedBuffer, nodeElt_s>(t) + index;
         }
 
         public unsafe struct _rankPosition_e__FixedBuffer
@@ -737,26 +714,6 @@ namespace ZstdSharp.Unsafe
             public rankPos e189;
             public rankPos e190;
             public rankPos e191;
-            public ref rankPos this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_rankPosition_e__FixedBuffer, rankPos>(this) + index);
-            }
-
-            public ref rankPos this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_rankPosition_e__FixedBuffer, rankPos>(this) + index);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator rankPos*(in _rankPosition_e__FixedBuffer t) => RefToPointer<_rankPosition_e__FixedBuffer, rankPos>(t);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static rankPos* operator +(in _rankPosition_e__FixedBuffer t, nuint index) => RefToPointer<_rankPosition_e__FixedBuffer, rankPos>(t) + index;
         }
     }
 }

@@ -229,7 +229,7 @@ namespace ZstdSharp.Unsafe
             byte* oend = ostart + dstCapacity;
             byte* op = ostart + ZSTD_blockHeaderSize;
             {
-                nuint cLitSize = ZSTD_compressSubBlock_literal((nuint*)entropy->huf.CTable, &entropyMetadata->hufMetadata, literals, litSize, op, (nuint)(oend - op), bmi2, writeLitEntropy, litEntropyWritten);
+                nuint cLitSize = ZSTD_compressSubBlock_literal(&entropy->huf.CTable.e0, &entropyMetadata->hufMetadata, literals, litSize, op, (nuint)(oend - op), bmi2, writeLitEntropy, litEntropyWritten);
                 {
                     nuint err_code = cLitSize;
                     if (ERR_isError(err_code))
@@ -283,7 +283,7 @@ namespace ZstdSharp.Unsafe
                 if (ERR_isError(largest))
                     return litSize;
                 {
-                    nuint cLitSizeEstimate = HUF_estimateCompressedSize((nuint*)huf->CTable, countWksp, maxSymbolValue);
+                    nuint cLitSizeEstimate = HUF_estimateCompressedSize(&huf->CTable.e0, countWksp, maxSymbolValue);
                     if (writeEntropy != 0)
                         cLitSizeEstimate += hufMetadata->hufDesSize;
                     return cLitSizeEstimate + literalSectionHeaderSize;

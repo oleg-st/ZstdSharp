@@ -3610,16 +3610,16 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            if (repeat == HUF_repeat.HUF_repeat_check && HUF_validateCTable((nuint*)prevHuf->CTable, countWksp, maxSymbolValue) == 0)
+            if (repeat == HUF_repeat.HUF_repeat_check && HUF_validateCTable(&prevHuf->CTable.e0, countWksp, maxSymbolValue) == 0)
             {
                 repeat = HUF_repeat.HUF_repeat_none;
             }
 
-            memset((void*)nextHuf->CTable, 0, sizeof(ulong) * 257);
-            huffLog = HUF_optimalTableLog(huffLog, srcSize, maxSymbolValue, nodeWksp, nodeWkspSize, (nuint*)nextHuf->CTable, countWksp, hufFlags);
+            memset(&nextHuf->CTable.e0, 0, sizeof(ulong) * 257);
+            huffLog = HUF_optimalTableLog(huffLog, srcSize, maxSymbolValue, nodeWksp, nodeWkspSize, &nextHuf->CTable.e0, countWksp, hufFlags);
             assert(huffLog <= 11);
             {
-                nuint maxBits = HUF_buildCTable_wksp((nuint*)nextHuf->CTable, countWksp, maxSymbolValue, huffLog, nodeWksp, nodeWkspSize);
+                nuint maxBits = HUF_buildCTable_wksp(&nextHuf->CTable.e0, countWksp, maxSymbolValue, huffLog, nodeWksp, nodeWkspSize);
                 {
                     nuint err_code = maxBits;
                     if (ERR_isError(err_code))
@@ -3632,11 +3632,11 @@ namespace ZstdSharp.Unsafe
             }
 
             {
-                nuint newCSize = HUF_estimateCompressedSize((nuint*)nextHuf->CTable, countWksp, maxSymbolValue);
-                nuint hSize = HUF_writeCTable_wksp(hufMetadata->hufDesBuffer, sizeof(byte) * 128, (nuint*)nextHuf->CTable, maxSymbolValue, huffLog, nodeWksp, nodeWkspSize);
+                nuint newCSize = HUF_estimateCompressedSize(&nextHuf->CTable.e0, countWksp, maxSymbolValue);
+                nuint hSize = HUF_writeCTable_wksp(hufMetadata->hufDesBuffer, sizeof(byte) * 128, &nextHuf->CTable.e0, maxSymbolValue, huffLog, nodeWksp, nodeWkspSize);
                 if (repeat != HUF_repeat.HUF_repeat_none)
                 {
-                    nuint oldCSize = HUF_estimateCompressedSize((nuint*)prevHuf->CTable, countWksp, maxSymbolValue);
+                    nuint oldCSize = HUF_estimateCompressedSize(&prevHuf->CTable.e0, countWksp, maxSymbolValue);
                     if (oldCSize < srcSize && (oldCSize <= hSize + newCSize || hSize + 12 >= srcSize))
                     {
                         memcpy(nextHuf, prevHuf, (uint)sizeof(ZSTD_hufCTables_t));
@@ -3752,7 +3752,7 @@ namespace ZstdSharp.Unsafe
                 if (ERR_isError(largest))
                     return litSize;
                 {
-                    nuint cLitSizeEstimate = HUF_estimateCompressedSize((nuint*)huf->CTable, countWksp, maxSymbolValue);
+                    nuint cLitSizeEstimate = HUF_estimateCompressedSize(&huf->CTable.e0, countWksp, maxSymbolValue);
                     if (writeEntropy != 0)
                         cLitSizeEstimate += hufMetadata->hufDesSize;
                     if (singleStream == 0)
@@ -4936,7 +4936,7 @@ namespace ZstdSharp.Unsafe
             {
                 uint maxSymbolValue = 255;
                 uint hasZeroWeights = 1;
-                nuint hufHeaderSize = HUF_readCTable((nuint*)bs->entropy.huf.CTable, &maxSymbolValue, dictPtr, (nuint)(dictEnd - dictPtr), &hasZeroWeights);
+                nuint hufHeaderSize = HUF_readCTable(&bs->entropy.huf.CTable.e0, &maxSymbolValue, dictPtr, (nuint)(dictEnd - dictPtr), &hasZeroWeights);
                 if (hasZeroWeights == 0)
                     bs->entropy.huf.repeatMode = HUF_repeat.HUF_repeat_valid;
                 if (ERR_isError(hufHeaderSize))

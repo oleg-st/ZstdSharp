@@ -712,7 +712,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        public static readonly byte* stringToByte_20_00 = GetArrayPointer(new byte[] { 32, 0 });
+        private static readonly byte* stringToByte_20_00 = GetArrayPointer(new byte[] { 32, 0 });
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_window_init(ZSTD_window_t* window)
         {

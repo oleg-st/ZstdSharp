@@ -1539,7 +1539,7 @@ namespace ZstdSharp.Unsafe
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted));
                 }
 
-                ZSTD_buildFSETable((ZSTD_seqSymbol*)entropy->OFTable, offcodeNCount, offcodeMaxValue, OF_base, OF_bits, offcodeLog, entropy->workspace, sizeof(uint) * 157, 0);
+                ZSTD_buildFSETable(&entropy->OFTable.e0, offcodeNCount, offcodeMaxValue, OF_base, OF_bits, offcodeLog, entropy->workspace, sizeof(uint) * 157, 0);
                 dictPtr += offcodeHeaderSize;
             }
 
@@ -1562,7 +1562,7 @@ namespace ZstdSharp.Unsafe
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted));
                 }
 
-                ZSTD_buildFSETable((ZSTD_seqSymbol*)entropy->MLTable, matchlengthNCount, matchlengthMaxValue, ML_base, ML_bits, matchlengthLog, entropy->workspace, sizeof(uint) * 157, 0);
+                ZSTD_buildFSETable(&entropy->MLTable.e0, matchlengthNCount, matchlengthMaxValue, ML_base, ML_bits, matchlengthLog, entropy->workspace, sizeof(uint) * 157, 0);
                 dictPtr += matchlengthHeaderSize;
             }
 
@@ -1585,7 +1585,7 @@ namespace ZstdSharp.Unsafe
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted));
                 }
 
-                ZSTD_buildFSETable((ZSTD_seqSymbol*)entropy->LLTable, litlengthNCount, litlengthMaxValue, LL_base, LL_bits, litlengthLog, entropy->workspace, sizeof(uint) * 157, 0);
+                ZSTD_buildFSETable(&entropy->LLTable.e0, litlengthNCount, litlengthMaxValue, LL_base, LL_bits, litlengthLog, entropy->workspace, sizeof(uint) * 157, 0);
                 dictPtr += litlengthHeaderSize;
             }
 
@@ -1657,9 +1657,9 @@ namespace ZstdSharp.Unsafe
             dctx->dictID = 0;
             dctx->bType = blockType_e.bt_reserved;
             memcpy(dctx->entropy.rep, repStartValue, sizeof(uint) * 3);
-            dctx->LLTptr = dctx->entropy.LLTable;
-            dctx->MLTptr = dctx->entropy.MLTable;
-            dctx->OFTptr = dctx->entropy.OFTable;
+            dctx->LLTptr = &dctx->entropy.LLTable.e0;
+            dctx->MLTptr = &dctx->entropy.MLTable.e0;
+            dctx->OFTptr = &dctx->entropy.OFTable.e0;
             dctx->HUFptr = dctx->entropy.hufTable;
             return 0;
         }

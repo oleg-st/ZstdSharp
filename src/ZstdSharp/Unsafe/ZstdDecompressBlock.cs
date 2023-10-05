@@ -659,7 +659,7 @@ namespace ZstdSharp.Unsafe
                 symbolEncodingType_e MLtype = (symbolEncodingType_e)(*ip >> 2 & 3);
                 ip++;
                 {
-                    nuint llhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.LLTable, &dctx->LLTptr, LLtype, 35, 9, ip, (nuint)(iend - ip), LL_base, LL_bits, LL_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));
+                    nuint llhSize = ZSTD_buildSeqTable(&dctx->entropy.LLTable.e0, &dctx->LLTptr, LLtype, 35, 9, ip, (nuint)(iend - ip), LL_base, LL_bits, LL_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));
                     if (ERR_isError(llhSize))
                     {
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
@@ -669,7 +669,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 {
-                    nuint ofhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.OFTable, &dctx->OFTptr, OFtype, 31, 8, ip, (nuint)(iend - ip), OF_base, OF_bits, OF_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));
+                    nuint ofhSize = ZSTD_buildSeqTable(&dctx->entropy.OFTable.e0, &dctx->OFTptr, OFtype, 31, 8, ip, (nuint)(iend - ip), OF_base, OF_bits, OF_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));
                     if (ERR_isError(ofhSize))
                     {
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
@@ -679,7 +679,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 {
-                    nuint mlhSize = ZSTD_buildSeqTable((ZSTD_seqSymbol*)dctx->entropy.MLTable, &dctx->MLTptr, MLtype, 52, 9, ip, (nuint)(iend - ip), ML_base, ML_bits, ML_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));
+                    nuint mlhSize = ZSTD_buildSeqTable(&dctx->entropy.MLTable.e0, &dctx->MLTptr, MLtype, 52, 9, ip, (nuint)(iend - ip), ML_base, ML_bits, ML_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));
                     if (ERR_isError(mlhSize))
                     {
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
@@ -1125,29 +1125,29 @@ namespace ZstdSharp.Unsafe
                                 BIT_reloadDStream(&seqState->DStream);
                         }
 
-                        seqState->prevOffset[2] = seqState->prevOffset[1];
-                        seqState->prevOffset[1] = seqState->prevOffset[0];
-                        seqState->prevOffset[0] = offset;
+                        seqState->prevOffset.e2 = seqState->prevOffset.e1;
+                        seqState->prevOffset.e1 = seqState->prevOffset.e0;
+                        seqState->prevOffset.e0 = offset;
                     }
                     else
                     {
                         uint ll0 = llDInfo->baseValue == 0 ? 1U : 0U;
                         if (ofBits == 0)
                         {
-                            offset = seqState->prevOffset[ll0];
-                            seqState->prevOffset[1] = seqState->prevOffset[ll0 == 0 ? 1 : 0];
-                            seqState->prevOffset[0] = offset;
+                            offset = (&seqState->prevOffset.e0)[ll0];
+                            seqState->prevOffset.e1 = (&seqState->prevOffset.e0)[ll0 == 0 ? 1 : 0];
+                            seqState->prevOffset.e0 = offset;
                         }
                         else
                         {
                             offset = ofBase + ll0 + BIT_readBitsFast(&seqState->DStream, 1);
                             {
-                                nuint temp = offset == 3 ? seqState->prevOffset[0] - 1 : seqState->prevOffset[offset];
+                                nuint temp = offset == 3 ? seqState->prevOffset.e0 - 1 : (&seqState->prevOffset.e0)[offset];
                                 temp += temp == 0 ? 1U : 0U;
                                 if (offset != 1)
-                                    seqState->prevOffset[2] = seqState->prevOffset[1];
-                                seqState->prevOffset[1] = seqState->prevOffset[0];
-                                seqState->prevOffset[0] = offset = temp;
+                                    seqState->prevOffset.e2 = seqState->prevOffset.e1;
+                                seqState->prevOffset.e1 = seqState->prevOffset.e0;
+                                seqState->prevOffset.e0 = offset = temp;
                             }
                         }
                     }
@@ -1196,7 +1196,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint i;
                     for (i = 0; i < 3; i++)
-                        seqState.prevOffset[i] = dctx->entropy.rep[i];
+                        (&seqState.prevOffset.e0)[i] = dctx->entropy.rep[i];
                 }
 
                 if (ERR_isError(BIT_initDStream(&seqState.DStream, ip, (nuint)(iend - ip))))
@@ -1279,7 +1279,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint i;
                     for (i = 0; i < 3; i++)
-                        dctx->entropy.rep[i] = (uint)seqState.prevOffset[i];
+                        dctx->entropy.rep[i] = (uint)(&seqState.prevOffset.e0)[i];
                 }
             }
 
@@ -1342,7 +1342,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint i;
                     for (i = 0; i < 3; i++)
-                        seqState.prevOffset[i] = dctx->entropy.rep[i];
+                        (&seqState.prevOffset.e0)[i] = dctx->entropy.rep[i];
                 }
 
                 if (ERR_isError(BIT_initDStream(&seqState.DStream, ip, (nuint)(iend - ip))))
@@ -1460,7 +1460,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint i;
                     for (i = 0; i < 3; i++)
-                        dctx->entropy.rep[i] = (uint)seqState.prevOffset[i];
+                        dctx->entropy.rep[i] = (uint)(&seqState.prevOffset.e0)[i];
                 }
             }
 
@@ -1537,7 +1537,7 @@ namespace ZstdSharp.Unsafe
                 {
                     int i;
                     for (i = 0; i < 3; i++)
-                        seqState.prevOffset[i] = dctx->entropy.rep[i];
+                        (&seqState.prevOffset.e0)[i] = dctx->entropy.rep[i];
                 }
 
                 assert(dst != null);
@@ -1649,7 +1649,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint i;
                     for (i = 0; i < 3; i++)
-                        dctx->entropy.rep[i] = (uint)seqState.prevOffset[i];
+                        dctx->entropy.rep[i] = (uint)(&seqState.prevOffset.e0)[i];
                 }
             }
 

@@ -612,7 +612,7 @@ namespace ZstdSharp.Unsafe
         private static nuint HUF_buildCTable_wksp(nuint* CTable, uint* count, uint maxSymbolValue, uint maxNbBits, void* workSpace, nuint wkspSize)
         {
             HUF_buildCTable_wksp_tables* wksp_tables = (HUF_buildCTable_wksp_tables*)HUF_alignUpWorkspace(workSpace, &wkspSize, sizeof(uint));
-            nodeElt_s* huffNode0 = (nodeElt_s*)wksp_tables->huffNodeTbl;
+            nodeElt_s* huffNode0 = &wksp_tables->huffNodeTbl.e0;
             nodeElt_s* huffNode = huffNode0 + 1;
             int nonNullRank;
             if (wkspSize < (nuint)sizeof(HUF_buildCTable_wksp_tables))
@@ -622,7 +622,7 @@ namespace ZstdSharp.Unsafe
             if (maxSymbolValue > 255)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_maxSymbolValue_tooLarge));
             memset(huffNode0, 0, (uint)(sizeof(nodeElt_s) * 512));
-            HUF_sort(huffNode, count, maxSymbolValue, wksp_tables->rankPosition);
+            HUF_sort(huffNode, count, maxSymbolValue, &wksp_tables->rankPosition.e0);
             nonNullRank = HUF_buildTree(huffNode, maxSymbolValue);
             maxNbBits = HUF_setMaxHeight(huffNode, (uint)nonNullRank, maxNbBits);
             if (maxNbBits > 12)
@@ -693,18 +693,18 @@ namespace ZstdSharp.Unsafe
         {
             assert(idx <= 1);
             assert(HUF_getNbBits(elt) <= 12);
-            bitC->bitContainer[idx] >>= (int)HUF_getNbBits(elt);
-            bitC->bitContainer[idx] |= kFast != 0 ? HUF_getValueFast(elt) : HUF_getValue(elt);
-            bitC->bitPos[idx] += HUF_getNbBitsFast(elt);
-            assert((bitC->bitPos[idx] & 0xFF) <= (nuint)(sizeof(nuint) * 8));
+            (&bitC->bitContainer.e0)[idx] >>= (int)HUF_getNbBits(elt);
+            (&bitC->bitContainer.e0)[idx] |= kFast != 0 ? HUF_getValueFast(elt) : HUF_getValue(elt);
+            (&bitC->bitPos.e0)[idx] += HUF_getNbBitsFast(elt);
+            assert(((&bitC->bitPos.e0)[idx] & 0xFF) <= (nuint)(sizeof(nuint) * 8));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
         private static void HUF_zeroIndex1(HUF_CStream_t* bitC)
         {
-            bitC->bitContainer[1] = 0;
-            bitC->bitPos[1] = 0;
+            bitC->bitContainer.e1 = 0;
+            bitC->bitPos.e1 = 0;
         }
 
         /*! HUF_mergeIndex1() :
@@ -715,11 +715,11 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static void HUF_mergeIndex1(HUF_CStream_t* bitC)
         {
-            assert((bitC->bitPos[1] & 0xFF) < (nuint)(sizeof(nuint) * 8));
-            bitC->bitContainer[0] >>= (int)(bitC->bitPos[1] & 0xFF);
-            bitC->bitContainer[0] |= bitC->bitContainer[1];
-            bitC->bitPos[0] += bitC->bitPos[1];
-            assert((bitC->bitPos[0] & 0xFF) <= (nuint)(sizeof(nuint) * 8));
+            assert((bitC->bitPos.e1 & 0xFF) < (nuint)(sizeof(nuint) * 8));
+            bitC->bitContainer.e0 >>= (int)(bitC->bitPos.e1 & 0xFF);
+            bitC->bitContainer.e0 |= bitC->bitContainer.e1;
+            bitC->bitPos.e0 += bitC->bitPos.e1;
+            assert((bitC->bitPos.e0 & 0xFF) <= (nuint)(sizeof(nuint) * 8));
         }
 
         /*! HUF_flushBits() :
@@ -734,11 +734,11 @@ namespace ZstdSharp.Unsafe
         private static void HUF_flushBits(HUF_CStream_t* bitC, int kFast)
         {
             /* The upper bits of bitPos are noisy, so we must mask by 0xFF. */
-            nuint nbBits = bitC->bitPos[0] & 0xFF;
+            nuint nbBits = bitC->bitPos.e0 & 0xFF;
             nuint nbBytes = nbBits >> 3;
             /* The top nbBits bits of bitContainer are the ones we need. */
-            nuint bitContainer = bitC->bitContainer[0] >> (int)((nuint)(sizeof(nuint) * 8) - nbBits);
-            bitC->bitPos[0] &= 7;
+            nuint bitContainer = bitC->bitContainer.e0 >> (int)((nuint)(sizeof(nuint) * 8) - nbBits);
+            bitC->bitPos.e0 &= 7;
             assert(nbBits > 0);
             assert(nbBits <= (nuint)(sizeof(nuint) * 8));
             assert(bitC->ptr <= bitC->endPtr);
@@ -768,7 +768,7 @@ namespace ZstdSharp.Unsafe
             HUF_addBits(bitC, HUF_endMark(), 0, 0);
             HUF_flushBits(bitC, 0);
             {
-                nuint nbBits = bitC->bitPos[0] & 0xFF;
+                nuint nbBits = bitC->bitPos.e0 & 0xFF;
                 if (bitC->ptr >= bitC->endPtr)
                     return 0;
                 return (nuint)(bitC->ptr - bitC->startPtr) + (nuint)(nbBits > 0 ? 1 : 0);
@@ -1176,9 +1176,9 @@ namespace ZstdSharp.Unsafe
                 return HUF_compressCTable_internal(ostart, op, oend, src, srcSize, nbStreams, oldHufTable, flags);
             }
 
-            huffLog = HUF_optimalTableLog(huffLog, srcSize, maxSymbolValue, &table->wksps, (nuint)sizeof(_wksps_e__Union), (nuint*)table->CTable, table->count, flags);
+            huffLog = HUF_optimalTableLog(huffLog, srcSize, maxSymbolValue, &table->wksps, (nuint)sizeof(_wksps_e__Union), &table->CTable.e0, table->count, flags);
             {
-                nuint maxBits = HUF_buildCTable_wksp((nuint*)table->CTable, table->count, maxSymbolValue, huffLog, &table->wksps.buildCTable_wksp, (nuint)sizeof(HUF_buildCTable_wksp_tables));
+                nuint maxBits = HUF_buildCTable_wksp(&table->CTable.e0, table->count, maxSymbolValue, huffLog, &table->wksps.buildCTable_wksp, (nuint)sizeof(HUF_buildCTable_wksp_tables));
                 {
                     nuint _var_err__ = maxBits;
                     if (ERR_isError(_var_err__))
@@ -1191,17 +1191,17 @@ namespace ZstdSharp.Unsafe
             {
                 nuint ctableSize = maxSymbolValue + 2;
                 nuint unusedSize = sizeof(ulong) * 257 - ctableSize * (nuint)sizeof(nuint);
-                memset(table->CTable + ctableSize, 0, (uint)unusedSize);
+                memset(&table->CTable.e0 + ctableSize, 0, (uint)unusedSize);
             }
 
             {
-                nuint hSize = HUF_writeCTable_wksp(op, dstSize, (nuint*)table->CTable, maxSymbolValue, huffLog, &table->wksps.writeCTable_wksp, (nuint)sizeof(HUF_WriteCTableWksp));
+                nuint hSize = HUF_writeCTable_wksp(op, dstSize, &table->CTable.e0, maxSymbolValue, huffLog, &table->wksps.writeCTable_wksp, (nuint)sizeof(HUF_WriteCTableWksp));
                 if (ERR_isError(hSize))
                     return hSize;
                 if (repeat != null && *repeat != HUF_repeat.HUF_repeat_none)
                 {
                     nuint oldSize = HUF_estimateCompressedSize(oldHufTable, table->count, maxSymbolValue);
-                    nuint newSize = HUF_estimateCompressedSize((nuint*)table->CTable, table->count, maxSymbolValue);
+                    nuint newSize = HUF_estimateCompressedSize(&table->CTable.e0, table->count, maxSymbolValue);
                     if (oldSize <= hSize + newSize || hSize + 12 >= srcSize)
                     {
                         return HUF_compressCTable_internal(ostart, op, oend, src, srcSize, nbStreams, oldHufTable, flags);
@@ -1220,10 +1220,10 @@ namespace ZstdSharp.Unsafe
                 }
 
                 if (oldHufTable != null)
-                    memcpy(oldHufTable, (void*)table->CTable, sizeof(ulong) * 257);
+                    memcpy(oldHufTable, &table->CTable.e0, sizeof(ulong) * 257);
             }
 
-            return HUF_compressCTable_internal(ostart, op, oend, src, srcSize, nbStreams, (nuint*)table->CTable, flags);
+            return HUF_compressCTable_internal(ostart, op, oend, src, srcSize, nbStreams, &table->CTable.e0, flags);
         }
 
         /** HUF_compress1X_repeat() :

@@ -47,30 +47,30 @@ namespace ZstdSharp.Unsafe
                 nuint length2 = MEM_readLE16(istart + 2);
                 nuint length3 = MEM_readLE16(istart + 4);
                 nuint length4 = srcSize - (length1 + length2 + length3 + 6);
-                args->iend[0] = istart + 6;
-                args->iend[1] = args->iend[0] + length1;
-                args->iend[2] = args->iend[1] + length2;
-                args->iend[3] = args->iend[2] + length3;
+                args->iend.e0 = istart + 6;
+                args->iend.e1 = args->iend.e0 + length1;
+                args->iend.e2 = args->iend.e1 + length2;
+                args->iend.e3 = args->iend.e2 + length3;
                 if (length1 < 16 || length2 < 8 || length3 < 8 || length4 < 8)
                     return 0;
                 if (length4 > srcSize)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             }
 
-            args->ip[0] = args->iend[1] - sizeof(ulong);
-            args->ip[1] = args->iend[2] - sizeof(ulong);
-            args->ip[2] = args->iend[3] - sizeof(ulong);
-            args->ip[3] = (byte*)src + srcSize - sizeof(ulong);
-            args->op[0] = (byte*)dst;
-            args->op[1] = args->op[0] + (dstSize + 3) / 4;
-            args->op[2] = args->op[1] + (dstSize + 3) / 4;
-            args->op[3] = args->op[2] + (dstSize + 3) / 4;
-            if (args->op[3] >= oend)
+            args->ip.e0 = args->iend.e1 - sizeof(ulong);
+            args->ip.e1 = args->iend.e2 - sizeof(ulong);
+            args->ip.e2 = args->iend.e3 - sizeof(ulong);
+            args->ip.e3 = (byte*)src + srcSize - sizeof(ulong);
+            args->op.e0 = (byte*)dst;
+            args->op.e1 = args->op.e0 + (dstSize + 3) / 4;
+            args->op.e2 = args->op.e1 + (dstSize + 3) / 4;
+            args->op.e3 = args->op.e2 + (dstSize + 3) / 4;
+            if (args->op.e3 >= oend)
                 return 0;
-            args->bits[0] = HUF_initFastDStream(args->ip[0]);
-            args->bits[1] = HUF_initFastDStream(args->ip[1]);
-            args->bits[2] = HUF_initFastDStream(args->ip[2]);
-            args->bits[3] = HUF_initFastDStream(args->ip[3]);
+            args->bits[0] = HUF_initFastDStream(args->ip.e0);
+            args->bits[1] = HUF_initFastDStream(args->ip.e1);
+            args->bits[2] = HUF_initFastDStream(args->ip.e2);
+            args->bits[3] = HUF_initFastDStream(args->ip.e3);
             args->ilimit = ilimit;
             args->oend = oend;
             args->dt = dt;
@@ -79,16 +79,16 @@ namespace ZstdSharp.Unsafe
 
         private static nuint HUF_initRemainingDStream(BIT_DStream_t* bit, HUF_DecompressFastArgs* args, int stream, byte* segmentEnd)
         {
-            if (args->op[stream] > segmentEnd)
+            if ((&args->op.e0)[stream] > segmentEnd)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
-            if (args->ip[stream] < args->iend[stream] - 8)
+            if ((&args->ip.e0)[stream] < (&args->iend.e0)[stream] - 8)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             assert(sizeof(nuint) == 8);
-            bit->bitContainer = MEM_readLEST(args->ip[stream]);
+            bit->bitContainer = MEM_readLEST((&args->ip.e0)[stream]);
             bit->bitsConsumed = ZSTD_countTrailingZeros64(args->bits[stream]);
-            bit->start = (sbyte*)args->iend[0];
+            bit->start = (sbyte*)args->iend.e0;
             bit->limitPtr = bit->start + sizeof(nuint);
-            bit->ptr = (sbyte*)args->ip[stream];
+            bit->ptr = (sbyte*)(&args->ip.e0)[stream];
             return 0;
         }
 
@@ -493,14 +493,14 @@ namespace ZstdSharp.Unsafe
             bits1 = args->bits[1];
             bits2 = args->bits[2];
             bits3 = args->bits[3];
-            ip0 = args->ip[0];
-            ip1 = args->ip[1];
-            ip2 = args->ip[2];
-            ip3 = args->ip[3];
-            op0 = args->op[0];
-            op1 = args->op[1];
-            op2 = args->op[2];
-            op3 = args->op[3];
+            ip0 = args->ip.e0;
+            ip1 = args->ip.e1;
+            ip2 = args->ip.e2;
+            ip3 = args->ip.e3;
+            op0 = args->op.e0;
+            op1 = args->op.e1;
+            op2 = args->op.e2;
+            op3 = args->op.e3;
             assert(BitConverter.IsLittleEndian);
             assert(!MEM_32bits);
             for (; ; )
@@ -769,14 +769,14 @@ namespace ZstdSharp.Unsafe
             args->bits[1] = bits1;
             args->bits[2] = bits2;
             args->bits[3] = bits3;
-            args->ip[0] = ip0;
-            args->ip[1] = ip1;
-            args->ip[2] = ip2;
-            args->ip[3] = ip3;
-            args->op[0] = op0;
-            args->op[1] = op1;
-            args->op[2] = op2;
-            args->op[3] = op3;
+            args->ip.e0 = ip0;
+            args->ip.e1 = ip1;
+            args->ip.e2 = ip2;
+            args->ip.e3 = ip3;
+            args->op.e0 = op0;
+            args->op.e1 = op1;
+            args->op.e2 = op2;
+            args->op.e3 = op3;
         }
 
         /**
@@ -804,13 +804,13 @@ namespace ZstdSharp.Unsafe
                     return 0;
             }
 
-            assert(args.ip[0] >= args.ilimit);
+            assert(args.ip.e0 >= args.ilimit);
             loopFn(&args);
-            assert(args.ip[0] >= iend);
-            assert(args.ip[1] >= iend);
-            assert(args.ip[2] >= iend);
-            assert(args.ip[3] >= iend);
-            assert(args.op[3] <= oend);
+            assert(args.ip.e0 >= iend);
+            assert(args.ip.e1 >= iend);
+            assert(args.ip.e2 >= iend);
+            assert(args.ip.e3 >= iend);
+            assert(args.op.e3 <= oend);
             {
                 nuint segmentSize = (dstSize + 3) / 4;
                 byte* segmentEnd = (byte*)dst;
@@ -830,8 +830,8 @@ namespace ZstdSharp.Unsafe
                         }
                     }
 
-                    args.op[i] += HUF_decodeStreamX1(args.op[i], &bit, segmentEnd, (HUF_DEltX1*)dt, 11);
-                    if (args.op[i] != segmentEnd)
+                    (&args.op.e0)[i] += HUF_decodeStreamX1((&args.op.e0)[i], &bit, segmentEnd, (HUF_DEltX1*)dt, 11);
+                    if ((&args.op.e0)[i] != segmentEnd)
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 }
             }
@@ -1048,7 +1048,7 @@ namespace ZstdSharp.Unsafe
 
         private static void HUF_fillDTableX2(HUF_DEltX2* DTable, uint targetLog, sortedSymbol_t* sortedList, uint* rankStart, rankValCol_t* rankValOrigin, uint maxWeight, uint nbBitsBaseline)
         {
-            uint* rankVal = (uint*)rankValOrigin[0];
+            uint* rankVal = (uint*)&rankValOrigin[0];
             /* note : targetLog >= srcLog, hence scaleLog <= 1 */
             int scaleLog = (int)(nbBitsBaseline - targetLog);
             uint minBits = nbBitsBaseline - maxWeight;
@@ -1071,7 +1071,7 @@ namespace ZstdSharp.Unsafe
                         minWeight = 1;
                     for (s = begin; s != end; ++s)
                     {
-                        HUF_fillDTableX2Level2(DTable + start, targetLog, nbBits, (uint*)rankValOrigin[nbBits], minWeight, wEnd, sortedList, rankStart, nbBitsBaseline, sortedList[s].symbol);
+                        HUF_fillDTableX2Level2(DTable + start, targetLog, nbBits, (uint*)&rankValOrigin[nbBits], minWeight, wEnd, sortedList, rankStart, nbBitsBaseline, sortedList[s].symbol);
                         start += (int)length;
                     }
                 }
@@ -1130,14 +1130,14 @@ namespace ZstdSharp.Unsafe
                 {
                     uint w = wksp->weightList[s];
                     uint r = rankStart[w]++;
-                    wksp->sortedSymbol[r].symbol = (byte)s;
+                    (&wksp->sortedSymbol.e0)[r].symbol = (byte)s;
                 }
 
                 rankStart[0] = 0;
             }
 
             {
-                uint* rankVal0 = (uint*)wksp->rankVal[0];
+                uint* rankVal0 = (uint*)&wksp->rankVal.e0;
                 {
                     /* tableLog <= maxTableLog */
                     int rescale = (int)(maxTableLog - tableLog - 1);
@@ -1156,7 +1156,7 @@ namespace ZstdSharp.Unsafe
                     uint consumed;
                     for (consumed = minBits; consumed < maxTableLog - minBits + 1; consumed++)
                     {
-                        uint* rankValPtr = (uint*)wksp->rankVal[consumed];
+                        uint* rankValPtr = (uint*)&(&wksp->rankVal.e0)[consumed];
                         uint w;
                         for (w = 1; w < maxW + 1; w++)
                         {
@@ -1166,7 +1166,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            HUF_fillDTableX2(dt, maxTableLog, (sortedSymbol_t*)wksp->sortedSymbol, wksp->rankStart0, (rankValCol_t*)wksp->rankVal, maxW, tableLog + 1);
+            HUF_fillDTableX2(dt, maxTableLog, &wksp->sortedSymbol.e0, wksp->rankStart0, &wksp->rankVal.e0, maxW, tableLog + 1);
             dtd.tableLog = (byte)maxTableLog;
             dtd.tableType = 1;
             memcpy(DTable, &dtd, (uint)sizeof(DTableDesc));
@@ -1428,14 +1428,14 @@ namespace ZstdSharp.Unsafe
             bits1 = args->bits[1];
             bits2 = args->bits[2];
             bits3 = args->bits[3];
-            ip0 = args->ip[0];
-            ip1 = args->ip[1];
-            ip2 = args->ip[2];
-            ip3 = args->ip[3];
-            op0 = args->op[0];
-            op1 = args->op[1];
-            op2 = args->op[2];
-            op3 = args->op[3];
+            ip0 = args->ip.e0;
+            ip1 = args->ip.e1;
+            ip2 = args->ip.e2;
+            ip3 = args->ip.e3;
+            op0 = args->op.e0;
+            op1 = args->op.e1;
+            op2 = args->op.e2;
+            op3 = args->op.e3;
             oend0 = op1;
             oend1 = op2;
             oend2 = op3;
@@ -1752,14 +1752,14 @@ namespace ZstdSharp.Unsafe
             args->bits[1] = bits1;
             args->bits[2] = bits2;
             args->bits[3] = bits3;
-            args->ip[0] = ip0;
-            args->ip[1] = ip1;
-            args->ip[2] = ip2;
-            args->ip[3] = ip3;
-            args->op[0] = op0;
-            args->op[1] = op1;
-            args->op[2] = op2;
-            args->op[3] = op3;
+            args->ip.e0 = ip0;
+            args->ip.e1 = ip1;
+            args->ip.e2 = ip2;
+            args->ip.e3 = ip3;
+            args->op.e0 = op0;
+            args->op.e1 = op1;
+            args->op.e2 = op2;
+            args->op.e3 = op3;
         }
 
         private static nuint HUF_decompress4X2_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, delegate* managed<HUF_DecompressFastArgs*, void> loopFn)
@@ -1782,13 +1782,13 @@ namespace ZstdSharp.Unsafe
                     return 0;
             }
 
-            assert(args.ip[0] >= args.ilimit);
+            assert(args.ip.e0 >= args.ilimit);
             loopFn(&args);
-            assert(args.ip[0] >= iend);
-            assert(args.ip[1] >= iend);
-            assert(args.ip[2] >= iend);
-            assert(args.ip[3] >= iend);
-            assert(args.op[3] <= oend);
+            assert(args.ip.e0 >= iend);
+            assert(args.ip.e1 >= iend);
+            assert(args.ip.e2 >= iend);
+            assert(args.ip.e3 >= iend);
+            assert(args.op.e3 <= oend);
             {
                 nuint segmentSize = (dstSize + 3) / 4;
                 byte* segmentEnd = (byte*)dst;
@@ -1808,8 +1808,8 @@ namespace ZstdSharp.Unsafe
                         }
                     }
 
-                    args.op[i] += HUF_decodeStreamX2(args.op[i], &bit, segmentEnd, (HUF_DEltX2*)dt, 11);
-                    if (args.op[i] != segmentEnd)
+                    (&args.op.e0)[i] += HUF_decodeStreamX2((&args.op.e0)[i], &bit, segmentEnd, (HUF_DEltX2*)dt, 11);
+                    if ((&args.op.e0)[i] != segmentEnd)
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 }
             }

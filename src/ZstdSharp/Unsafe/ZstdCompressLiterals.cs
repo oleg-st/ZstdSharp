@@ -128,7 +128,7 @@ namespace ZstdSharp.Unsafe
                 if (repeat == HUF_repeat.HUF_repeat_valid && lhSize == 3)
                     singleStream = 1;
                 huf_compress = singleStream != 0 ? &HUF_compress1X_repeat : &HUF_compress4X_repeat;
-                cLitSize = huf_compress(ostart + lhSize, dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, (nuint*)nextHuf->CTable, &repeat, flags);
+                cLitSize = huf_compress(ostart + lhSize, dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, &nextHuf->CTable.e0, &repeat, flags);
                 if (repeat != HUF_repeat.HUF_repeat_none)
                 {
                     hType = symbolEncodingType_e.set_repeat;

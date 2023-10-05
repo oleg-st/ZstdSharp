@@ -1,8 +1,3 @@
-using System.Runtime.CompilerServices;
-using static ZstdSharp.UnsafeHelper;
-using InlineIL;
-using static InlineIL.IL.Emit;
-
 namespace ZstdSharp.Unsafe
 {
     /**
@@ -32,65 +27,6 @@ namespace ZstdSharp.Unsafe
             public byte* e1;
             public byte* e2;
             public byte* e3;
-            public ref byte* this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get
-                {
-                    Ldarg_0();
-                    Conv_U();
-                    Ldarg_1();
-                    Conv_I();
-                    Sizeof(new TypeRef(typeof(byte*)));
-                    Conv_I();
-                    Mul();
-                    Add();
-                    return ref *(byte**)IL.ReturnPointer();
-                }
-            }
-
-            public ref byte* this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get
-                {
-                    Ldarg_0();
-                    Conv_U();
-                    Ldarg_1();
-                    Conv_I();
-                    Sizeof(new TypeRef(typeof(byte*)));
-                    Conv_I();
-                    Mul();
-                    Add();
-                    return ref *(byte**)IL.ReturnPointer();
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator byte**(in _ip_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                Conv_U();
-                return (byte**)IL.ReturnPointer();
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static byte** operator +(in _ip_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Conv_U();
-                Ldarg_1();
-                Conv_I();
-                Sizeof(new TypeRef(typeof(byte*)));
-                Conv_I();
-                Mul();
-                Add();
-                return (byte**)IL.ReturnPointer();
-            }
         }
 
         public unsafe struct _op_e__FixedBuffer
@@ -99,65 +35,6 @@ namespace ZstdSharp.Unsafe
             public byte* e1;
             public byte* e2;
             public byte* e3;
-            public ref byte* this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get
-                {
-                    Ldarg_0();
-                    Conv_U();
-                    Ldarg_1();
-                    Conv_I();
-                    Sizeof(new TypeRef(typeof(byte*)));
-                    Conv_I();
-                    Mul();
-                    Add();
-                    return ref *(byte**)IL.ReturnPointer();
-                }
-            }
-
-            public ref byte* this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get
-                {
-                    Ldarg_0();
-                    Conv_U();
-                    Ldarg_1();
-                    Conv_I();
-                    Sizeof(new TypeRef(typeof(byte*)));
-                    Conv_I();
-                    Mul();
-                    Add();
-                    return ref *(byte**)IL.ReturnPointer();
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator byte**(in _op_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                Conv_U();
-                return (byte**)IL.ReturnPointer();
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static byte** operator +(in _op_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Conv_U();
-                Ldarg_1();
-                Conv_I();
-                Sizeof(new TypeRef(typeof(byte*)));
-                Conv_I();
-                Mul();
-                Add();
-                return (byte**)IL.ReturnPointer();
-            }
         }
 
         public unsafe struct _iend_e__FixedBuffer
@@ -166,65 +43,6 @@ namespace ZstdSharp.Unsafe
             public byte* e1;
             public byte* e2;
             public byte* e3;
-            public ref byte* this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get
-                {
-                    Ldarg_0();
-                    Conv_U();
-                    Ldarg_1();
-                    Conv_I();
-                    Sizeof(new TypeRef(typeof(byte*)));
-                    Conv_I();
-                    Mul();
-                    Add();
-                    return ref *(byte**)IL.ReturnPointer();
-                }
-            }
-
-            public ref byte* this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get
-                {
-                    Ldarg_0();
-                    Conv_U();
-                    Ldarg_1();
-                    Conv_I();
-                    Sizeof(new TypeRef(typeof(byte*)));
-                    Conv_I();
-                    Mul();
-                    Add();
-                    return ref *(byte**)IL.ReturnPointer();
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator byte**(in _iend_e__FixedBuffer t)
-            {
-                Ldarg_0();
-                Conv_U();
-                return (byte**)IL.ReturnPointer();
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static byte** operator +(in _iend_e__FixedBuffer t, nuint index)
-            {
-                Ldarg_0();
-                Conv_U();
-                Ldarg_1();
-                Conv_I();
-                Sizeof(new TypeRef(typeof(byte*)));
-                Conv_I();
-                Mul();
-                Add();
-                return (byte**)IL.ReturnPointer();
-            }
         }
     }
 }

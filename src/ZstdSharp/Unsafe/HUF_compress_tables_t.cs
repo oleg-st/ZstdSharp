@@ -1,6 +1,3 @@
-using System.Runtime.CompilerServices;
-using static ZstdSharp.UnsafeHelper;
-
 namespace ZstdSharp.Unsafe
 {
     public unsafe struct HUF_compress_tables_t
@@ -267,26 +264,6 @@ namespace ZstdSharp.Unsafe
             public nuint e254;
             public nuint e255;
             public nuint e256;
-            public ref nuint this[nuint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_CTable_e__FixedBuffer, nuint>(this) + index);
-            }
-
-            public ref nuint this[nint index]
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                [InlineMethod.Inline]
-                get => ref *(RefToPointer<_CTable_e__FixedBuffer, nuint>(this) + index);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static implicit operator nuint*(in _CTable_e__FixedBuffer t) => RefToPointer<_CTable_e__FixedBuffer, nuint>(t);
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [InlineMethod.Inline]
-            public static nuint* operator +(in _CTable_e__FixedBuffer t, nuint index) => RefToPointer<_CTable_e__FixedBuffer, nuint>(t) + index;
         }
     }
 }
