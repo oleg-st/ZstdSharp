@@ -750,7 +750,7 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_btGetAllMatches_internal(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat, ZSTD_dictMode_e dictMode, uint mls)
         {
-            assert((3 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 3 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) == mls);
+            assert((ms->cParams.minMatch <= 3 ? 3 : ms->cParams.minMatch <= 6 ? ms->cParams.minMatch : 6) == mls);
             if (ip < ms->window.@base + ms->nextToUpdate)
                 return 0;
             ZSTD_updateTree_internal(ms, ip, iHighLimit, mls, dictMode);
@@ -820,7 +820,7 @@ namespace ZstdSharp.Unsafe
         private static readonly ZSTD_getAllMatchesFn[][] getAllMatchesFns = new ZSTD_getAllMatchesFn[3][] { new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_noDict_3, ZSTD_btGetAllMatches_noDict_4, ZSTD_btGetAllMatches_noDict_5, ZSTD_btGetAllMatches_noDict_6 }, new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_extDict_3, ZSTD_btGetAllMatches_extDict_4, ZSTD_btGetAllMatches_extDict_5, ZSTD_btGetAllMatches_extDict_6 }, new ZSTD_getAllMatchesFn[4] { ZSTD_btGetAllMatches_dictMatchState_3, ZSTD_btGetAllMatches_dictMatchState_4, ZSTD_btGetAllMatches_dictMatchState_5, ZSTD_btGetAllMatches_dictMatchState_6 } };
         private static ZSTD_getAllMatchesFn ZSTD_selectBtGetAllMatches(ZSTD_matchState_t* ms, ZSTD_dictMode_e dictMode)
         {
-            uint mls = 3 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 3 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
+            uint mls = ms->cParams.minMatch <= 3 ? 3 : ms->cParams.minMatch <= 6 ? ms->cParams.minMatch : 6;
             assert((uint)dictMode < 3);
             assert(mls - 3 < 4);
             return getAllMatchesFns[(int)dictMode][mls - 3];

@@ -1912,7 +1912,7 @@ namespace ZstdSharp.Unsafe
             if (ZSTD_rowMatchFinderUsed(cPar.strategy, useRowMatchFinder) != 0)
             {
                 /* Switch to 32-entry rows if searchLog is 5 (or more) */
-                uint rowLog = 4 > (cPar.searchLog < 6 ? cPar.searchLog : 6) ? 4 : cPar.searchLog < 6 ? cPar.searchLog : 6;
+                uint rowLog = cPar.searchLog <= 4 ? 4 : cPar.searchLog <= 6 ? cPar.searchLog : 6;
                 const uint maxRowHashLog = 32 - 8;
                 uint maxHashLog = maxRowHashLog + rowLog;
                 assert(cPar.hashLog >= rowLog);
@@ -2006,7 +2006,7 @@ namespace ZstdSharp.Unsafe
 
         private static nuint ZSTD_estimateCCtxSize_usingCCtxParams_internal(ZSTD_compressionParameters* cParams, ldmParams_t* ldmParams, int isStatic, ZSTD_paramSwitch_e useRowMatchFinder, nuint buffInSize, nuint buffOutSize, ulong pledgedSrcSize, int useSequenceProducer, nuint maxBlockSize)
         {
-            nuint windowSize = (nuint)(1UL > (1UL << (int)cParams->windowLog < pledgedSrcSize ? 1UL << (int)cParams->windowLog : pledgedSrcSize) ? 1UL : 1UL << (int)cParams->windowLog < pledgedSrcSize ? 1UL << (int)cParams->windowLog : pledgedSrcSize);
+            nuint windowSize = (nuint)(1UL << (int)cParams->windowLog <= 1UL ? 1UL : 1UL << (int)cParams->windowLog <= pledgedSrcSize ? 1UL << (int)cParams->windowLog : pledgedSrcSize);
             nuint blockSize = ZSTD_resolveMaxBlockSize(maxBlockSize) < windowSize ? ZSTD_resolveMaxBlockSize(maxBlockSize) : windowSize;
             nuint maxNbSeq = ZSTD_maxNbSeq(blockSize, cParams->minMatch, useSequenceProducer);
             nuint tokenSpace = ZSTD_cwksp_alloc_size(32 + blockSize) + ZSTD_cwksp_aligned_alloc_size(maxNbSeq * (nuint)sizeof(seqDef_s)) + 3 * ZSTD_cwksp_alloc_size(maxNbSeq * sizeof(byte));
@@ -2319,7 +2319,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 {
-                    uint rowLog = 4 > (cParams->searchLog < 6 ? cParams->searchLog : 6) ? 4 : cParams->searchLog < 6 ? cParams->searchLog : 6;
+                    uint rowLog = cParams->searchLog <= 4 ? 4 : cParams->searchLog <= 6 ? cParams->searchLog : 6;
                     assert(cParams->hashLog >= rowLog);
                     ms->rowHashLog = cParams->hashLog - rowLog;
                 }

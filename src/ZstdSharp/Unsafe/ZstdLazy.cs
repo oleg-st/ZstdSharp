@@ -882,7 +882,7 @@ namespace ZstdSharp.Unsafe
          */
         private static void ZSTD_row_update(ZSTD_matchState_t* ms, byte* ip)
         {
-            uint rowLog = 4 > (ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6) ? 4 : ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6;
+            uint rowLog = ms->cParams.searchLog <= 4 ? 4 : ms->cParams.searchLog <= 6 ? ms->cParams.searchLog : 6;
             uint rowMask = (1U << (int)rowLog) - 1;
             /* mls caps out at 6 */
             uint mls = ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
@@ -1866,8 +1866,8 @@ namespace ZstdSharp.Unsafe
             byte* @base = ms->window.@base;
             uint prefixLowestIndex = ms->window.dictLimit;
             byte* prefixLowest = @base + prefixLowestIndex;
-            uint mls = 4 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 4 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
-            uint rowLog = 4 > (ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6) ? 4 : ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6;
+            uint mls = ms->cParams.minMatch <= 4 ? 4 : ms->cParams.minMatch <= 6 ? ms->cParams.minMatch : 6;
+            uint rowLog = ms->cParams.searchLog <= 4 ? 4 : ms->cParams.searchLog <= 6 ? ms->cParams.searchLog : 6;
             uint offset_1 = rep[0], offset_2 = rep[1];
             uint offsetSaved1 = 0, offsetSaved2 = 0;
             int isDMS = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? 1 : 0;
@@ -2289,8 +2289,8 @@ namespace ZstdSharp.Unsafe
             byte* dictEnd = dictBase + dictLimit;
             byte* dictStart = dictBase + ms->window.lowLimit;
             uint windowLog = ms->cParams.windowLog;
-            uint mls = 4 > (ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6) ? 4 : ms->cParams.minMatch < 6 ? ms->cParams.minMatch : 6;
-            uint rowLog = 4 > (ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6) ? 4 : ms->cParams.searchLog < 6 ? ms->cParams.searchLog : 6;
+            uint mls = ms->cParams.minMatch <= 4 ? 4 : ms->cParams.minMatch <= 6 ? ms->cParams.minMatch : 6;
+            uint rowLog = ms->cParams.searchLog <= 4 ? 4 : ms->cParams.searchLog <= 6 ? ms->cParams.searchLog : 6;
             uint offset_1 = rep[0], offset_2 = rep[1];
             ms->lazySkipping = 0;
             ip += ip == prefixStart ? 1 : 0;

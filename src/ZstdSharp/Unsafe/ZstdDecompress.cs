@@ -1237,7 +1237,7 @@ namespace ZstdSharp.Unsafe
                 return dctx->expected;
             if (dctx->bType != blockType_e.bt_raw)
                 return dctx->expected;
-            return 1 > (inputSize < dctx->expected ? inputSize : dctx->expected) ? 1 : inputSize < dctx->expected ? inputSize : dctx->expected;
+            return inputSize <= 1 ? 1 : inputSize <= dctx->expected ? inputSize : dctx->expected;
         }
 
         public static ZSTD_nextInputType_e ZSTD_nextInputType(ZSTD_DCtx_s* dctx)
