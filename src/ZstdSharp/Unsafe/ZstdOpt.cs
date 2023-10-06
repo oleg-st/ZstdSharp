@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using static ZstdSharp.UnsafeHelper;
 using System;
+using System.Runtime.InteropServices;
 
 namespace ZstdSharp.Unsafe
 {
@@ -86,8 +87,18 @@ namespace ZstdSharp.Unsafe
             return ZSTD_downscaleStats(table, lastEltIndex, ZSTD_highbit32(factor), base_directive_e.base_1guaranteed);
         }
 
+#if NET8_0_OR_GREATER
+        private static ReadOnlySpan<uint> Span_baseLLfreqs => new uint[36]{4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        private static uint* baseLLfreqs => (uint*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(Span_baseLLfreqs));
+#else
         private static readonly uint* baseLLfreqs = GetArrayPointer(new uint[36] { 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
+#endif
+#if NET8_0_OR_GREATER
+        private static ReadOnlySpan<uint> Span_baseOFCfreqs => new uint[32]{6, 2, 1, 1, 2, 3, 4, 4, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        private static uint* baseOFCfreqs => (uint*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(Span_baseOFCfreqs));
+#else
         private static readonly uint* baseOFCfreqs = GetArrayPointer(new uint[32] { 6, 2, 1, 1, 2, 3, 4, 4, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
+#endif
         /* ZSTD_rescaleFreqs() :
          * if first block (detected by optPtr->litLengthSum == 0) : init statistics
          *    take hints from dictionary if there is one

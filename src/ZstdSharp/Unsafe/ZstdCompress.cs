@@ -1,4 +1,6 @@
 using static ZstdSharp.UnsafeHelper;
+using System;
+using System.Runtime.InteropServices;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
@@ -2057,7 +2059,12 @@ namespace ZstdSharp.Unsafe
             }
         }
 
+#if NET8_0_OR_GREATER
+        private static ReadOnlySpan<ulong> Span_srcSizeTiers => new ulong[4]{(ulong)(16 * (1 << 10)), (ulong)(128 * (1 << 10)), (ulong)(256 * (1 << 10)), (unchecked(0UL - 1))};
+        private static ulong* srcSizeTiers => (ulong*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(Span_srcSizeTiers));
+#else
         private static readonly ulong* srcSizeTiers = GetArrayPointer(new ulong[4] { 16 * (1 << 10), 128 * (1 << 10), 256 * (1 << 10), unchecked(0UL - 1) });
+#endif
         private static nuint ZSTD_estimateCCtxSize_internal(int compressionLevel)
         {
             int tier = 0;
