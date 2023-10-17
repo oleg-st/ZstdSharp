@@ -124,11 +124,11 @@ namespace ZstdSharp.Unsafe
             {
                 HUF_repeat repeat = prevHuf->repeatMode;
                 int flags = 0 | (bmi2 != 0 ? (int)HUF_flags_e.HUF_flags_bmi2 : 0) | (strategy < ZSTD_strategy.ZSTD_lazy && srcSize <= 1024 ? (int)HUF_flags_e.HUF_flags_preferRepeat : 0) | (strategy >= ZSTD_strategy.ZSTD_btultra ? (int)HUF_flags_e.HUF_flags_optimalDepth : 0) | (suspectUncompressible != 0 ? (int)HUF_flags_e.HUF_flags_suspectUncompressible : 0);
-                delegate* managed<void*, nuint, void*, nuint, uint, uint, void*, nuint, nuint*, HUF_repeat*, int, nuint> huf_compress;
+                void* huf_compress;
                 if (repeat == HUF_repeat.HUF_repeat_valid && lhSize == 3)
                     singleStream = 1;
-                huf_compress = singleStream != 0 ? &HUF_compress1X_repeat : &HUF_compress4X_repeat;
-                cLitSize = huf_compress(ostart + lhSize, dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, &nextHuf->CTable.e0, &repeat, flags);
+                huf_compress = singleStream != 0 ? (delegate* managed<void*, nuint, void*, nuint, uint, uint, void*, nuint, nuint*, HUF_repeat*, int, nuint>)(&HUF_compress1X_repeat) : (delegate* managed<void*, nuint, void*, nuint, uint, uint, void*, nuint, nuint*, HUF_repeat*, int, nuint>)(&HUF_compress4X_repeat);
+                cLitSize = ((delegate* managed<void*, nuint, void*, nuint, uint, uint, void*, nuint, nuint*, HUF_repeat*, int, nuint>)huf_compress)(ostart + lhSize, dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, &nextHuf->CTable.e0, &repeat, flags);
                 if (repeat != HUF_repeat.HUF_repeat_none)
                 {
                     hType = symbolEncodingType_e.set_repeat;

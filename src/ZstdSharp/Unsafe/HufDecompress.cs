@@ -784,7 +784,7 @@ namespace ZstdSharp.Unsafe
          *          0 if the fallback implementation should be used
          *          An error if an error occurred
          */
-        private static nuint HUF_decompress4X1_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, delegate* managed<HUF_DecompressFastArgs*, void> loopFn)
+        private static nuint HUF_decompress4X1_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, void* loopFn)
         {
             void* dt = DTable + 1;
             byte* iend = (byte*)cSrc + 6;
@@ -805,7 +805,7 @@ namespace ZstdSharp.Unsafe
             }
 
             assert(args.ip.e0 >= args.ilimit);
-            loopFn(&args);
+            ((delegate* managed<HUF_DecompressFastArgs*, void>)loopFn)(&args);
             assert(args.ip.e0 >= iend);
             assert(args.ip.e1 >= iend);
             assert(args.ip.e2 >= iend);
@@ -847,8 +847,8 @@ namespace ZstdSharp.Unsafe
 
         private static nuint HUF_decompress4X1_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
-            delegate* managed<void*, nuint, void*, nuint, uint*, nuint> fallbackFn = &HUF_decompress4X1_usingDTable_internal_default;
-            delegate* managed<HUF_DecompressFastArgs*, void> loopFn = &HUF_decompress4X1_usingDTable_internal_fast_c_loop;
+            void* fallbackFn = (delegate* managed<void*, nuint, void*, nuint, uint*, nuint>)(&HUF_decompress4X1_usingDTable_internal_default);
+            void* loopFn = (delegate* managed<HUF_DecompressFastArgs*, void>)(&HUF_decompress4X1_usingDTable_internal_fast_c_loop);
             if ((flags & (int)HUF_flags_e.HUF_flags_disableFast) == 0)
             {
                 nuint ret = HUF_decompress4X1_usingDTable_internal_fast(dst, dstSize, cSrc, cSrcSize, DTable, loopFn);
@@ -856,7 +856,7 @@ namespace ZstdSharp.Unsafe
                     return ret;
             }
 
-            return fallbackFn(dst, dstSize, cSrc, cSrcSize, DTable);
+            return ((delegate* managed<void*, nuint, void*, nuint, uint*, nuint>)fallbackFn)(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
         private static nuint HUF_decompress4X1_DCtx_wksp(uint* dctx, void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, void* workSpace, nuint wkspSize, int flags)
@@ -1762,7 +1762,7 @@ namespace ZstdSharp.Unsafe
             args->op.e3 = op3;
         }
 
-        private static nuint HUF_decompress4X2_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, delegate* managed<HUF_DecompressFastArgs*, void> loopFn)
+        private static nuint HUF_decompress4X2_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, void* loopFn)
         {
             void* dt = DTable + 1;
             byte* iend = (byte*)cSrc + 6;
@@ -1783,7 +1783,7 @@ namespace ZstdSharp.Unsafe
             }
 
             assert(args.ip.e0 >= args.ilimit);
-            loopFn(&args);
+            ((delegate* managed<HUF_DecompressFastArgs*, void>)loopFn)(&args);
             assert(args.ip.e0 >= iend);
             assert(args.ip.e1 >= iend);
             assert(args.ip.e2 >= iend);
@@ -1819,8 +1819,8 @@ namespace ZstdSharp.Unsafe
 
         private static nuint HUF_decompress4X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)
         {
-            delegate* managed<void*, nuint, void*, nuint, uint*, nuint> fallbackFn = &HUF_decompress4X2_usingDTable_internal_default;
-            delegate* managed<HUF_DecompressFastArgs*, void> loopFn = &HUF_decompress4X2_usingDTable_internal_fast_c_loop;
+            void* fallbackFn = (delegate* managed<void*, nuint, void*, nuint, uint*, nuint>)(&HUF_decompress4X2_usingDTable_internal_default);
+            void* loopFn = (delegate* managed<HUF_DecompressFastArgs*, void>)(&HUF_decompress4X2_usingDTable_internal_fast_c_loop);
             if ((flags & (int)HUF_flags_e.HUF_flags_disableFast) == 0)
             {
                 nuint ret = HUF_decompress4X2_usingDTable_internal_fast(dst, dstSize, cSrc, cSrcSize, DTable, loopFn);
@@ -1828,7 +1828,7 @@ namespace ZstdSharp.Unsafe
                     return ret;
             }
 
-            return fallbackFn(dst, dstSize, cSrc, cSrcSize, DTable);
+            return ((delegate* managed<void*, nuint, void*, nuint, uint*, nuint>)fallbackFn)(dst, dstSize, cSrc, cSrcSize, DTable);
         }
 
         private static nuint HUF_decompress1X2_usingDTable_internal(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, int flags)

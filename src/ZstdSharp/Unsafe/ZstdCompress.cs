@@ -3305,7 +3305,7 @@ namespace ZstdSharp.Unsafe
                     assert(zc->externalMatchCtx.mFinder != null);
                     {
                         uint windowSize = (uint)1 << (int)zc->appliedParams.cParams.windowLog;
-                        nuint nbExternalSeqs = zc->externalMatchCtx.mFinder(zc->externalMatchCtx.mState, zc->externalMatchCtx.seqBuffer, zc->externalMatchCtx.seqBufferCapacity, src, srcSize, null, 0, zc->appliedParams.compressionLevel, windowSize);
+                        nuint nbExternalSeqs = ((delegate* managed<void*, ZSTD_Sequence*, nuint, void*, nuint, void*, nuint, int, nuint, nuint>)zc->externalMatchCtx.mFinder)(zc->externalMatchCtx.mState, zc->externalMatchCtx.seqBuffer, zc->externalMatchCtx.seqBufferCapacity, src, srcSize, null, 0, zc->appliedParams.compressionLevel, windowSize);
                         nuint nbPostProcessedSeqs = ZSTD_postProcessSequenceProducerResult(zc->externalMatchCtx.seqBuffer, nbExternalSeqs, zc->externalMatchCtx.seqBufferCapacity, srcSize);
                         if (!ERR_isError(nbPostProcessedSeqs))
                         {
@@ -6968,17 +6968,17 @@ namespace ZstdSharp.Unsafe
             return bytesAdjustment;
         }
 
-        private static delegate* managed<ZSTD_CCtx_s*, ZSTD_sequencePosition*, ZSTD_Sequence*, nuint, void*, nuint, ZSTD_paramSwitch_e, nuint> ZSTD_selectSequenceCopier(ZSTD_sequenceFormat_e mode)
+        private static void* ZSTD_selectSequenceCopier(ZSTD_sequenceFormat_e mode)
         {
-            delegate* managed<ZSTD_CCtx_s*, ZSTD_sequencePosition*, ZSTD_Sequence*, nuint, void*, nuint, ZSTD_paramSwitch_e, nuint> sequenceCopier = null;
+            void* sequenceCopier = null;
             assert(ZSTD_cParam_withinBounds(ZSTD_cParameter.ZSTD_c_experimentalParam11, (int)mode) != 0);
             if (mode == ZSTD_sequenceFormat_e.ZSTD_sf_explicitBlockDelimiters)
             {
-                return &ZSTD_copySequencesToSeqStoreExplicitBlockDelim;
+                return (delegate* managed<ZSTD_CCtx_s*, ZSTD_sequencePosition*, ZSTD_Sequence*, nuint, void*, nuint, ZSTD_paramSwitch_e, nuint>)(&ZSTD_copySequencesToSeqStoreExplicitBlockDelim);
             }
             else if (mode == ZSTD_sequenceFormat_e.ZSTD_sf_noBlockDelimiters)
             {
-                return &ZSTD_copySequencesToSeqStoreNoBlockDelim;
+                return (delegate* managed<ZSTD_CCtx_s*, ZSTD_sequencePosition*, ZSTD_Sequence*, nuint, void*, nuint, ZSTD_paramSwitch_e, nuint>)(&ZSTD_copySequencesToSeqStoreNoBlockDelim);
             }
 
             assert(sequenceCopier != null);
@@ -7067,7 +7067,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_sequencePosition seqPos = new ZSTD_sequencePosition { idx = 0, posInSequence = 0, posInSrc = 0 };
             byte* ip = (byte*)src;
             byte* op = (byte*)dst;
-            delegate* managed<ZSTD_CCtx_s*, ZSTD_sequencePosition*, ZSTD_Sequence*, nuint, void*, nuint, ZSTD_paramSwitch_e, nuint> sequenceCopier = ZSTD_selectSequenceCopier(cctx->appliedParams.blockDelimiters);
+            void* sequenceCopier = ZSTD_selectSequenceCopier(cctx->appliedParams.blockDelimiters);
             if (remaining == 0)
             {
                 /* last block */
@@ -7100,7 +7100,7 @@ namespace ZstdSharp.Unsafe
 
                 assert(blockSize <= remaining);
                 ZSTD_resetSeqStore(&cctx->seqStore);
-                additionalByteAdjustment = sequenceCopier(cctx, &seqPos, inSeqs, inSeqsSize, ip, blockSize, cctx->appliedParams.searchForExternalRepcodes);
+                additionalByteAdjustment = ((delegate* managed<ZSTD_CCtx_s*, ZSTD_sequencePosition*, ZSTD_Sequence*, nuint, void*, nuint, ZSTD_paramSwitch_e, nuint>)sequenceCopier)(cctx, &seqPos, inSeqs, inSeqsSize, ip, blockSize, cctx->appliedParams.searchForExternalRepcodes);
                 {
                     nuint err_code = additionalByteAdjustment;
                     if (ERR_isError(err_code))
@@ -7499,7 +7499,7 @@ namespace ZstdSharp.Unsafe
          *
          * The user is strongly encouraged to read the full API documentation (above) before
          * calling this function. */
-        public static void ZSTD_registerSequenceProducer(ZSTD_CCtx_s* zc, void* mState, delegate* managed<void*, ZSTD_Sequence*, nuint, void*, nuint, void*, nuint, int, nuint, nuint> mFinder)
+        public static void ZSTD_registerSequenceProducer(ZSTD_CCtx_s* zc, void* mState, void* mFinder)
         {
             if (mFinder != null)
             {
