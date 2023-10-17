@@ -13,5 +13,13 @@ namespace ZstdSharp.Unsafe
         public nuint size;
         /* The capacity starting from `seq` pointer */
         public nuint capacity;
+        public rawSeqStore_t(rawSeq* seq = default, nuint pos = default, nuint posInSequence = default, nuint size = default, nuint capacity = default)
+        {
+            this.seq = seq;
+            this.pos = pos;
+            this.posInSequence = posInSequence;
+            this.size = size;
+            this.capacity = capacity;
+        }
     }
 }
