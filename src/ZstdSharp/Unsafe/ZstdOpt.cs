@@ -989,7 +989,6 @@ namespace ZstdSharp.Unsafe
             ZSTD_optimal_t* opt = optStatePtr->priceTable;
             ZSTD_match_t* matches = optStatePtr->matchTable;
             ZSTD_optimal_t lastSequence;
-            SkipInit(out lastSequence);
             ZSTD_optLdm_t optLdm;
             memset(&lastSequence, 0, (uint)sizeof(ZSTD_optimal_t));
             optLdm.seqStore = ms->ldmSeqStore != null ? *ms->ldmSeqStore : kNullRawSeqStore;

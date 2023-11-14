@@ -1203,7 +1203,6 @@ namespace ZstdSharp.Unsafe
             if (nbSeq != 0)
             {
                 seqState_t seqState;
-                SkipInit(out seqState);
                 dctx->fseEntropy = 1;
                 {
                     uint i;
@@ -1349,7 +1348,6 @@ namespace ZstdSharp.Unsafe
             if (nbSeq != 0)
             {
                 seqState_t seqState;
-                SkipInit(out seqState);
                 dctx->fseEntropy = 1;
                 {
                     uint i;
@@ -1541,7 +1539,6 @@ namespace ZstdSharp.Unsafe
                 seq_t* sequences = stackalloc seq_t[8];
                 int seqAdvance = nbSeq < 8 ? nbSeq : 8;
                 seqState_t seqState;
-                SkipInit(out seqState);
                 int seqNb;
                 /* track position relative to prefixStart */
                 nuint prefetchPos = (nuint)(op - prefixStart);
