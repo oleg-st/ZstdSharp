@@ -1,7 +1,0 @@
-using System.Runtime.InteropServices;
-
-namespace ZstdSharp.Unsafe
-{
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public unsafe delegate uint ZSTD_getAllMatchesFn(ZSTD_match_t* param0, ZSTD_matchState_t* param1, uint* param2, byte* param3, byte* param4, uint* rep, uint ll0, uint lengthToBeat);
-}
