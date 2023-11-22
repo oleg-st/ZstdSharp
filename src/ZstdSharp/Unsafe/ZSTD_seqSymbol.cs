@@ -6,7 +6,7 @@ namespace ZstdSharp.Unsafe
         public byte nbAdditionalBits;
         public byte nbBits;
         public uint baseValue;
-        public ZSTD_seqSymbol(ushort nextState = default, byte nbAdditionalBits = default, byte nbBits = default, uint baseValue = default)
+        public ZSTD_seqSymbol(ushort nextState, byte nbAdditionalBits, byte nbBits, uint baseValue)
         {
             this.nextState = nextState;
             this.nbAdditionalBits = nbAdditionalBits;

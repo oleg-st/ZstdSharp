@@ -5,7 +5,7 @@ namespace ZstdSharp.Unsafe
         public void* customAlloc;
         public void* customFree;
         public void* opaque;
-        public ZSTD_customMem(void* customAlloc = default, void* customFree = default, void* opaque = default)
+        public ZSTD_customMem(void* customAlloc, void* customFree, void* opaque)
         {
             this.customAlloc = customAlloc;
             this.customFree = customFree;

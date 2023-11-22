@@ -16,7 +16,7 @@ namespace ZstdSharp.Unsafe
         public uint targetLength;
         /**< see ZSTD_strategy definition above */
         public ZSTD_strategy strategy;
-        public ZSTD_compressionParameters(uint windowLog = default, uint chainLog = default, uint hashLog = default, uint searchLog = default, uint minMatch = default, uint targetLength = default, ZSTD_strategy strategy = default)
+        public ZSTD_compressionParameters(uint windowLog, uint chainLog, uint hashLog, uint searchLog, uint minMatch, uint targetLength, ZSTD_strategy strategy)
         {
             this.windowLog = windowLog;
             this.chainLog = chainLog;
