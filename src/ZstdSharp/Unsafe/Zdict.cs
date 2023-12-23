@@ -128,6 +128,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZDICT_analyzeEntropy(void* dstBuffer, nuint maxDstSize, int compressionLevel, void* srcBuffer, nuint* fileSizes, uint nbFiles, void* dictBuffer, nuint dictBufferSize, uint notificationLevel)
         {
             uint* countLit = stackalloc uint[256];
+            /* no final ; */
             nuint* hufTable = stackalloc nuint[257];
             uint* offcodeCount = stackalloc uint[31];
             short* offcodeNCount = stackalloc short[31];

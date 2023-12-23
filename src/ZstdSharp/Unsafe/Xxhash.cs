@@ -47,6 +47,10 @@ namespace ZstdSharp.Unsafe
             }
         }
 
+        /* *************************************
+         *  Misc
+         ***************************************/
+        /*! @ingroup public */
         private static uint ZSTD_XXH_versionNumber()
         {
             return 0 * 100 * 100 + 8 * 100 + 1;
@@ -174,27 +178,35 @@ namespace ZstdSharp.Unsafe
             return XXH32_finalize(h32, input, len & 15, align);
         }
 
+        /*! @ingroup xxh32_family */
         private static uint ZSTD_XXH32(void* input, nuint len, uint seed)
         {
             return XXH32_endian_align((byte*)input, len, seed, XXH_alignment.XXH_unaligned);
         }
 
+        /*******   Hash streaming   *******/
+        /*!
+         * @ingroup xxh32_family
+         */
         private static XXH32_state_s* ZSTD_XXH32_createState()
         {
             return (XXH32_state_s*)XXH_malloc((nuint)sizeof(XXH32_state_s));
         }
 
+        /*! @ingroup xxh32_family */
         private static XXH_errorcode ZSTD_XXH32_freeState(XXH32_state_s* statePtr)
         {
             XXH_free(statePtr);
             return XXH_errorcode.XXH_OK;
         }
 
+        /*! @ingroup xxh32_family */
         private static void ZSTD_XXH32_copyState(XXH32_state_s* dstState, XXH32_state_s* srcState)
         {
             XXH_memcpy(dstState, srcState, (nuint)sizeof(XXH32_state_s));
         }
 
+        /*! @ingroup xxh32_family */
         private static XXH_errorcode ZSTD_XXH32_reset(XXH32_state_s* statePtr, uint seed)
         {
             memset(statePtr, 0, (uint)sizeof(XXH32_state_s));
@@ -205,6 +217,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
+        /*! @ingroup xxh32_family */
         private static XXH_errorcode ZSTD_XXH32_update(XXH32_state_s* state, void* input, nuint len)
         {
             if (input == null)
@@ -269,6 +282,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
+        /*! @ingroup xxh32_family */
         private static uint ZSTD_XXH32_digest(XXH32_state_s* state)
         {
             uint h32;
@@ -285,6 +299,20 @@ namespace ZstdSharp.Unsafe
             return XXH32_finalize(h32, (byte*)state->mem32, state->memsize, XXH_alignment.XXH_aligned);
         }
 
+        /*!
+         * @ingroup xxh32_family
+         * The default return values from XXH functions are unsigned 32 and 64 bit
+         * integers.
+         *
+         * The canonical representation uses big endian convention, the same convention
+         * as human-readable numbers (large digits first).
+         *
+         * This way, hash values can be written into a file or buffer, remaining
+         * comparable across different systems.
+         *
+         * The following functions allow transformation of hash values to and from their
+         * canonical format.
+         */
         private static void ZSTD_XXH32_canonicalFromHash(XXH32_canonical_t* dst, uint hash)
         {
             if (BitConverter.IsLittleEndian)
@@ -292,6 +320,7 @@ namespace ZstdSharp.Unsafe
             XXH_memcpy(dst, &hash, (nuint)sizeof(XXH32_canonical_t));
         }
 
+        /*! @ingroup xxh32_family */
         private static uint ZSTD_XXH32_hashFromCanonical(XXH32_canonical_t* src)
         {
             return XXH_readBE32(src);
@@ -413,27 +442,32 @@ namespace ZstdSharp.Unsafe
             return XXH64_finalize(h64, input, len, align);
         }
 
+        /*! @ingroup xxh64_family */
         private static ulong ZSTD_XXH64(void* input, nuint len, ulong seed)
         {
             return XXH64_endian_align((byte*)input, len, seed, XXH_alignment.XXH_unaligned);
         }
 
+        /*! @ingroup xxh64_family*/
         private static XXH64_state_s* ZSTD_XXH64_createState()
         {
             return (XXH64_state_s*)XXH_malloc((nuint)sizeof(XXH64_state_s));
         }
 
+        /*! @ingroup xxh64_family */
         private static XXH_errorcode ZSTD_XXH64_freeState(XXH64_state_s* statePtr)
         {
             XXH_free(statePtr);
             return XXH_errorcode.XXH_OK;
         }
 
+        /*! @ingroup xxh64_family */
         private static void ZSTD_XXH64_copyState(XXH64_state_s* dstState, XXH64_state_s* srcState)
         {
             XXH_memcpy(dstState, srcState, (nuint)sizeof(XXH64_state_s));
         }
 
+        /*! @ingroup xxh64_family */
         private static XXH_errorcode ZSTD_XXH64_reset(XXH64_state_s* statePtr, ulong seed)
         {
             memset(statePtr, 0, (uint)sizeof(XXH64_state_s));
@@ -444,6 +478,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
+        /*! @ingroup xxh64_family */
         private static XXH_errorcode ZSTD_XXH64_update(XXH64_state_s* state, void* input, nuint len)
         {
             if (input == null)
@@ -500,6 +535,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
+        /*! @ingroup xxh64_family */
         private static ulong ZSTD_XXH64_digest(XXH64_state_s* state)
         {
             ulong h64;
@@ -520,6 +556,7 @@ namespace ZstdSharp.Unsafe
             return XXH64_finalize(h64, (byte*)state->mem64, (nuint)state->total_len, XXH_alignment.XXH_aligned);
         }
 
+        /*! @ingroup xxh64_family */
         private static void ZSTD_XXH64_canonicalFromHash(XXH64_canonical_t* dst, ulong hash)
         {
             if (BitConverter.IsLittleEndian)
@@ -527,6 +564,7 @@ namespace ZstdSharp.Unsafe
             XXH_memcpy(dst, &hash, (nuint)sizeof(XXH64_canonical_t));
         }
 
+        /*! @ingroup xxh64_family */
         private static ulong ZSTD_XXH64_hashFromCanonical(XXH64_canonical_t* src)
         {
             return XXH_readBE64(src);
