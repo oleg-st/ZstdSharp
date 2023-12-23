@@ -43,7 +43,12 @@ namespace ZstdSharp.Unsafe
             uint f = ctx->f;
             uint dmersInK = k - d + 1;
             /* Try each segment (activeSegment) and save the best (bestSegment) */
-            COVER_segment_t bestSegment = new COVER_segment_t { begin = 0, end = 0, score = 0 };
+            COVER_segment_t bestSegment = new COVER_segment_t
+            {
+                begin = 0,
+                end = 0,
+                score = 0
+            };
             COVER_segment_t activeSegment;
             activeSegment.begin = begin;
             activeSegment.end = begin;

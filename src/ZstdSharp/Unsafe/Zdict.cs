@@ -139,7 +139,12 @@ namespace ZstdSharp.Unsafe
             short* litLengthNCount = stackalloc short[36];
             uint* repOffset = stackalloc uint[1024];
             offsetCount_t* bestRepOffset = stackalloc offsetCount_t[4];
-            EStats_ress_t esr = new EStats_ress_t { dict = null, zc = null, workPlace = null };
+            EStats_ress_t esr = new EStats_ress_t
+            {
+                dict = null,
+                zc = null,
+                workPlace = null
+            };
             ZSTD_parameters @params;
             uint u, huffLog = 11, Offlog = 8, mlLog = 9, llLog = 9, total;
             nuint pos = 0, errorCode;

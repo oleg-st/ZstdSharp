@@ -437,7 +437,12 @@ namespace ZstdSharp.Unsafe
          */
         public static ZSTD_bounds ZSTD_cParam_getBounds(ZSTD_cParameter param)
         {
-            ZSTD_bounds bounds = new ZSTD_bounds { error = 0, lowerBound = 0, upperBound = 0 };
+            ZSTD_bounds bounds = new ZSTD_bounds
+            {
+                error = 0,
+                lowerBound = 0,
+                upperBound = 0
+            };
             switch (param)
             {
                 case ZSTD_cParameter.ZSTD_c_compressionLevel:
@@ -2060,10 +2065,17 @@ namespace ZstdSharp.Unsafe
         }
 
 #if NET8_0_OR_GREATER
-        private static ReadOnlySpan<ulong> Span_srcSizeTiers => new ulong[4]{(ulong)(16 * (1 << 10)), (ulong)(128 * (1 << 10)), (ulong)(256 * (1 << 10)), (unchecked(0UL - 1))};
+        private static ReadOnlySpan<ulong> Span_srcSizeTiers => new ulong[4]
+        {
+            16 * (1 << 10),
+            128 * (1 << 10),
+            256 * (1 << 10),
+            unchecked(0UL - 1)
+        };
         private static ulong* srcSizeTiers => (ulong*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(Span_srcSizeTiers));
 #else
-        private static readonly ulong* srcSizeTiers = GetArrayPointer(new ulong[4] { 16 * (1 << 10), 128 * (1 << 10), 256 * (1 << 10), unchecked(0UL - 1) });
+
+        private static readonly ulong* srcSizeTiers = GetArrayPointer(new ulong[4] { (ulong)(16 * (1 << 10)), (ulong)(128 * (1 << 10)), (ulong)(256 * (1 << 10)), (unchecked(0UL - 1)) });
 #endif
         private static nuint ZSTD_estimateCCtxSize_internal(int compressionLevel)
         {
@@ -2757,7 +2769,12 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_copyCCtx(ZSTD_CCtx_s* dstCCtx, ZSTD_CCtx_s* srcCCtx, ulong pledgedSrcSize)
         {
             /*content*/
-            ZSTD_frameParameters fParams = new ZSTD_frameParameters { contentSizeFlag = 1, checksumFlag = 0, noDictIDFlag = 0 };
+            ZSTD_frameParameters fParams = new ZSTD_frameParameters
+            {
+                contentSizeFlag = 1,
+                checksumFlag = 0,
+                noDictIDFlag = 0
+            };
             ZSTD_buffered_policy_e zbuff = srcCCtx->bufferedPolicy;
             if (pledgedSrcSize == 0)
                 pledgedSrcSize = unchecked(0UL - 1);
@@ -3126,8 +3143,88 @@ namespace ZstdSharp.Unsafe
             return cSize;
         }
 
-        private static readonly void*[][] blockCompressor = new void*[4][] { new void*[10] { (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_fast), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_fast), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_doubleFast), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_greedy), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy2), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btlazy2), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btopt), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btultra), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btultra2) }, new void*[10] { (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_fast_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_fast_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_doubleFast_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_greedy_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy2_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btlazy2_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btopt_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btultra_extDict), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btultra_extDict) }, new void*[10] { (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_fast_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_fast_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_doubleFast_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_greedy_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy2_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btlazy2_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btopt_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btultra_dictMatchState), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_btultra_dictMatchState) }, new void*[10] { null, null, null, (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_greedy_dedicatedDictSearch), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy_dedicatedDictSearch), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy2_dedicatedDictSearch), null, null, null, null } };
-        private static readonly void*[][] rowBasedBlockCompressors = new void*[4][] { new void*[3] { (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_greedy_row), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy_row), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy2_row) }, new void*[3] { (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_greedy_extDict_row), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy_extDict_row), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy2_extDict_row) }, new void*[3] { (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_greedy_dictMatchState_row), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy_dictMatchState_row), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy2_dictMatchState_row) }, new void*[3] { (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_greedy_dedicatedDictSearch_row), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy_dedicatedDictSearch_row), (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)(&ZSTD_compressBlock_lazy2_dedicatedDictSearch_row) } };
+        private static readonly void*[][] blockCompressor = new void*[4][]
+        {
+            new void*[10]
+            {
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_fast),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_fast),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_doubleFast),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_greedy),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy2),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btlazy2),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btopt),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btultra),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btultra2)
+            },
+            new void*[10]
+            {
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_fast_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_fast_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_doubleFast_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_greedy_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy2_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btlazy2_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btopt_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btultra_extDict),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btultra_extDict)
+            },
+            new void*[10]
+            {
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_fast_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_fast_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_doubleFast_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_greedy_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy2_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btlazy2_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btopt_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btultra_dictMatchState),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_btultra_dictMatchState)
+            },
+            new void*[10]
+            {
+                null,
+                null,
+                null,
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_greedy_dedicatedDictSearch),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy_dedicatedDictSearch),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy2_dedicatedDictSearch),
+                null,
+                null,
+                null,
+                null
+            }
+        };
+        private static readonly void*[][] rowBasedBlockCompressors = new void*[4][]
+        {
+            new void*[3]
+            {
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_greedy_row),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy_row),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy2_row)
+            },
+            new void*[3]
+            {
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_greedy_extDict_row),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy_extDict_row),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy2_extDict_row)
+            },
+            new void*[3]
+            {
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_greedy_dictMatchState_row),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy_dictMatchState_row),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy2_dictMatchState_row)
+            },
+            new void*[3]
+            {
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_greedy_dedicatedDictSearch_row),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy_dedicatedDictSearch_row),
+                (delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint> )(&ZSTD_compressBlock_lazy2_dedicatedDictSearch_row)
+            }
+        };
         /* ZSTD_selectBlockCompressor() :
          * Not static, but internal use only (used by long distance matcher)
          * assumption : strat is a valid strategy */
@@ -3309,7 +3406,12 @@ namespace ZstdSharp.Unsafe
                         nuint nbPostProcessedSeqs = ZSTD_postProcessSequenceProducerResult(zc->externalMatchCtx.seqBuffer, nbExternalSeqs, zc->externalMatchCtx.seqBufferCapacity, srcSize);
                         if (!ERR_isError(nbPostProcessedSeqs))
                         {
-                            ZSTD_sequencePosition seqPos = new ZSTD_sequencePosition { idx = 0, posInSequence = 0, posInSrc = 0 };
+                            ZSTD_sequencePosition seqPos = new ZSTD_sequencePosition
+                            {
+                                idx = 0,
+                                posInSequence = 0,
+                                posInSrc = 0
+                            };
                             nuint seqLenSum = ZSTD_fastSequenceLengthSum(zc->externalMatchCtx.seqBuffer, nbPostProcessedSeqs);
                             if (seqLenSum > srcSize)
                             {
@@ -3671,7 +3773,15 @@ namespace ZstdSharp.Unsafe
          */
         private static ZSTD_symbolEncodingTypeStats_t ZSTD_buildDummySequencesStatistics(ZSTD_fseCTables_t* nextEntropy)
         {
-            ZSTD_symbolEncodingTypeStats_t stats = new ZSTD_symbolEncodingTypeStats_t { LLtype = (uint)symbolEncodingType_e.set_basic, Offtype = (uint)symbolEncodingType_e.set_basic, MLtype = (uint)symbolEncodingType_e.set_basic, size = 0, lastCountSize = 0, longOffsets = 0 };
+            ZSTD_symbolEncodingTypeStats_t stats = new ZSTD_symbolEncodingTypeStats_t
+            {
+                LLtype = (uint)symbolEncodingType_e.set_basic,
+                Offtype = (uint)symbolEncodingType_e.set_basic,
+                MLtype = (uint)symbolEncodingType_e.set_basic,
+                size = 0,
+                lastCountSize = 0,
+                longOffsets = 0
+            };
             nextEntropy->litlength_repeatMode = FSE_repeat.FSE_repeat_none;
             nextEntropy->offcode_repeatMode = FSE_repeat.FSE_repeat_none;
             nextEntropy->matchlength_repeatMode = FSE_repeat.FSE_repeat_none;
@@ -5733,7 +5843,12 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_compressBegin_usingCDict_deprecated(ZSTD_CCtx_s* cctx, ZSTD_CDict_s* cdict)
         {
             /*content*/
-            ZSTD_frameParameters fParams = new ZSTD_frameParameters { contentSizeFlag = 0, checksumFlag = 0, noDictIDFlag = 0 };
+            ZSTD_frameParameters fParams = new ZSTD_frameParameters
+            {
+                contentSizeFlag = 0,
+                checksumFlag = 0,
+                noDictIDFlag = 0
+            };
             return ZSTD_compressBegin_usingCDict_internal(cctx, cdict, fParams, unchecked(0UL - 1));
         }
 
@@ -5774,7 +5889,12 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_compress_usingCDict(ZSTD_CCtx_s* cctx, void* dst, nuint dstCapacity, void* src, nuint srcSize, ZSTD_CDict_s* cdict)
         {
             /*content*/
-            ZSTD_frameParameters fParams = new ZSTD_frameParameters { contentSizeFlag = 1, checksumFlag = 0, noDictIDFlag = 0 };
+            ZSTD_frameParameters fParams = new ZSTD_frameParameters
+            {
+                contentSizeFlag = 1,
+                checksumFlag = 0,
+                noDictIDFlag = 0
+            };
             return ZSTD_compress_usingCDict_internal(cctx, dst, dstCapacity, src, srcSize, cdict, fParams);
         }
 
@@ -7064,7 +7184,12 @@ namespace ZstdSharp.Unsafe
         {
             nuint cSize = 0;
             nuint remaining = srcSize;
-            ZSTD_sequencePosition seqPos = new ZSTD_sequencePosition { idx = 0, posInSequence = 0, posInSrc = 0 };
+            ZSTD_sequencePosition seqPos = new ZSTD_sequencePosition
+            {
+                idx = 0,
+                posInSequence = 0,
+                posInSrc = 0
+            };
             byte* ip = (byte*)src;
             byte* op = (byte*)dst;
             void* sequenceCopier = ZSTD_selectSequenceCopier(cctx->appliedParams.blockDelimiters);
@@ -7282,7 +7407,12 @@ namespace ZstdSharp.Unsafe
         /*======   Finalize   ======*/
         private static ZSTD_inBuffer_s inBuffer_forEndFlush(ZSTD_CCtx_s* zcs)
         {
-            ZSTD_inBuffer_s nullInput = new ZSTD_inBuffer_s { src = null, size = 0, pos = 0 };
+            ZSTD_inBuffer_s nullInput = new ZSTD_inBuffer_s
+            {
+                src = null,
+                size = 0,
+                pos = 0
+            };
             int stableInput = zcs->appliedParams.inBufferMode == ZSTD_bufferMode_e.ZSTD_bm_stable ? 1 : 0;
             return stableInput != 0 ? zcs->expectedInBuffer : nullInput;
         }

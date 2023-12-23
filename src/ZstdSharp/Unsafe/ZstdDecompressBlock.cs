@@ -695,15 +695,37 @@ namespace ZstdSharp.Unsafe
         }
 
 #if NET8_0_OR_GREATER
-        private static ReadOnlySpan<uint> Span_dec32table => new uint[8]{0, 1, 2, 1, 4, 4, 4, 4};
+        private static ReadOnlySpan<uint> Span_dec32table => new uint[8]
+        {
+            0,
+            1,
+            2,
+            1,
+            4,
+            4,
+            4,
+            4
+        };
         private static uint* dec32table => (uint*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(Span_dec32table));
 #else
+
         private static readonly uint* dec32table = GetArrayPointer(new uint[8] { 0, 1, 2, 1, 4, 4, 4, 4 });
 #endif
 #if NET8_0_OR_GREATER
-        private static ReadOnlySpan<int> Span_dec64table => new int[8]{8, 8, 8, 7, 8, 9, 10, 11};
+        private static ReadOnlySpan<int> Span_dec64table => new int[8]
+        {
+            8,
+            8,
+            8,
+            7,
+            8,
+            9,
+            10,
+            11
+        };
         private static int* dec64table => (int*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(Span_dec64table));
 #else
+
         private static readonly int* dec64table = GetArrayPointer(new int[8] { 8, 8, 8, 7, 8, 9, 10, 11 });
 #endif
         /*! ZSTD_overlapCopy8() :
@@ -1740,7 +1762,11 @@ namespace ZstdSharp.Unsafe
          */
         private static ZSTD_OffsetInfo ZSTD_getOffsetInfo(ZSTD_seqSymbol* offTable, int nbSeq)
         {
-            ZSTD_OffsetInfo info = new ZSTD_OffsetInfo { longOffsetShare = 0, maxNbAdditionalBits = 0 };
+            ZSTD_OffsetInfo info = new ZSTD_OffsetInfo
+            {
+                longOffsetShare = 0,
+                maxNbAdditionalBits = 0
+            };
             if (nbSeq != 0)
             {
                 void* ptr = offTable;

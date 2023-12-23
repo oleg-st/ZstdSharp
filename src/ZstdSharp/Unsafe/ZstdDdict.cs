@@ -147,7 +147,12 @@ namespace ZstdSharp.Unsafe
          *   Consequently, `dict` can be released after `ZSTD_DDict` creation */
         public static ZSTD_DDict_s* ZSTD_createDDict(void* dict, nuint dictSize)
         {
-            ZSTD_customMem allocator = new ZSTD_customMem { customAlloc = null, customFree = null, opaque = null };
+            ZSTD_customMem allocator = new ZSTD_customMem
+            {
+                customAlloc = null,
+                customFree = null,
+                opaque = null
+            };
             return ZSTD_createDDict_advanced(dict, dictSize, ZSTD_dictLoadMethod_e.ZSTD_dlm_byCopy, ZSTD_dictContentType_e.ZSTD_dct_auto, allocator);
         }
 
@@ -157,7 +162,12 @@ namespace ZstdSharp.Unsafe
          *  Warning : dictBuffer must outlive DDict (DDict must be freed before dictBuffer) */
         public static ZSTD_DDict_s* ZSTD_createDDict_byReference(void* dictBuffer, nuint dictSize)
         {
-            ZSTD_customMem allocator = new ZSTD_customMem { customAlloc = null, customFree = null, opaque = null };
+            ZSTD_customMem allocator = new ZSTD_customMem
+            {
+                customAlloc = null,
+                customFree = null,
+                opaque = null
+            };
             return ZSTD_createDDict_advanced(dictBuffer, dictSize, ZSTD_dictLoadMethod_e.ZSTD_dlm_byRef, ZSTD_dictContentType_e.ZSTD_dct_auto, allocator);
         }
 

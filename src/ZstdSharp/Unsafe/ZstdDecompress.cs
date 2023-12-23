@@ -1739,7 +1739,18 @@ namespace ZstdSharp.Unsafe
          *  ZSTD_getFrameHeader(), which will provide a more precise error code. */
         public static uint ZSTD_getDictID_fromFrame(void* src, nuint srcSize)
         {
-            ZSTD_frameHeader zfp = new ZSTD_frameHeader { frameContentSize = 0, windowSize = 0, blockSizeMax = 0, frameType = ZSTD_frameType_e.ZSTD_frame, headerSize = 0, dictID = 0, checksumFlag = 0, _reserved1 = 0, _reserved2 = 0 };
+            ZSTD_frameHeader zfp = new ZSTD_frameHeader
+            {
+                frameContentSize = 0,
+                windowSize = 0,
+                blockSizeMax = 0,
+                frameType = ZSTD_frameType_e.ZSTD_frame,
+                headerSize = 0,
+                dictID = 0,
+                checksumFlag = 0,
+                _reserved1 = 0,
+                _reserved2 = 0
+            };
             nuint hError = ZSTD_getFrameHeader(&zfp, src, srcSize);
             if (ERR_isError(hError))
                 return 0;
@@ -2071,7 +2082,12 @@ namespace ZstdSharp.Unsafe
          */
         public static ZSTD_bounds ZSTD_dParam_getBounds(ZSTD_dParameter dParam)
         {
-            ZSTD_bounds bounds = new ZSTD_bounds { error = 0, lowerBound = 0, upperBound = 0 };
+            ZSTD_bounds bounds = new ZSTD_bounds
+            {
+                error = 0,
+                lowerBound = 0,
+                upperBound = 0
+            };
             switch (dParam)
             {
                 case ZSTD_dParameter.ZSTD_d_windowLogMax:

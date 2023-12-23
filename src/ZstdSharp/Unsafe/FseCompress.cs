@@ -446,9 +446,20 @@ namespace ZstdSharp.Unsafe
         }
 
 #if NET8_0_OR_GREATER
-        private static ReadOnlySpan<uint> Span_rtbTable => new uint[8]{0, 473195, 504333, 520860, 550000, 700000, 750000, 830000};
+        private static ReadOnlySpan<uint> Span_rtbTable => new uint[8]
+        {
+            0,
+            473195,
+            504333,
+            520860,
+            550000,
+            700000,
+            750000,
+            830000
+        };
         private static uint* rtbTable => (uint*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(Span_rtbTable));
 #else
+
         private static readonly uint* rtbTable = GetArrayPointer(new uint[8] { 0, 473195, 504333, 520860, 550000, 700000, 750000, 830000 });
 #endif
         /*! FSE_normalizeCount():
