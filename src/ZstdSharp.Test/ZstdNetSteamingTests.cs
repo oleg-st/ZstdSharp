@@ -46,24 +46,24 @@ namespace ZstdSharp.Test
     public class ZstdNetSteamingTests
     {
         [Fact]
-        public void StreamingCompressionZeroAndOneByte()
+        public async void StreamingCompressionZeroAndOneByte()
         {
             var data = new byte[] {0, 0, 0, 1, 2, 3, 4, 0, 0, 0};
 
             var tempStream = new MemoryStream();
-            using (var compressionStream = new CompressionStream(tempStream))
+            await using (var compressionStream = new CompressionStream(tempStream))
             {
                 compressionStream.Write(data, 0, 0);
                 compressionStream.Write(ReadOnlySpan<byte>.Empty);
-                compressionStream.WriteAsync(data, 0, 0).GetAwaiter().GetResult();
-                compressionStream.WriteAsync(ReadOnlyMemory<byte>.Empty).GetAwaiter().GetResult();
+                await compressionStream.WriteAsync(data, 0, 0);
+                await compressionStream.WriteAsync(ReadOnlyMemory<byte>.Empty);
 
                 compressionStream.Write(data, 3, 1);
                 compressionStream.Write(new ReadOnlySpan<byte>(data, 4, 1));
                 compressionStream.Flush();
-                compressionStream.WriteAsync(data, 5, 1).GetAwaiter().GetResult();
-                compressionStream.WriteAsync(new ReadOnlyMemory<byte>(data, 6, 1)).GetAwaiter().GetResult();
-                compressionStream.FlushAsync().GetAwaiter().GetResult();
+                await compressionStream.WriteAsync(data, 5, 1);
+                await compressionStream.WriteAsync(new ReadOnlyMemory<byte>(data, 6, 1));
+                await compressionStream.FlushAsync();
             }
 
             tempStream.Seek(0, SeekOrigin.Begin);
@@ -73,13 +73,13 @@ namespace ZstdSharp.Test
             {
                 Assert.Equal(0, decompressionStream.Read(result, 0, 0));
                 Assert.Equal(0, decompressionStream.Read(Span<byte>.Empty));
-                Assert.Equal(0, decompressionStream.ReadAsync(result, 0, 0).GetAwaiter().GetResult());
-                Assert.Equal(0, decompressionStream.ReadAsync(Memory<byte>.Empty).GetAwaiter().GetResult());
+                Assert.Equal(0, await decompressionStream.ReadAsync(result, 0, 0));
+                Assert.Equal(0, await decompressionStream.ReadAsync(Memory<byte>.Empty));
 
                 Assert.Equal(1, decompressionStream.Read(result, 3, 1));
                 Assert.Equal(1, decompressionStream.Read(new Span<byte>(result, 4, 1)));
-                Assert.Equal(1, decompressionStream.ReadAsync(result, 5, 1).GetAwaiter().GetResult());
-                Assert.Equal(1, decompressionStream.ReadAsync(new Memory<byte>(result, 6, 1)).GetAwaiter().GetResult());
+                Assert.Equal(1, await decompressionStream.ReadAsync(result, 5, 1));
+                Assert.Equal(1, await decompressionStream.ReadAsync(new Memory<byte>(result, 6, 1)));
             }
 
             Assert.True(data.SequenceEqual(result));
@@ -365,63 +365,6 @@ namespace ZstdSharp.Test
             }
 
             Assert.True(testStream.ToArray().SequenceEqual(resultStream.ToArray()));
-        }
-
-        [Theory(Skip = "stress"), CombinatorialData]
-        public void RoundTrip_StreamingToStreaming_Stress([CombinatorialValues(true, false)] bool useDict,
-            [CombinatorialValues(true, false)] bool async)
-        {
-            long i = 0;
-            var dict = useDict ? TrainDict() : null;
-            Enumerable.Range(0, 10000)
-                .AsParallel()
-                .WithDegreeOfParallelism(Environment.ProcessorCount * 4)
-                .ForAll(n =>
-                {
-                    var testStream = DataGenerator.GetSmallStream(DataFill.Sequential);
-                    var cBuffer = new byte[1 + (int) (n % (testStream.Length * 11))];
-                    var dBuffer = new byte[1 + (int) (n % (testStream.Length * 13))];
-
-                    var tempStream = new MemoryStream();
-                    using (var compressionStream = new CompressionStream(tempStream, Compressor.DefaultCompressionLevel,
-                        1 + (int) (n % (testStream.Length * 17))))
-                    {
-                        compressionStream.LoadDictionary(dict);
-                        int bytesRead;
-                        int offset = n % cBuffer.Length;
-                        while ((bytesRead = testStream.Read(cBuffer, offset, cBuffer.Length - offset)) > 0)
-                        {
-                            if (async)
-                                compressionStream.WriteAsync(cBuffer, offset, bytesRead).GetAwaiter().GetResult();
-                            else
-                                compressionStream.Write(cBuffer, offset, bytesRead);
-                            if (Interlocked.Increment(ref i) % 100 == 0)
-                                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-                        }
-                    }
-
-                    tempStream.Seek(0, SeekOrigin.Begin);
-
-                    var resultStream = new MemoryStream();
-                    using (var decompressionStream =
-                        new DecompressionStream(tempStream, 1 + (int) (n % (testStream.Length * 19))))
-                    {
-                        decompressionStream.LoadDictionary(dict);
-                        int bytesRead;
-                        int offset = n % dBuffer.Length;
-                        while ((bytesRead = async
-                            ? decompressionStream.ReadAsync(dBuffer, offset, dBuffer.Length - offset).GetAwaiter()
-                                .GetResult()
-                            : decompressionStream.Read(dBuffer, offset, dBuffer.Length - offset)) > 0)
-                        {
-                            resultStream.Write(dBuffer, offset, bytesRead);
-                            if (Interlocked.Increment(ref i) % 100 == 0)
-                                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-                        }
-                    }
-
-                    Assert.True(testStream.ToArray().SequenceEqual(resultStream.ToArray()));
-                });
         }
 
         [Fact]
