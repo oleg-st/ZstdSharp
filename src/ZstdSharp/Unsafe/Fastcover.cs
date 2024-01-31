@@ -501,7 +501,7 @@ namespace ZstdSharp.Unsafe
 
             if (nbThreads > 1)
             {
-                pool = null;
+                pool = POOL_create(nbThreads, 1);
                 if (pool == null)
                 {
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
@@ -522,6 +522,7 @@ namespace ZstdSharp.Unsafe
                     if (ERR_isError(initVal))
                     {
                         COVER_best_destroy(&best);
+                        POOL_free(pool);
                         return initVal;
                     }
                 }
@@ -540,6 +541,7 @@ namespace ZstdSharp.Unsafe
                     {
                         COVER_best_destroy(&best);
                         FASTCOVER_ctx_destroy(&ctx);
+                        POOL_free(pool);
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
                     }
 
@@ -560,7 +562,11 @@ namespace ZstdSharp.Unsafe
                     }
 
                     COVER_best_start(&best);
-                    if (pool == null)
+                    if (pool != null)
+                    {
+                        POOL_add(pool, (delegate* managed<void*, void>)(&FASTCOVER_tryParameters), data);
+                    }
+                    else
                     {
                         FASTCOVER_tryParameters(data);
                     }
@@ -578,12 +584,14 @@ namespace ZstdSharp.Unsafe
                 {
                     nuint compressedSize = best.compressedSize;
                     COVER_best_destroy(&best);
+                    POOL_free(pool);
                     return compressedSize;
                 }
 
                 FASTCOVER_convertToFastCoverParams(best.parameters, parameters, f, accel);
                 memcpy(dictBuffer, best.dict, (uint)dictSize);
                 COVER_best_destroy(&best);
+                POOL_free(pool);
                 return dictSize;
             }
         }

@@ -63,6 +63,7 @@ namespace ZstdSharp.Unsafe
         public ZSTD_CDict_s* cdict;
         /* single-usage dictionary */
         public ZSTD_prefixDict_s prefixDict;
+        public ZSTDMT_CCtx_s* mtctx;
         /* Workspace for block splitter */
         public ZSTD_blockSplitCtx blockSplitCtx;
         /* Workspace for external matchfinder */

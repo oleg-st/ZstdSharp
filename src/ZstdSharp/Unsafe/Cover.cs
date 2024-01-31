@@ -127,6 +127,7 @@ namespace ZstdSharp.Unsafe
         {
             if (best == null)
                 return;
+            SynchronizationWrapper.Init(&best->mutex);
             best->liveJobs = 0;
             best->dict = null;
             best->dictSize = 0;
@@ -144,9 +145,13 @@ namespace ZstdSharp.Unsafe
                 return;
             }
 
+            SynchronizationWrapper.Enter(&best->mutex);
             while (best->liveJobs != 0)
             {
+                SynchronizationWrapper.Wait(&best->mutex);
             }
+
+            SynchronizationWrapper.Exit(&best->mutex);
         }
 
         /**
@@ -164,6 +169,8 @@ namespace ZstdSharp.Unsafe
             {
                 free(best->dict);
             }
+
+            SynchronizationWrapper.Free(&best->mutex);
         }
 
         /**
@@ -177,7 +184,9 @@ namespace ZstdSharp.Unsafe
                 return;
             }
 
+            SynchronizationWrapper.Enter(&best->mutex);
             ++best->liveJobs;
+            SynchronizationWrapper.Exit(&best->mutex);
         }
 
         /**
@@ -197,6 +206,7 @@ namespace ZstdSharp.Unsafe
 
             {
                 nuint liveJobs;
+                SynchronizationWrapper.Enter(&best->mutex);
                 --best->liveJobs;
                 liveJobs = best->liveJobs;
                 if (compressedSize < best->compressedSize)
@@ -213,6 +223,8 @@ namespace ZstdSharp.Unsafe
                         {
                             best->compressedSize = unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
                             best->dictSize = 0;
+                            SynchronizationWrapper.Pulse(&best->mutex);
+                            SynchronizationWrapper.Exit(&best->mutex);
                             return;
                         }
                     }
@@ -225,6 +237,13 @@ namespace ZstdSharp.Unsafe
                         best->compressedSize = compressedSize;
                     }
                 }
+
+                if (liveJobs == 0)
+                {
+                    SynchronizationWrapper.PulseAll(&best->mutex);
+                }
+
+                SynchronizationWrapper.Exit(&best->mutex);
             }
         }
 

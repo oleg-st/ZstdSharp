@@ -138,5 +138,42 @@ namespace ZstdSharp.Test
         {
             Assert.Equal(Methods.ZSTD_versionNumber(), ExternMethods.ZSTD_versionNumber());
         }
+
+        [Fact]
+        public void CompressMultiThread()
+        {
+            const int level = 1;
+            const int numThreads = 4;
+            const string filename = "dickens";
+            var srcBuffer = File.ReadAllBytes(filename);
+
+            using var compressor = new Compressor(level);
+            compressor.SetParameter(ZSTD_cParameter.ZSTD_c_nbWorkers, numThreads);
+            var compressed = compressor.Wrap(srcBuffer);
+
+            using var decompressor = new Decompressor();
+            var decompressed = decompressor.Unwrap(compressed);
+            Assert.True(decompressed.SequenceEqual(srcBuffer));
+        }
+
+        [Fact]
+        public void CompressStreamMultiThread()
+        {
+            const int level = 1;
+            const int numThreads = 4;
+            const string filename = "dickens";
+            using var input = File.OpenRead(filename);
+            using var output = new MemoryStream();
+
+            using (var compressionStream = new CompressionStream(output, level))
+            {
+                compressionStream.SetParameter(ZSTD_cParameter.ZSTD_c_nbWorkers, numThreads);
+                input.CopyTo(compressionStream);
+            }
+
+            using var decompressor = new Decompressor();
+            var decompressed = decompressor.Unwrap(output.ToArray());
+            Assert.True(decompressed.SequenceEqual(File.ReadAllBytes(filename)));
+        }
     }
 }

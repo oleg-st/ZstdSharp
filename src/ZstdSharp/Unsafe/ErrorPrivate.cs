@@ -29,7 +29,7 @@ namespace ZstdSharp.Unsafe
          ******************************************/
         private static string ERR_getErrorString(ZSTD_ErrorCode code)
         {
-            string notErrorCode = "Unspecified error code";
+            const string notErrorCode = "Unspecified error code";
             switch (code)
             {
                 case ZSTD_ErrorCode.ZSTD_error_no_error:

@@ -10,8 +10,8 @@ namespace ZstdSharp.Unsafe
      */
     public unsafe struct COVER_best_s
     {
-        public int mutex;
-        public int cond;
+        public void* mutex;
+        public void* cond;
         public nuint liveJobs;
         public void* dict;
         public nuint dictSize;
