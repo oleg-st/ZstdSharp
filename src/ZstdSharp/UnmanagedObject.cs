@@ -6,7 +6,7 @@ namespace ZstdSharp
     /*
      * Wrap object to void* to make it unmanaged
      */
-    public static unsafe class UnmanagedObject
+    internal static unsafe class UnmanagedObject
     {
         public static void* Wrap(object obj) => (void*)GCHandle.ToIntPtr(GCHandle.Alloc(obj));
 

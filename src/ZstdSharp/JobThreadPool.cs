@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace ZstdSharp
 {
-    public unsafe class JobThreadPool : IDisposable
+    internal unsafe class JobThreadPool : IDisposable
     {
         private int numThreads;
         private readonly List<JobThread> threads;
@@ -66,12 +66,12 @@ namespace ZstdSharp
             }
         }
 
-        public JobThreadPool(int numThreads, int queueSize)
+        public JobThreadPool(int num, int queueSize)
         {
-            this.numThreads = numThreads;
+            numThreads = num;
             queue = new BlockingCollection<Job>(queueSize + 1);
-            threads = new List<JobThread>(numThreads);
-            for (var i = 0; i < this.numThreads; i++)
+            threads = new List<JobThread>(num);
+            for (var i = 0; i < numThreads; i++)
                 CreateThread();
         }
 

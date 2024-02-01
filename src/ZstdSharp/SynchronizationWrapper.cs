@@ -2,7 +2,7 @@ using System.Threading;
 
 namespace ZstdSharp
 {
-    public static unsafe class SynchronizationWrapper
+    internal static unsafe class SynchronizationWrapper
     {
         private static object UnwrapObject(void** obj) => UnmanagedObject.Unwrap<object>(*obj);
 
