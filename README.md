@@ -42,6 +42,15 @@ using var decompressionStream = new DecompressionStream(input);
 decompressionStream.CopyTo(output);
 ```
 
+Multi-threaded compression:
+```c#
+using var input = File.OpenRead("dickens");
+using var output = File.OpenWrite("dickens.zst");
+using var compressionStream = new CompressionStream(output, level);
+compressionStream.SetParameter(ZSTD_cParameter.ZSTD_c_nbWorkers, Environment.ProcessorCount);
+input.CopyTo(compressionStream);
+```
+
 
 # Benchmark
 
