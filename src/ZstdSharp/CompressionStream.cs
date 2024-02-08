@@ -154,7 +154,7 @@ namespace ZstdSharp
                 var written = (int) output.pos;
                 if (written > 0)
                     innerStream.Write(outputBuffer, 0, written);
-            } while (directive == ZSTD_EndDirective.ZSTD_e_end ? remaining > 0 : input.pos < input.size);
+            } while (directive == ZSTD_EndDirective.ZSTD_e_continue ? input.pos < input.size : remaining > 0);
         }
 
         private async ValueTask WriteInternalAsync(ReadOnlyMemory<byte>? buffer, ZSTD_EndDirective directive,
@@ -172,7 +172,7 @@ namespace ZstdSharp
                 var written = (int) output.pos;
                 if (written > 0)
                     await innerStream.WriteAsync(outputBuffer, 0, written, cancellationToken).ConfigureAwait(false);
-            } while (directive == ZSTD_EndDirective.ZSTD_e_end ? remaining > 0 : input.pos < input.size);
+            } while (directive == ZSTD_EndDirective.ZSTD_e_continue ? input.pos < input.size : remaining > 0);
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
