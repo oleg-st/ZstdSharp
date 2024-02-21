@@ -18,6 +18,7 @@ namespace ZstdSharp
         private Decompressor decompressor;
         private ZSTD_inBuffer_s input;
         private nuint lastDecompressResult = 0;
+        private bool contextDrained = true;
 
         public DecompressionStream(Stream stream, int bufferSize = 0, bool checkEndOfStream = true, bool leaveOpen = true)
             : this(stream, new Decompressor(), bufferSize, checkEndOfStream, false, leaveOpen)
@@ -97,28 +98,49 @@ namespace ZstdSharp
         {
             EnsureNotDisposed();
 
-            var output = new ZSTD_outBuffer_s {pos = 0, size = (nuint) buffer.Length};
-            while (output.pos < output.size)
+            // Guard against infinite loop (output.pos would never become non-zero)
+            if (buffer.Length == 0)
             {
-                if (input.pos >= input.size)
-                {
-                    int bytesRead;
-                    if ((bytesRead = innerStream.Read(inputBuffer, 0, inputBufferSize)) == 0)
-                    {
-                        if (checkEndOfStream && lastDecompressResult != 0)
-                            throw new EndOfStreamException("Premature end of stream");
-
-                        break;
-                    }
-
-                    input.size = (nuint) bytesRead;
-                    input.pos = 0;
-                }
-
-                lastDecompressResult = DecompressStream(ref output, buffer);
+                return 0;
             }
 
-            return (int) output.pos;
+            var output = new ZSTD_outBuffer_s {pos = 0, size = (nuint) buffer.Length};
+            while (true)
+            {
+                // If there is still input available, or there might be data buffered in the decompressor context, flush that out
+                while (input.pos < input.size || !contextDrained)
+                {
+                    nuint oldInputPos = input.pos;
+                    nuint result = DecompressStream(ref output, buffer);
+                    if (output.pos > 0 || oldInputPos != input.pos)
+                    {
+                        // Keep result from last decompress call that made some progress, so we known if we're at end of frame
+                        lastDecompressResult = result;
+                    }
+                    // If decompression filled the output buffer, there might still be data buffered in the decompressor context
+                    contextDrained = output.pos < output.size;
+                    // If we have data to return, return it immediately, so we won't stall on Read
+                    if (output.pos > 0)
+                    {
+                        return (int) output.pos;
+                    }
+                }
+
+                // Otherwise, read some more input
+                int bytesRead;
+                if ((bytesRead = innerStream.Read(inputBuffer, 0, inputBufferSize)) == 0)
+                {
+                    if (checkEndOfStream && lastDecompressResult != 0)
+                    {
+                        throw new EndOfStreamException("Premature end of stream");
+                    }
+
+                    return 0;
+                }
+
+                input.size = (nuint) bytesRead;
+                input.pos = 0;
+            }
         }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -134,29 +156,50 @@ namespace ZstdSharp
         {
             EnsureNotDisposed();
 
-            var output = new ZSTD_outBuffer_s { pos = 0, size = (nuint)buffer.Length};
-            while (output.pos < output.size)
+            // Guard against infinite loop (output.pos would never become non-zero)
+            if (buffer.Length == 0)
             {
-                if (input.pos >= input.size)
-                {
-                    int bytesRead;
-                    if ((bytesRead = await innerStream.ReadAsync(inputBuffer, 0, inputBufferSize, cancellationToken)
-                        .ConfigureAwait(false)) == 0)
-                    {
-                        if (checkEndOfStream && lastDecompressResult != 0)
-                            throw new EndOfStreamException("Premature end of stream");
-
-                        break;
-                    }
-
-                    input.size = (nuint) bytesRead;
-                    input.pos = 0;
-                }
-
-                lastDecompressResult = DecompressStream(ref output, buffer.Span);
+                return 0;
             }
 
-            return (int) output.pos;
+            var output = new ZSTD_outBuffer_s { pos = 0, size = (nuint)buffer.Length};
+            while (true)
+            {
+                // If there is still input available, or there might be data buffered in the decompressor context, flush that out
+                while (input.pos < input.size || !contextDrained)
+                {
+                    nuint oldInputPos = input.pos;
+                    nuint result = DecompressStream(ref output, buffer.Span);
+                    if (output.pos > 0 || oldInputPos != input.pos)
+                    {
+                        // Keep result from last decompress call that made some progress, so we known if we're at end of frame
+                        lastDecompressResult = result;
+                    }
+                    // If decompression filled the output buffer, there might still be data buffered in the decompressor context
+                    contextDrained = output.pos < output.size;
+                    // If we have data to return, return it immediately, so we won't stall on Read
+                    if (output.pos > 0)
+                    {
+                        return (int)output.pos;
+                    }
+                }
+
+                // Otherwise, read some more input
+                int bytesRead;
+                if ((bytesRead = await innerStream.ReadAsync(inputBuffer, 0, inputBufferSize, cancellationToken)
+                    .ConfigureAwait(false)) == 0)
+                {
+                    if (checkEndOfStream && lastDecompressResult != 0)
+                    {
+                        throw new EndOfStreamException("Premature end of stream");
+                    }
+
+                    return 0;
+                }
+
+                input.size = (nuint) bytesRead;
+                input.pos = 0;
+            }
         }
 
         private unsafe nuint DecompressStream(ref ZSTD_outBuffer_s output, Span<byte> outputBuffer)
