@@ -43,7 +43,7 @@ namespace ZstdSharp
             this.leaveOpen = leaveOpen;
             this.checkEndOfStream = checkEndOfStream;
 
-            inputBufferSize = bufferSize > 0 ? bufferSize : (int) Methods.ZSTD_CStreamInSize().EnsureZstdSuccess();
+            inputBufferSize = bufferSize > 0 ? bufferSize : (int) Methods.ZSTD_DStreamInSize().EnsureZstdSuccess();
             inputBuffer = ArrayPool<byte>.Shared.Rent(inputBufferSize);
             input = new ZSTD_inBuffer_s {pos = (nuint) inputBufferSize, size = (nuint) inputBufferSize};
         }
