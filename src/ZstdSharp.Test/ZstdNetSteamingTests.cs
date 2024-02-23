@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -365,6 +367,62 @@ namespace ZstdSharp.Test
             }
 
             Assert.True(testStream.ToArray().SequenceEqual(resultStream.ToArray()));
+        }
+
+        [Theory, CombinatorialData]
+        public void Pipe_StreamingToStreaming(
+            // For size 2, the first read call would return part of the data, and the rest of the data would be buffered
+            // in the decompression context and need to be flushed out by a second call. For size 4, the read call would
+            // not fill the output buffer, but should still return the data it has received, even if no more data is
+            // currently available and the stream hasn't ended yet.
+            [CombinatorialValues(2, 4)] int outputBufSize)
+        {
+            using (var pipeServer = new AnonymousPipeServerStream())
+            using (var pipeClient = new AnonymousPipeClientStream(pipeServer.GetClientHandleAsString()))
+            using (var comp = new CompressionStream(pipeServer))
+            using (var decomp = new DecompressionStream(pipeClient))
+            {
+                var data = new byte[] { 0, 1, 2 };
+                comp.Write(data);
+                comp.Flush();
+
+                var buf = new byte[outputBufSize];
+
+                var received = new List<byte>();
+                while (received.Count < data.Length)
+                {
+                    var count = decomp.Read(buf);
+                    received.AddRange(buf.Take(count));
+                }
+
+                Assert.True(received.ToArray().SequenceEqual(data));
+            }
+        }
+
+        [Theory, CombinatorialData]
+        public async Task Pipe_StreamingToStreamingAsync(
+            [CombinatorialValues(2, 4)] int outputBufSize)
+        {
+            using (var pipeServer = new AnonymousPipeServerStream())
+            using (var pipeClient = new AnonymousPipeClientStream(pipeServer.GetClientHandleAsString()))
+            using (var comp = new CompressionStream(pipeServer))
+            using (var decomp = new DecompressionStream(pipeClient))
+            {
+                var data = new byte[] { 0, 1, 2 };
+                await comp.WriteAsync(data);
+                await comp.FlushAsync();
+
+                var buf = new byte[outputBufSize];
+
+                var received = new List<byte>();
+                while (received.Count < data.Length)
+                {
+                    var count = await decomp.ReadAsync(buf);
+                    received.AddRange(buf.Take(count));
+                }
+
+                Assert.True(received.ToArray().SequenceEqual(data));
+            }
         }
 
         [Fact]
