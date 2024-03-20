@@ -510,13 +510,23 @@ namespace ZstdSharp.Unsafe
             uint matchIndex;
             for (ddsAttempt = 0; ddsAttempt < bucketSize - 1; ddsAttempt++)
             {
-                Prefetch0(ddsBase + dms->hashTable[ddsIdx + ddsAttempt]);
+#if NETCOREAPP3_0_OR_GREATER
+                if (Sse.IsSupported)
+                {
+                    Sse.Prefetch0(ddsBase + dms->hashTable[ddsIdx + ddsAttempt]);
+                }
+#endif
             }
 
             {
                 uint chainPackedPointer = dms->hashTable[ddsIdx + bucketSize - 1];
                 uint chainIndex = chainPackedPointer >> 8;
-                Prefetch0(&dms->chainTable[chainIndex]);
+#if NETCOREAPP3_0_OR_GREATER
+                if (Sse.IsSupported)
+                {
+                    Sse.Prefetch0(&dms->chainTable[chainIndex]);
+                }
+#endif
             }
 
             for (ddsAttempt = 0; ddsAttempt < bucketLimit; ddsAttempt++)
@@ -558,7 +568,12 @@ namespace ZstdSharp.Unsafe
                 uint chainAttempt;
                 for (chainAttempt = 0; chainAttempt < chainLimit; chainAttempt++)
                 {
-                    Prefetch0(ddsBase + dms->chainTable[chainIndex + chainAttempt]);
+#if NETCOREAPP3_0_OR_GREATER
+                    if (Sse.IsSupported)
+                    {
+                        Sse.Prefetch0(ddsBase + dms->chainTable[chainIndex + chainAttempt]);
+                    }
+#endif
                 }
 
                 for (chainAttempt = 0; chainAttempt < chainLimit; chainAttempt++, chainIndex++)
@@ -649,7 +664,12 @@ namespace ZstdSharp.Unsafe
             if (dictMode == ZSTD_dictMode_e.ZSTD_dedicatedDictSearch)
             {
                 uint* entry = &dms->hashTable[ddsIdx];
-                Prefetch0(entry);
+#if NETCOREAPP3_0_OR_GREATER
+                if (Sse.IsSupported)
+                {
+                    Sse.Prefetch0(entry);
+                }
+#endif
             }
 
             matchIndex = ZSTD_insertAndFindFirstIndex_internal(ms, cParams, ip, mls, (uint)ms->lazySkipping);
@@ -769,16 +789,38 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_row_prefetch(uint* hashTable, byte* tagTable, uint relRow, uint rowLog)
         {
-            Prefetch0(hashTable + relRow);
+#if NETCOREAPP3_0_OR_GREATER
+            if (Sse.IsSupported)
+            {
+                Sse.Prefetch0(hashTable + relRow);
+            }
+#endif
+
             if (rowLog >= 5)
             {
-                Prefetch0(hashTable + relRow + 16);
+#if NETCOREAPP3_0_OR_GREATER
+                if (Sse.IsSupported)
+                {
+                    Sse.Prefetch0(hashTable + relRow + 16);
+                }
+#endif
             }
 
-            Prefetch0(tagTable + relRow);
+#if NETCOREAPP3_0_OR_GREATER
+            if (Sse.IsSupported)
+            {
+                Sse.Prefetch0(tagTable + relRow);
+            }
+#endif
+
             if (rowLog == 6)
             {
-                Prefetch0(tagTable + relRow + 32);
+#if NETCOREAPP3_0_OR_GREATER
+                if (Sse.IsSupported)
+                {
+                    Sse.Prefetch0(tagTable + relRow + 32);
+                }
+#endif
             }
 
             assert(rowLog == 4 || rowLog == 5 || rowLog == 6);
@@ -1086,7 +1128,12 @@ namespace ZstdSharp.Unsafe
                 uint ddsHashLog = dms->cParams.hashLog - 2;
                 {
                     ddsIdx = ZSTD_hashPtr(ip, ddsHashLog, mls) << 2;
-                    Prefetch0(&dms->hashTable[ddsIdx]);
+#if NETCOREAPP3_0_OR_GREATER
+                    if (Sse.IsSupported)
+                    {
+                        Sse.Prefetch0(&dms->hashTable[ddsIdx]);
+                    }
+#endif
                 }
 
                 ddsExtraAttempts = cParams->searchLog > rowLog ? 1U << (int)(cParams->searchLog - rowLog) : 0;
@@ -1138,11 +1185,21 @@ namespace ZstdSharp.Unsafe
                         break;
                     if (dictMode != ZSTD_dictMode_e.ZSTD_extDict || matchIndex >= dictLimit)
                     {
-                        Prefetch0(@base + matchIndex);
+#if NETCOREAPP3_0_OR_GREATER
+                        if (Sse.IsSupported)
+                        {
+                            Sse.Prefetch0(@base + matchIndex);
+                        }
+#endif
                     }
                     else
                     {
-                        Prefetch0(dictBase + matchIndex);
+#if NETCOREAPP3_0_OR_GREATER
+                        if (Sse.IsSupported)
+                        {
+                            Sse.Prefetch0(dictBase + matchIndex);
+                        }
+#endif
                     }
 
                     matchBuffer[numMatches++] = matchIndex;
@@ -1214,7 +1271,13 @@ namespace ZstdSharp.Unsafe
                             continue;
                         if (matchIndex < dmsLowestIndex)
                             break;
-                        Prefetch0(dmsBase + matchIndex);
+#if NETCOREAPP3_0_OR_GREATER
+                        if (Sse.IsSupported)
+                        {
+                            Sse.Prefetch0(dmsBase + matchIndex);
+                        }
+#endif
+
                         matchBuffer[numMatches++] = matchIndex;
                         --nbAttempts;
                     }

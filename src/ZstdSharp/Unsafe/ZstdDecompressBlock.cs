@@ -170,7 +170,12 @@ namespace ZstdSharp.Unsafe
                                 nuint _pos;
                                 for (_pos = 0; _pos < _size; _pos += 64)
                                 {
-                                    Prefetch1(_ptr + _pos);
+#if NETCOREAPP3_0_OR_GREATER
+                                    if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
+                                    {
+                                        System.Runtime.Intrinsics.X86.Sse.Prefetch1(_ptr + _pos);
+                                    }
+#endif
                                 }
                             }
 
@@ -566,7 +571,12 @@ namespace ZstdSharp.Unsafe
                             nuint _pos;
                             for (_pos = 0; _pos < _size; _pos += 64)
                             {
-                                Prefetch1(_ptr + _pos);
+#if NETCOREAPP3_0_OR_GREATER
+                                if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
+                                {
+                                    System.Runtime.Intrinsics.X86.Sse.Prefetch1(_ptr + _pos);
+                                }
+#endif
                             }
                         }
                     }
@@ -1532,8 +1542,13 @@ namespace ZstdSharp.Unsafe
                 /* note : this operation can overflow when seq.offset is really too large, which can only happen when input is corrupted.
                  * No consequence though : memory address is only used for prefetching, not for dereferencing */
                 byte* match = matchBase + prefetchPos - sequence.offset;
-                Prefetch0(match);
-                Prefetch0(match + 64);
+#if NETCOREAPP3_0_OR_GREATER
+                if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
+                {
+                    System.Runtime.Intrinsics.X86.Sse.Prefetch0(match);
+                    System.Runtime.Intrinsics.X86.Sse.Prefetch0(match + 64);
+                }
+#endif
             }
 
             return prefetchPos + sequence.matchLength;

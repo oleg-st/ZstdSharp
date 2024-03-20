@@ -278,8 +278,14 @@ namespace ZstdSharp.Unsafe
                 if (ip2 >= nextStep)
                 {
                     step++;
-                    Prefetch0(ip1 + 64);
-                    Prefetch0(ip1 + 128);
+#if NETCOREAPP3_0_OR_GREATER
+                    if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
+                    {
+                        System.Runtime.Intrinsics.X86.Sse.Prefetch0(ip1 + 64);
+                        System.Runtime.Intrinsics.X86.Sse.Prefetch0(ip1 + 128);
+                    }
+#endif
+
                     nextStep += kStepIncr;
                 }
             }
@@ -460,7 +466,12 @@ namespace ZstdSharp.Unsafe
                     nuint _pos;
                     for (_pos = 0; _pos < _size; _pos += 64)
                     {
-                        Prefetch1(_ptr + _pos);
+#if NETCOREAPP3_0_OR_GREATER
+                        if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
+                        {
+                            System.Runtime.Intrinsics.X86.Sse.Prefetch1(_ptr + _pos);
+                        }
+#endif
                     }
                 }
             }
@@ -793,8 +804,14 @@ namespace ZstdSharp.Unsafe
                 if (ip2 >= nextStep)
                 {
                     step++;
-                    Prefetch0(ip1 + 64);
-                    Prefetch0(ip1 + 128);
+#if NETCOREAPP3_0_OR_GREATER
+                    if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
+                    {
+                        System.Runtime.Intrinsics.X86.Sse.Prefetch0(ip1 + 64);
+                        System.Runtime.Intrinsics.X86.Sse.Prefetch0(ip1 + 128);
+                    }
+#endif
+
                     nextStep += kStepIncr;
                 }
             }

@@ -89,30 +89,6 @@ namespace ZstdSharp
             => Buffer.MemoryCopy(source, destination, size, size);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void Prefetch0(void* p)
-        {
-#if NETCOREAPP3_0_OR_GREATER
-            if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
-            {
-                System.Runtime.Intrinsics.X86.Sse.Prefetch0(p);
-            }
-#endif
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void Prefetch1(void* p)
-        {
-#if NETCOREAPP3_0_OR_GREATER
-            if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
-            {
-                System.Runtime.Intrinsics.X86.Sse.Prefetch1(p);
-            }
-#endif
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int memcmp(void* buf1, void* buf2, ulong size)
         {
             assert(size <= int.MaxValue);
