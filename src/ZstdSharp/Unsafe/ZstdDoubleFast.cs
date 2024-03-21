@@ -147,7 +147,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            while (1 != 0)
+            while (true)
             {
                 step = 1;
                 nextStep = ip + kStepIncr;

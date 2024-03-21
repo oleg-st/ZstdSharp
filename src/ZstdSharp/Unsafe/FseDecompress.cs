@@ -172,7 +172,7 @@ namespace ZstdSharp.Unsafe
                 op[3] = fast != 0 ? FSE_decodeSymbolFast(&state2, &bitD) : FSE_decodeSymbol(&state2, &bitD);
             }
 
-            while (1 != 0)
+            while (true)
             {
                 if (op > omax - 2)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));

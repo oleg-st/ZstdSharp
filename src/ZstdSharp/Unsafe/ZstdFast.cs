@@ -492,7 +492,7 @@ namespace ZstdSharp.Unsafe
                 nuint step = stepSize;
                 const nuint kStepIncr = 1 << 8;
                 byte* nextStep = ip0 + kStepIncr;
-                while (1 != 0)
+                while (true)
                 {
                     byte* match = @base + matchIndex;
                     uint repIndex = curr + 1 - offset_1;

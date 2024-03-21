@@ -766,7 +766,7 @@ namespace ZstdSharp.Unsafe
 
                 ip += zfh.headerSize;
                 remainingSize -= zfh.headerSize;
-                while (1 != 0)
+                while (true)
                 {
                     blockProperties_t blockProperties;
                     nuint cBlockSize = ZSTD_getcBlockSize(ip, remainingSize, &blockProperties);
@@ -987,7 +987,7 @@ namespace ZstdSharp.Unsafe
                 remainingSrcSize -= frameHeaderSize;
             }
 
-            while (1 != 0)
+            while (true)
             {
                 byte* oBlockEnd = oend;
                 nuint decodedSize;
