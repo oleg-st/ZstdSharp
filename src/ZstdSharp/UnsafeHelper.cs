@@ -60,6 +60,12 @@ namespace ZstdSharp
             => System.Runtime.CompilerServices.Unsafe.InitBlockUnaligned(memPtr, val, size);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
+        public static void memset<T>(ref T memPtr, byte val, uint size)
+            => System.Runtime.CompilerServices.Unsafe.InitBlockUnaligned(
+                ref System.Runtime.CompilerServices.Unsafe.As<T, byte>(ref memPtr), val, size);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void free(void* ptr)
         {
             Marshal.FreeHGlobal((IntPtr) ptr);

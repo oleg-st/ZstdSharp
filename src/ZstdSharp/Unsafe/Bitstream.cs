@@ -378,5 +378,187 @@ namespace ZstdSharp.Unsafe
         {
             return DStream->ptr == DStream->start && DStream->bitsConsumed == (uint)(sizeof(nuint) * 8) ? 1U : 0U;
         }
+
+        /*-********************************************************
+         *  bitStream decoding
+         **********************************************************/
+        /*! BIT_initDStream() :
+         *  Initialize a BIT_DStream_t.
+         * `bitD` : a pointer to an already allocated BIT_DStream_t structure.
+         * `srcSize` must be the *exact* size of the bitStream, in bytes.
+         * @return : size of stream (== srcSize), or an errorCode if a problem is detected
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint BIT_initDStream(ref BIT_DStream_t bitD, void* srcBuffer, nuint srcSize)
+        {
+            if (srcSize < 1)
+            {
+                memset(ref bitD, 0, (uint)sizeof(BIT_DStream_t));
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
+            }
+
+            bitD.start = (sbyte*)srcBuffer;
+            bitD.limitPtr = bitD.start + sizeof(nuint);
+            if (srcSize >= (nuint)sizeof(nuint))
+            {
+                bitD.ptr = (sbyte*)srcBuffer + srcSize - sizeof(nuint);
+                bitD.bitContainer = MEM_readLEST(bitD.ptr);
+                {
+                    byte lastByte = ((byte*)srcBuffer)[srcSize - 1];
+                    bitD.bitsConsumed = lastByte != 0 ? 8 - ZSTD_highbit32(lastByte) : 0;
+                    if (lastByte == 0)
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
+                }
+            }
+            else
+            {
+                bitD.ptr = bitD.start;
+                bitD.bitContainer = *(byte*)bitD.start;
+                switch (srcSize)
+                {
+                    case 7:
+                        bitD.bitContainer += (nuint)((byte*)srcBuffer)[6] << sizeof(nuint) * 8 - 16;
+                        goto case 6;
+                    case 6:
+                        bitD.bitContainer += (nuint)((byte*)srcBuffer)[5] << sizeof(nuint) * 8 - 24;
+                        goto case 5;
+                    case 5:
+                        bitD.bitContainer += (nuint)((byte*)srcBuffer)[4] << sizeof(nuint) * 8 - 32;
+                        goto case 4;
+                    case 4:
+                        bitD.bitContainer += (nuint)((byte*)srcBuffer)[3] << 24;
+                        goto case 3;
+                    case 3:
+                        bitD.bitContainer += (nuint)((byte*)srcBuffer)[2] << 16;
+                        goto case 2;
+                    case 2:
+                        bitD.bitContainer += (nuint)((byte*)srcBuffer)[1] << 8;
+                        goto default;
+                    default:
+                        break;
+                }
+
+                {
+                    byte lastByte = ((byte*)srcBuffer)[srcSize - 1];
+                    bitD.bitsConsumed = lastByte != 0 ? 8 - ZSTD_highbit32(lastByte) : 0;
+                    if (lastByte == 0)
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                }
+
+                bitD.bitsConsumed += (uint)((nuint)sizeof(nuint) - srcSize) * 8;
+            }
+
+            return srcSize;
+        }
+
+        /*! BIT_lookBits() :
+         *  Provides next n bits from local register.
+         *  local register is not modified.
+         *  On 32-bits, maxNbBits==24.
+         *  On 64-bits, maxNbBits==56.
+         * @return : value extracted */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint BIT_lookBits(ref BIT_DStream_t bitD, uint nbBits)
+        {
+            return BIT_getMiddleBits(bitD.bitContainer, (uint)(sizeof(nuint) * 8) - bitD.bitsConsumed - nbBits, nbBits);
+        }
+
+        /*! BIT_lookBitsFast() :
+         *  unsafe version; only works if nbBits >= 1 */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
+        private static nuint BIT_lookBitsFast(ref BIT_DStream_t bitD, uint nbBits)
+        {
+            uint regMask = (uint)(sizeof(nuint) * 8 - 1);
+            assert(nbBits >= 1);
+            return bitD.bitContainer << (int)(bitD.bitsConsumed & regMask) >> (int)(regMask + 1 - nbBits & regMask);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
+        private static void BIT_skipBits(ref BIT_DStream_t bitD, uint nbBits)
+        {
+            bitD.bitsConsumed += nbBits;
+        }
+
+        /*! BIT_readBits() :
+         *  Read (consume) next n bits from local register and update.
+         *  Pay attention to not read more than nbBits contained into local register.
+         * @return : extracted value. */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint BIT_readBits(ref BIT_DStream_t bitD, uint nbBits)
+        {
+            nuint value = BIT_lookBits(ref bitD, nbBits);
+            BIT_skipBits(ref bitD, nbBits);
+            return value;
+        }
+
+        /*! BIT_readBitsFast() :
+         *  unsafe version; only works if nbBits >= 1 */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint BIT_readBitsFast(ref BIT_DStream_t bitD, uint nbBits)
+        {
+            nuint value = BIT_lookBitsFast(ref bitD, nbBits);
+            assert(nbBits >= 1);
+            BIT_skipBits(ref bitD, nbBits);
+            return value;
+        }
+
+        /*! BIT_reloadDStreamFast() :
+         *  Similar to BIT_reloadDStream(), but with two differences:
+         *  1. bitsConsumed <= sizeof(bitD->bitContainer)*8 must hold!
+         *  2. Returns BIT_DStream_overflow when bitD->ptr < bitD->limitPtr, at this
+         *     point you must use BIT_reloadDStream() to reload.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
+        private static BIT_DStream_status BIT_reloadDStreamFast(ref BIT_DStream_t bitD)
+        {
+            if (bitD.ptr < bitD.limitPtr)
+                return BIT_DStream_status.BIT_DStream_overflow;
+            assert(bitD.bitsConsumed <= (uint)(sizeof(nuint) * 8));
+            bitD.ptr -= bitD.bitsConsumed >> 3;
+            bitD.bitsConsumed &= 7;
+            bitD.bitContainer = MEM_readLEST(bitD.ptr);
+            return BIT_DStream_status.BIT_DStream_unfinished;
+        }
+
+        /*! BIT_reloadDStream() :
+         *  Refill `bitD` from buffer previously set in BIT_initDStream() .
+         *  This function is safe, it guarantees it will not read beyond src buffer.
+         * @return : status of `BIT_DStream_t` internal register.
+         *           when status == BIT_DStream_unfinished, internal register is filled with at least 25 or 57 bits */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static BIT_DStream_status BIT_reloadDStream(ref BIT_DStream_t bitD)
+        {
+            if (bitD.bitsConsumed > (uint)(sizeof(nuint) * 8))
+                return BIT_DStream_status.BIT_DStream_overflow;
+            if (bitD.ptr >= bitD.limitPtr)
+            {
+                return BIT_reloadDStreamFast(ref bitD);
+            }
+
+            if (bitD.ptr == bitD.start)
+            {
+                if (bitD.bitsConsumed < (uint)(sizeof(nuint) * 8))
+                    return BIT_DStream_status.BIT_DStream_endOfBuffer;
+                return BIT_DStream_status.BIT_DStream_completed;
+            }
+
+            {
+                uint nbBytes = bitD.bitsConsumed >> 3;
+                BIT_DStream_status result = BIT_DStream_status.BIT_DStream_unfinished;
+                if (bitD.ptr - nbBytes < bitD.start)
+                {
+                    nbBytes = (uint)(bitD.ptr - bitD.start);
+                    result = BIT_DStream_status.BIT_DStream_endOfBuffer;
+                }
+
+                bitD.ptr -= nbBytes;
+                bitD.bitsConsumed -= nbBytes * 8;
+                bitD.bitContainer = MEM_readLEST(bitD.ptr);
+                return result;
+            }
+        }
     }
 }
