@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace ZstdSharp.Unsafe
 {
     public unsafe struct HUF_ReadDTableX2_Workspace
@@ -8,6 +10,14 @@ namespace ZstdSharp.Unsafe
         public _sortedSymbol_e__FixedBuffer sortedSymbol;
         public fixed byte weightList[256];
         public fixed uint calleeWksp[219];
+#if NET8_0_OR_GREATER
+        [InlineArray(12)]
+        public unsafe struct _rankVal_e__FixedBuffer
+        {
+            public rankValCol_t e0;
+        }
+
+#else
         public unsafe struct _rankVal_e__FixedBuffer
         {
             public rankValCol_t e0;
@@ -23,7 +33,16 @@ namespace ZstdSharp.Unsafe
             public rankValCol_t e10;
             public rankValCol_t e11;
         }
+#endif
 
+#if NET8_0_OR_GREATER
+        [InlineArray(256)]
+        public unsafe struct _sortedSymbol_e__FixedBuffer
+        {
+            public sortedSymbol_t e0;
+        }
+
+#else
         public unsafe struct _sortedSymbol_e__FixedBuffer
         {
             public sortedSymbol_t e0;
@@ -283,5 +302,6 @@ namespace ZstdSharp.Unsafe
             public sortedSymbol_t e254;
             public sortedSymbol_t e255;
         }
+#endif
     }
 }

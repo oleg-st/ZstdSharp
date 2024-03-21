@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace ZstdSharp.Unsafe
 {
     public unsafe struct ZSTD_entropyDTables_t
@@ -12,6 +14,14 @@ namespace ZstdSharp.Unsafe
         public fixed uint hufTable[4097];
         public fixed uint rep[3];
         public fixed uint workspace[157];
+#if NET8_0_OR_GREATER
+        [InlineArray(513)]
+        public unsafe struct _LLTable_e__FixedBuffer
+        {
+            public ZSTD_seqSymbol e0;
+        }
+
+#else
         public unsafe struct _LLTable_e__FixedBuffer
         {
             public ZSTD_seqSymbol e0;
@@ -528,7 +538,16 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e511;
             public ZSTD_seqSymbol e512;
         }
+#endif
 
+#if NET8_0_OR_GREATER
+        [InlineArray(257)]
+        public unsafe struct _OFTable_e__FixedBuffer
+        {
+            public ZSTD_seqSymbol e0;
+        }
+
+#else
         public unsafe struct _OFTable_e__FixedBuffer
         {
             public ZSTD_seqSymbol e0;
@@ -789,7 +808,16 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e255;
             public ZSTD_seqSymbol e256;
         }
+#endif
 
+#if NET8_0_OR_GREATER
+        [InlineArray(513)]
+        public unsafe struct _MLTable_e__FixedBuffer
+        {
+            public ZSTD_seqSymbol e0;
+        }
+
+#else
         public unsafe struct _MLTable_e__FixedBuffer
         {
             public ZSTD_seqSymbol e0;
@@ -1306,5 +1334,6 @@ namespace ZstdSharp.Unsafe
             public ZSTD_seqSymbol e511;
             public ZSTD_seqSymbol e512;
         }
+#endif
     }
 }

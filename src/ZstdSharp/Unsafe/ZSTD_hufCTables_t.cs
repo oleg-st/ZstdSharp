@@ -1,9 +1,19 @@
+using System.Runtime.CompilerServices;
+
 namespace ZstdSharp.Unsafe
 {
     public unsafe struct ZSTD_hufCTables_t
     {
         public _CTable_e__FixedBuffer CTable;
         public HUF_repeat repeatMode;
+#if NET8_0_OR_GREATER
+        [InlineArray(257)]
+        public unsafe struct _CTable_e__FixedBuffer
+        {
+            public nuint e0;
+        }
+
+#else
         public unsafe struct _CTable_e__FixedBuffer
         {
             public nuint e0;
@@ -264,5 +274,6 @@ namespace ZstdSharp.Unsafe
             public nuint e255;
             public nuint e256;
         }
+#endif
     }
 }

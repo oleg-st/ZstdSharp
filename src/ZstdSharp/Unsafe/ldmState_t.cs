@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace ZstdSharp.Unsafe
 {
     public unsafe struct ldmState_t
@@ -10,6 +12,14 @@ namespace ZstdSharp.Unsafe
         public byte* bucketOffsets;
         public _splitIndices_e__FixedBuffer splitIndices;
         public _matchCandidates_e__FixedBuffer matchCandidates;
+#if NET8_0_OR_GREATER
+        [InlineArray(64)]
+        public unsafe struct _splitIndices_e__FixedBuffer
+        {
+            public nuint e0;
+        }
+
+#else
         public unsafe struct _splitIndices_e__FixedBuffer
         {
             public nuint e0;
@@ -77,7 +87,16 @@ namespace ZstdSharp.Unsafe
             public nuint e62;
             public nuint e63;
         }
+#endif
 
+#if NET8_0_OR_GREATER
+        [InlineArray(64)]
+        public unsafe struct _matchCandidates_e__FixedBuffer
+        {
+            public ldmMatchCandidate_t e0;
+        }
+
+#else
         public unsafe struct _matchCandidates_e__FixedBuffer
         {
             public ldmMatchCandidate_t e0;
@@ -145,5 +164,6 @@ namespace ZstdSharp.Unsafe
             public ldmMatchCandidate_t e62;
             public ldmMatchCandidate_t e63;
         }
+#endif
     }
 }

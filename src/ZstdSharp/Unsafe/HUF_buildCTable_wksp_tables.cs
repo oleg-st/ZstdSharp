@@ -1,9 +1,19 @@
+using System.Runtime.CompilerServices;
+
 namespace ZstdSharp.Unsafe
 {
     public struct HUF_buildCTable_wksp_tables
     {
         public _huffNodeTbl_e__FixedBuffer huffNodeTbl;
         public _rankPosition_e__FixedBuffer rankPosition;
+#if NET8_0_OR_GREATER
+        [InlineArray(512)]
+        public unsafe struct _huffNodeTbl_e__FixedBuffer
+        {
+            public nodeElt_s e0;
+        }
+
+#else
         public unsafe struct _huffNodeTbl_e__FixedBuffer
         {
             public nodeElt_s e0;
@@ -519,7 +529,16 @@ namespace ZstdSharp.Unsafe
             public nodeElt_s e510;
             public nodeElt_s e511;
         }
+#endif
 
+#if NET8_0_OR_GREATER
+        [InlineArray(192)]
+        public unsafe struct _rankPosition_e__FixedBuffer
+        {
+            public rankPos e0;
+        }
+
+#else
         public unsafe struct _rankPosition_e__FixedBuffer
         {
             public rankPos e0;
@@ -715,5 +734,6 @@ namespace ZstdSharp.Unsafe
             public rankPos e190;
             public rankPos e191;
         }
+#endif
     }
 }
