@@ -147,11 +147,9 @@ namespace ZstdSharp.Unsafe
                         void* alloc = ws->objectEnd;
                         nuint bytesToAlign = ZSTD_cwksp_bytes_to_align_ptr(alloc, 64);
                         void* objectEnd = (byte*)alloc + bytesToAlign;
+                        if (objectEnd > ws->workspaceEnd)
                         {
-                            if (objectEnd > ws->workspaceEnd)
-                            {
-                                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
-                            }
+                            return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
                         }
 
                         ws->objectEnd = objectEnd;
@@ -406,11 +404,9 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_cwksp_create(ZSTD_cwksp* ws, nuint size, ZSTD_customMem customMem)
         {
             void* workspace = ZSTD_customMalloc(size, customMem);
+            if (workspace == null)
             {
-                if (workspace == null)
-                {
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
-                }
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
             }
 
             ZSTD_cwksp_init(ws, workspace, size, ZSTD_cwksp_static_alloc_e.ZSTD_cwksp_dynamic_alloc);

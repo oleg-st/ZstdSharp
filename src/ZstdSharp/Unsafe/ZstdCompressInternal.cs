@@ -258,11 +258,9 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_noCompressBlock(void* dst, nuint dstCapacity, void* src, nuint srcSize, uint lastBlock)
         {
             uint cBlockHeader24 = lastBlock + ((uint)blockType_e.bt_raw << 1) + (uint)(srcSize << 3);
+            if (srcSize + ZSTD_blockHeaderSize > dstCapacity)
             {
-                if (srcSize + ZSTD_blockHeaderSize > dstCapacity)
-                {
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-                }
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
             MEM_writeLE24(dst, cBlockHeader24);
@@ -275,11 +273,9 @@ namespace ZstdSharp.Unsafe
         {
             byte* op = (byte*)dst;
             uint cBlockHeader = lastBlock + ((uint)blockType_e.bt_rle << 1) + (uint)(srcSize << 3);
+            if (dstCapacity < 4)
             {
-                if (dstCapacity < 4)
-                {
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-                }
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
             MEM_writeLE24(op, cBlockHeader);

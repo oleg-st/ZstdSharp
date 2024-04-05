@@ -145,10 +145,8 @@ namespace ZstdSharp.Unsafe
             FSE_DState_t state2;
             {
                 nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
-                {
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
-                }
+                if (ERR_isError(_var_err__))
+                    return _var_err__;
             }
 
             FSE_initDState(&state1, &bitD, dt);
@@ -229,10 +227,8 @@ namespace ZstdSharp.Unsafe
             wkspSize -= (nuint)(sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint));
             {
                 nuint _var_err__ = FSE_buildDTable_internal(dtable, wksp->ncount, maxSymbolValue, tableLog, workSpace, wkspSize);
-                {
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
-                }
+                if (ERR_isError(_var_err__))
+                    return _var_err__;
             }
 
             {

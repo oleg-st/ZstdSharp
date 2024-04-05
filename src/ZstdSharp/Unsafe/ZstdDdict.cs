@@ -78,11 +78,9 @@ namespace ZstdSharp.Unsafe
             }
 
             ddict->dictID = MEM_readLE32((sbyte*)ddict->dictContent + 4);
+            if (ERR_isError(ZSTD_loadDEntropy(&ddict->entropy, ddict->dictContent, ddict->dictSize)))
             {
-                if (ERR_isError(ZSTD_loadDEntropy(&ddict->entropy, ddict->dictContent, ddict->dictSize)))
-                {
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted));
-                }
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted));
             }
 
             ddict->entropyPresent = 1;

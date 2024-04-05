@@ -304,27 +304,12 @@ namespace ZstdSharp.Unsafe
             {
                 while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd - 3)
                 {
-                    {
-                        if (MEM_64bits)
-                        {
-                            *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                        }
-                    }
-
-                    {
+                    if (MEM_64bits)
                         *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                    }
-
-                    {
-                        if (MEM_64bits)
-                        {
-                            *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                        }
-                    }
-
-                    {
+                    *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+                    if (MEM_64bits)
                         *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                    }
+                    *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
                 }
             }
             else
@@ -334,15 +319,9 @@ namespace ZstdSharp.Unsafe
 
             if (MEM_32bits)
                 while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd)
-                {
                     *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                }
-
             while (p < pEnd)
-            {
                 *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-            }
-
             return (nuint)(pEnd - pStart);
         }
 
@@ -358,10 +337,8 @@ namespace ZstdSharp.Unsafe
             uint dtLog = dtd.tableLog;
             {
                 nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
-                {
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
-                }
+                if (ERR_isError(_var_err__))
+                    return _var_err__;
             }
 
             HUF_decodeStreamX1(op, &bitD, oend, dt, dtLog);
@@ -420,128 +397,56 @@ namespace ZstdSharp.Unsafe
                 assert(dstSize >= 6);
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD1, istart1, length1);
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD2, istart2, length2);
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD3, istart3, length3);
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD4, istart4, length4);
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 if ((nuint)(oend - op4) >= (nuint)sizeof(nuint))
                 {
                     for (; (endSignal & (uint)(op4 < olimit ? 1 : 0)) != 0;)
                     {
-                        {
-                            if (MEM_64bits)
-                            {
-                                *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                            }
-                        }
-
-                        {
-                            if (MEM_64bits)
-                            {
-                                *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                            }
-                        }
-
-                        {
-                            if (MEM_64bits)
-                            {
-                                *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                            }
-                        }
-
-                        {
-                            if (MEM_64bits)
-                            {
-                                *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                            }
-                        }
-
-                        {
+                        if (MEM_64bits)
                             *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                        }
-
-                        {
-                            if (MEM_64bits)
-                            {
-                                *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                            }
-                        }
-
-                        {
-                            if (MEM_64bits)
-                            {
-                                *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                            }
-                        }
-
-                        {
-                            if (MEM_64bits)
-                            {
-                                *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                            }
-                        }
-
-                        {
-                            if (MEM_64bits)
-                            {
-                                *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                            }
-                        }
-
-                        {
+                        *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
+                        *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
+                        *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
+                        *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
+                        if (MEM_64bits)
                             *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                        }
-
+                        *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
+                        *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
+                        *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
+                        *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
                         endSignal &= BIT_reloadDStreamFast(&bitD1) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                         endSignal &= BIT_reloadDStreamFast(&bitD2) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                         endSignal &= BIT_reloadDStreamFast(&bitD3) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
@@ -1314,48 +1219,23 @@ namespace ZstdSharp.Unsafe
                 {
                     while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd - 9)
                     {
-                        {
-                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
-
-                        {
-                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
-
-                        {
-                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
-
-                        {
-                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
-
-                        {
-                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
+                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
                     }
                 }
                 else
                 {
                     while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd - (sizeof(nuint) - 1))
                     {
-                        {
-                            if (MEM_64bits)
-                                p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
-
-                        {
-                            if (MEM_64bits)
-                                p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
-
-                        {
+                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        if (MEM_64bits)
                             p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        }
+                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
                     }
                 }
             }
@@ -1367,14 +1247,9 @@ namespace ZstdSharp.Unsafe
             if ((nuint)(pEnd - p) >= 2)
             {
                 while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p <= pEnd - 2)
-                {
                     p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                }
-
                 while (p <= pEnd - 2)
-                {
                     p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                }
             }
 
             if (p < pEnd)
@@ -1388,10 +1263,8 @@ namespace ZstdSharp.Unsafe
             BIT_DStream_t bitD;
             {
                 nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
-                {
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
-                }
+                if (ERR_isError(_var_err__))
+                    return _var_err__;
             }
 
             {
@@ -1459,114 +1332,58 @@ namespace ZstdSharp.Unsafe
                 assert(dstSize >= 6);
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD1, istart1, length1);
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD2, istart2, length2);
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD3, istart3, length3);
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD4, istart4, length4);
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 if ((nuint)(oend - op4) >= (nuint)sizeof(nuint))
                 {
                     for (; (endSignal & (uint)(op4 < olimit ? 1 : 0)) != 0;)
                     {
-                        {
-                            if (MEM_64bits)
-                                op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
-                        }
-
-                        {
-                            if (MEM_64bits)
-                                op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
-                        }
-
-                        {
+                        op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
+                        if (MEM_64bits)
                             op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
-                        }
-
-                        {
-                            if (MEM_64bits)
-                                op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
-                        }
-
-                        {
+                        op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
+                        if (MEM_64bits)
                             op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
-                        }
-
-                        {
-                            if (MEM_64bits)
-                                op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
-                        }
-
-                        {
+                        op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
+                        if (MEM_64bits)
                             op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
-                        }
-
+                        op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
                         endSignal &= BIT_reloadDStreamFast(&bitD1) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                         endSignal &= BIT_reloadDStreamFast(&bitD2) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
-                        {
-                            if (MEM_64bits)
-                                op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
-                        }
-
-                        {
+                        if (MEM_64bits)
                             op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
-                        }
-
-                        {
-                            if (MEM_64bits)
-                                op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
-                        }
-
-                        {
+                        op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
+                        if (MEM_64bits)
                             op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
-                        }
-
-                        {
-                            if (MEM_64bits)
-                                op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
-                        }
-
-                        {
+                        op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
+                        if (MEM_64bits)
                             op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
-                        }
-
-                        {
-                            if (MEM_64bits)
-                                op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
-                        }
-
-                        {
+                        op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
+                        if (MEM_64bits)
                             op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
-                        }
-
+                        op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
                         endSignal &= BIT_reloadDStreamFast(&bitD3) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                         endSignal &= BIT_reloadDStreamFast(&bitD4) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                     }

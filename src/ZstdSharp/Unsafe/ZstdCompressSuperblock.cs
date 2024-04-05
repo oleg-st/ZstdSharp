@@ -144,11 +144,9 @@ namespace ZstdSharp.Unsafe
             byte* op = ostart;
             byte* seqHead;
             *entropyWritten = 0;
+            if (oend - op < 3 + 1)
             {
-                if (oend - op < 3 + 1)
-                {
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-                }
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
             if (nbSeq < 128)

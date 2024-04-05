@@ -51,37 +51,27 @@ namespace ZstdSharp.Unsafe
             tableLog = FSE_optimalTableLog(tableLog, wtSize, maxSymbolValue);
             {
                 nuint _var_err__ = FSE_normalizeCount(wksp->norm, tableLog, wksp->count, wtSize, maxSymbolValue, 0);
-                {
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
-                }
+                if (ERR_isError(_var_err__))
+                    return _var_err__;
             }
 
             {
                 nuint hSize = FSE_writeNCount(op, (nuint)(oend - op), wksp->norm, maxSymbolValue, tableLog);
-                {
-                    if (ERR_isError(hSize))
-                        return hSize;
-                }
-
+                if (ERR_isError(hSize))
+                    return hSize;
                 op += hSize;
             }
 
             {
                 nuint _var_err__ = FSE_buildCTable_wksp(wksp->CTable, wksp->norm, maxSymbolValue, tableLog, wksp->scratchBuffer, sizeof(uint) * 41);
-                {
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
-                }
+                if (ERR_isError(_var_err__))
+                    return _var_err__;
             }
 
             {
                 nuint cSize = FSE_compress_usingCTable(op, (nuint)(oend - op), weightTable, wtSize, wksp->CTable);
-                {
-                    if (ERR_isError(cSize))
-                        return cSize;
-                }
-
+                if (ERR_isError(cSize))
+                    return cSize;
                 if (cSize == 0)
                     return 0;
                 op += cSize;
@@ -174,11 +164,8 @@ namespace ZstdSharp.Unsafe
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             {
                 nuint hSize = HUF_compressWeights(op + 1, maxDstSize - 1, wksp->huffWeight, maxSymbolValue, &wksp->wksp, (nuint)sizeof(HUF_CompressWeightsWksp));
-                {
-                    if (ERR_isError(hSize))
-                        return hSize;
-                }
-
+                if (ERR_isError(hSize))
+                    return hSize;
                 if (hSize > 1 && hSize < maxSymbolValue / 2)
                 {
                     op[0] = (byte)hSize;
@@ -209,11 +196,8 @@ namespace ZstdSharp.Unsafe
             uint nbSymbols = 0;
             nuint* ct = CTable + 1;
             nuint readSize = HUF_readStats(huffWeight, 255 + 1, rankVal, &nbSymbols, &tableLog, src, srcSize);
-            {
-                if (ERR_isError(readSize))
-                    return readSize;
-            }
-
+            if (ERR_isError(readSize))
+                return readSize;
             *hasZeroWeights = rankVal[0] > 0 ? 1U : 0U;
             if (tableLog > 12)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_tableLog_tooLarge));
@@ -996,11 +980,8 @@ namespace ZstdSharp.Unsafe
             assert(op <= oend);
             {
                 nuint cSize = HUF_compress1X_usingCTable_internal(op, (nuint)(oend - op), ip, segmentSize, CTable, flags);
-                {
-                    if (ERR_isError(cSize))
-                        return cSize;
-                }
-
+                if (ERR_isError(cSize))
+                    return cSize;
                 if (cSize == 0 || cSize > 65535)
                     return 0;
                 MEM_writeLE16(ostart, (ushort)cSize);
@@ -1011,11 +992,8 @@ namespace ZstdSharp.Unsafe
             assert(op <= oend);
             {
                 nuint cSize = HUF_compress1X_usingCTable_internal(op, (nuint)(oend - op), ip, segmentSize, CTable, flags);
-                {
-                    if (ERR_isError(cSize))
-                        return cSize;
-                }
-
+                if (ERR_isError(cSize))
+                    return cSize;
                 if (cSize == 0 || cSize > 65535)
                     return 0;
                 MEM_writeLE16(ostart + 2, (ushort)cSize);
@@ -1026,11 +1004,8 @@ namespace ZstdSharp.Unsafe
             assert(op <= oend);
             {
                 nuint cSize = HUF_compress1X_usingCTable_internal(op, (nuint)(oend - op), ip, segmentSize, CTable, flags);
-                {
-                    if (ERR_isError(cSize))
-                        return cSize;
-                }
-
+                if (ERR_isError(cSize))
+                    return cSize;
                 if (cSize == 0 || cSize > 65535)
                     return 0;
                 MEM_writeLE16(ostart + 4, (ushort)cSize);
@@ -1042,11 +1017,8 @@ namespace ZstdSharp.Unsafe
             assert(ip <= iend);
             {
                 nuint cSize = HUF_compress1X_usingCTable_internal(op, (nuint)(oend - op), ip, (nuint)(iend - ip), CTable, flags);
-                {
-                    if (ERR_isError(cSize))
-                        return cSize;
-                }
-
+                if (ERR_isError(cSize))
+                    return cSize;
                 if (cSize == 0 || cSize > 65535)
                     return 0;
                 op += cSize;
@@ -1197,22 +1169,16 @@ namespace ZstdSharp.Unsafe
                 {
                     uint maxSymbolValueBegin = maxSymbolValue;
                     nuint largestBegin = HIST_count_simple(table->count, &maxSymbolValueBegin, (byte*)src, 4096);
-                    {
-                        if (ERR_isError(largestBegin))
-                            return largestBegin;
-                    }
-
+                    if (ERR_isError(largestBegin))
+                        return largestBegin;
                     largestTotal += largestBegin;
                 }
 
                 {
                     uint maxSymbolValueEnd = maxSymbolValue;
                     nuint largestEnd = HIST_count_simple(table->count, &maxSymbolValueEnd, (byte*)src + srcSize - 4096, 4096);
-                    {
-                        if (ERR_isError(largestEnd))
-                            return largestEnd;
-                    }
-
+                    if (ERR_isError(largestEnd))
+                        return largestEnd;
                     largestTotal += largestEnd;
                 }
 
@@ -1222,11 +1188,8 @@ namespace ZstdSharp.Unsafe
 
             {
                 nuint largest = HIST_count_wksp(table->count, &maxSymbolValue, (byte*)src, srcSize, table->wksps.hist_wksp, sizeof(uint) * 1024);
-                {
-                    if (ERR_isError(largest))
-                        return largest;
-                }
-
+                if (ERR_isError(largest))
+                    return largest;
                 if (largest == srcSize)
                 {
                     *ostart = ((byte*)src)[0];
@@ -1252,10 +1215,8 @@ namespace ZstdSharp.Unsafe
                 nuint maxBits = HUF_buildCTable_wksp(&table->CTable.e0, table->count, maxSymbolValue, huffLog, &table->wksps.buildCTable_wksp, (nuint)sizeof(HUF_buildCTable_wksp_tables));
                 {
                     nuint _var_err__ = maxBits;
-                    {
-                        if (ERR_isError(_var_err__))
-                            return _var_err__;
-                    }
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
                 }
 
                 huffLog = (uint)maxBits;
@@ -1263,11 +1224,8 @@ namespace ZstdSharp.Unsafe
 
             {
                 nuint hSize = HUF_writeCTable_wksp(op, dstSize, &table->CTable.e0, maxSymbolValue, huffLog, &table->wksps.writeCTable_wksp, (nuint)sizeof(HUF_WriteCTableWksp));
-                {
-                    if (ERR_isError(hSize))
-                        return hSize;
-                }
-
+                if (ERR_isError(hSize))
+                    return hSize;
                 if (repeat != null && *repeat != HUF_repeat.HUF_repeat_none)
                 {
                     nuint oldSize = HUF_estimateCompressedSize(oldHufTable, table->count, maxSymbolValue);
