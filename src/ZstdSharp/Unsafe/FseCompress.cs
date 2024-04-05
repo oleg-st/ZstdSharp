@@ -191,7 +191,7 @@ namespace ZstdSharp.Unsafe
             bitCount += 4;
             remaining = tableSize + 1;
             threshold = tableSize;
-            nbBits = (int)(tableLog + 1);
+            nbBits = (int)tableLog + 1;
             while (symbol < alphabetSize && remaining > 1)
             {
                 if (previousIs0 != 0)
@@ -216,7 +216,7 @@ namespace ZstdSharp.Unsafe
                     while (symbol >= start + 3)
                     {
                         start += 3;
-                        bitStream += (uint)(3 << bitCount);
+                        bitStream += 3U << bitCount;
                         bitCount += 2;
                     }
 
@@ -241,7 +241,7 @@ namespace ZstdSharp.Unsafe
                     count++;
                     if (count >= threshold)
                         count += max;
-                    bitStream += (uint)(count << bitCount);
+                    bitStream += (uint)count << bitCount;
                     bitCount += nbBits;
                     bitCount -= count < max ? 1 : 0;
                     previousIs0 = count == 1 ? 1 : 0;
@@ -274,6 +274,7 @@ namespace ZstdSharp.Unsafe
             @out[0] = (byte)bitStream;
             @out[1] = (byte)(bitStream >> 8);
             @out += (bitCount + 7) / 8;
+            assert(@out >= ostart);
             return (nuint)(@out - ostart);
         }
 

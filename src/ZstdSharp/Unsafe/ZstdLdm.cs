@@ -710,13 +710,13 @@ namespace ZstdSharp.Unsafe
             {
                 /* maybeSplitSequence updates rawSeqStore->pos */
                 rawSeq sequence = maybeSplitSequence(rawSeqStore, (uint)(iend - ip), minMatch);
-                int i;
                 if (sequence.offset == 0)
                     break;
                 assert(ip + sequence.litLength + sequence.matchLength <= iend);
                 ZSTD_ldm_limitTableUpdate(ms, ip);
                 ZSTD_ldm_fillFastTables(ms, ip);
                 {
+                    int i;
                     nuint newLitLength = ((delegate* managed<ZSTD_matchState_t*, seqStore_t*, uint*, void*, nuint, nuint>)blockCompressor)(ms, seqStore, rep, ip, sequence.litLength);
                     ip += sequence.litLength;
                     for (i = 3 - 1; i > 0; i--)

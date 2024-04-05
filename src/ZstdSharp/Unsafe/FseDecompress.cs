@@ -145,8 +145,10 @@ namespace ZstdSharp.Unsafe
             FSE_DState_t state2;
             {
                 nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
-                if (ERR_isError(_var_err__))
-                    return _var_err__;
+                {
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
+                }
             }
 
             FSE_initDState(&state1, &bitD, dt);
@@ -193,6 +195,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
+            assert(op >= ostart);
             return (nuint)(op - ostart);
         }
 
@@ -204,6 +207,8 @@ namespace ZstdSharp.Unsafe
             uint tableLog;
             uint maxSymbolValue = 255;
             FSE_DecompressWksp* wksp = (FSE_DecompressWksp*)workSpace;
+            nuint dtablePos = (nuint)(sizeof(FSE_DecompressWksp) / sizeof(uint));
+            uint* dtable = (uint*)workSpace + dtablePos;
             if (wkspSize < (nuint)sizeof(FSE_DecompressWksp))
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
             {
@@ -223,18 +228,20 @@ namespace ZstdSharp.Unsafe
             workSpace = (byte*)workSpace + sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint);
             wkspSize -= (nuint)(sizeof(FSE_DecompressWksp) + (1 + (1 << (int)tableLog)) * sizeof(uint));
             {
-                nuint _var_err__ = FSE_buildDTable_internal(wksp->dtable, wksp->ncount, maxSymbolValue, tableLog, workSpace, wkspSize);
-                if (ERR_isError(_var_err__))
-                    return _var_err__;
+                nuint _var_err__ = FSE_buildDTable_internal(dtable, wksp->ncount, maxSymbolValue, tableLog, workSpace, wkspSize);
+                {
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
+                }
             }
 
             {
-                void* ptr = wksp->dtable;
+                void* ptr = dtable;
                 FSE_DTableHeader* DTableH = (FSE_DTableHeader*)ptr;
                 uint fastMode = DTableH->fastMode;
                 if (fastMode != 0)
-                    return FSE_decompress_usingDTable_generic(dst, dstCapacity, ip, cSrcSize, wksp->dtable, 1);
-                return FSE_decompress_usingDTable_generic(dst, dstCapacity, ip, cSrcSize, wksp->dtable, 0);
+                    return FSE_decompress_usingDTable_generic(dst, dstCapacity, ip, cSrcSize, dtable, 1);
+                return FSE_decompress_usingDTable_generic(dst, dstCapacity, ip, cSrcSize, dtable, 0);
             }
         }
 

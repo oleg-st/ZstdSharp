@@ -33,16 +33,18 @@ namespace ZstdSharp.Unsafe
         {
             void* dt = DTable + 1;
             uint dtLog = HUF_getDTableDesc(DTable).tableLog;
-            byte* ilimit = (byte*)src + 6 + 8;
-            byte* oend = (byte*)dst + dstSize;
+            byte* istart = (byte*)src;
+            byte* oend = ZSTD_maybeNullPtrAdd((byte*)dst, (nint)dstSize);
             if (!BitConverter.IsLittleEndian || MEM_32bits)
                 return 0;
+            if (dstSize == 0)
+                return 0;
+            assert(dst != null);
             if (srcSize < 10)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             if (dtLog != 11)
                 return 0;
             {
-                byte* istart = (byte*)src;
                 nuint length1 = MEM_readLE16(istart);
                 nuint length2 = MEM_readLE16(istart + 2);
                 nuint length3 = MEM_readLE16(istart + 4);
@@ -51,7 +53,7 @@ namespace ZstdSharp.Unsafe
                 args->iend.e1 = args->iend.e0 + length1;
                 args->iend.e2 = args->iend.e1 + length2;
                 args->iend.e3 = args->iend.e2 + length3;
-                if (length1 < 16 || length2 < 8 || length3 < 8 || length4 < 8)
+                if (length1 < 8 || length2 < 8 || length3 < 8 || length4 < 8)
                     return 0;
                 if (length4 > srcSize)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
@@ -71,7 +73,7 @@ namespace ZstdSharp.Unsafe
             args->bits[1] = HUF_initFastDStream(args->ip.e1);
             args->bits[2] = HUF_initFastDStream(args->ip.e2);
             args->bits[3] = HUF_initFastDStream(args->ip.e3);
-            args->ilimit = ilimit;
+            args->ilowest = istart;
             args->oend = oend;
             args->dt = dt;
             return 1;
@@ -86,7 +88,7 @@ namespace ZstdSharp.Unsafe
             assert(sizeof(nuint) == 8);
             bit->bitContainer = MEM_readLEST((&args->ip.e0)[stream]);
             bit->bitsConsumed = ZSTD_countTrailingZeros64(args->bits[stream]);
-            bit->start = (sbyte*)args->iend.e0;
+            bit->start = (sbyte*)args->ilowest;
             bit->limitPtr = bit->start + sizeof(nuint);
             bit->ptr = (sbyte*)(&args->ip.e0)[stream];
             return 0;
@@ -302,13 +304,27 @@ namespace ZstdSharp.Unsafe
             {
                 while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd - 3)
                 {
-                    if (MEM_64bits)
+                    {
+                        if (MEM_64bits)
+                        {
+                            *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+                        }
+                    }
+
+                    {
                         *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                    if (MEM_64bits || 12 <= 12)
+                    }
+
+                    {
+                        if (MEM_64bits)
+                        {
+                            *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+                        }
+                    }
+
+                    {
                         *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                    if (MEM_64bits)
-                        *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
-                    *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+                    }
                 }
             }
             else
@@ -318,9 +334,15 @@ namespace ZstdSharp.Unsafe
 
             if (MEM_32bits)
                 while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd)
+                {
                     *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+                }
+
             while (p < pEnd)
+            {
                 *p++ = HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+            }
+
             return (nuint)(pEnd - pStart);
         }
 
@@ -328,7 +350,7 @@ namespace ZstdSharp.Unsafe
         private static nuint HUF_decompress1X1_usingDTable_internal_body(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
             byte* op = (byte*)dst;
-            byte* oend = op + dstSize;
+            byte* oend = ZSTD_maybeNullPtrAdd(op, (nint)dstSize);
             void* dtPtr = DTable + 1;
             HUF_DEltX1* dt = (HUF_DEltX1*)dtPtr;
             BIT_DStream_t bitD;
@@ -336,8 +358,10 @@ namespace ZstdSharp.Unsafe
             uint dtLog = dtd.tableLog;
             {
                 nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
-                if (ERR_isError(_var_err__))
-                    return _var_err__;
+                {
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
+                }
             }
 
             HUF_decodeStreamX1(op, &bitD, oend, dt, dtLog);
@@ -354,6 +378,8 @@ namespace ZstdSharp.Unsafe
         private static nuint HUF_decompress4X1_usingDTable_internal_body(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
             if (cSrcSize < 10)
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+            if (dstSize < 6)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             {
                 byte* istart = (byte*)cSrc;
@@ -391,64 +417,131 @@ namespace ZstdSharp.Unsafe
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 if (opStart4 > oend)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
-                if (dstSize < 6)
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                assert(dstSize >= 6);
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD1, istart1, length1);
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
+                    {
+                        if (ERR_isError(_var_err__))
+                            return _var_err__;
+                    }
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD2, istart2, length2);
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
+                    {
+                        if (ERR_isError(_var_err__))
+                            return _var_err__;
+                    }
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD3, istart3, length3);
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
+                    {
+                        if (ERR_isError(_var_err__))
+                            return _var_err__;
+                    }
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD4, istart4, length4);
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
+                    {
+                        if (ERR_isError(_var_err__))
+                            return _var_err__;
+                    }
                 }
 
                 if ((nuint)(oend - op4) >= (nuint)sizeof(nuint))
                 {
                     for (; (endSignal & (uint)(op4 < olimit ? 1 : 0)) != 0;)
                     {
-                        if (MEM_64bits)
+                        {
+                            if (MEM_64bits)
+                            {
+                                *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
+                            }
+                        }
+
+                        {
+                            if (MEM_64bits)
+                            {
+                                *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
+                            }
+                        }
+
+                        {
+                            if (MEM_64bits)
+                            {
+                                *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
+                            }
+                        }
+
+                        {
+                            if (MEM_64bits)
+                            {
+                                *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
+                            }
+                        }
+
+                        {
                             *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                        if (MEM_64bits)
+                        }
+
+                        {
                             *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                        if (MEM_64bits)
+                        }
+
+                        {
                             *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                        if (MEM_64bits)
+                        }
+
+                        {
                             *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
+                            if (MEM_64bits)
+                            {
+                                *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
+                            }
+                        }
+
+                        {
+                            if (MEM_64bits)
+                            {
+                                *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
+                            }
+                        }
+
+                        {
+                            if (MEM_64bits)
+                            {
+                                *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
+                            }
+                        }
+
+                        {
+                            if (MEM_64bits)
+                            {
+                                *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
+                            }
+                        }
+
+                        {
                             *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
                             *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
                             *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
                             *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                        if (MEM_64bits)
-                            *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                        if (MEM_64bits)
-                            *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                        if (MEM_64bits)
-                            *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                        if (MEM_64bits)
-                            *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
-                        *op1++ = HUF_decodeSymbolX1(&bitD1, dt, dtLog);
-                        *op2++ = HUF_decodeSymbolX1(&bitD2, dt, dtLog);
-                        *op3++ = HUF_decodeSymbolX1(&bitD3, dt, dtLog);
-                        *op4++ = HUF_decodeSymbolX1(&bitD4, dt, dtLog);
+                        }
+
                         endSignal &= BIT_reloadDStreamFast(&bitD1) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                         endSignal &= BIT_reloadDStreamFast(&bitD2) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                         endSignal &= BIT_reloadDStreamFast(&bitD3) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
@@ -488,7 +581,7 @@ namespace ZstdSharp.Unsafe
             byte* op0, op1, op2, op3;
             ushort* dtable = (ushort*)args->dt;
             byte* oend = args->oend;
-            byte* ilimit = args->ilimit;
+            byte* ilowest = args->ilowest;
             bits0 = args->bits[0];
             bits1 = args->bits[1];
             bits2 = args->bits[2];
@@ -507,25 +600,24 @@ namespace ZstdSharp.Unsafe
             {
                 byte* olimit;
                 int stream;
-                int symbol;
                 {
                     assert(op0 <= op1);
-                    assert(ip0 >= ilimit);
+                    assert(ip0 >= ilowest);
                 }
 
                 {
                     assert(op1 <= op2);
-                    assert(ip1 >= ilimit);
+                    assert(ip1 >= ilowest);
                 }
 
                 {
                     assert(op2 <= op3);
-                    assert(ip2 >= ilimit);
+                    assert(ip2 >= ilowest);
                 }
 
                 {
                     assert(op3 <= oend);
-                    assert(ip3 >= ilimit);
+                    assert(ip3 >= ilowest);
                 }
 
                 {
@@ -534,12 +626,12 @@ namespace ZstdSharp.Unsafe
                     /* Each iteration consumes up to 11 bits * 5 = 55 bits < 7 bytes
                      * per stream.
                      */
-                    nuint iiters = (nuint)(ip0 - ilimit) / 7;
+                    nuint iiters = (nuint)(ip0 - ilowest) / 7;
                     /* We can safely run iters iterations before running bounds checks */
                     nuint iters = oiters < iiters ? oiters : iiters;
                     nuint symbols = iters * 5;
                     olimit = op3 + symbols;
-                    if (op3 + 20 > olimit)
+                    if (op3 == olimit)
                         break;
                     {
                         if (ip1 < ip0)
@@ -575,28 +667,28 @@ namespace ZstdSharp.Unsafe
                         {
                             int index = (int)(bits0 >> 53);
                             int entry = dtable[index];
-                            bits0 <<= entry & 63;
+                            bits0 <<= entry & 0x3F;
                             op0[0] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits1 >> 53);
                             int entry = dtable[index];
-                            bits1 <<= entry & 63;
+                            bits1 <<= entry & 0x3F;
                             op1[0] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits2 >> 53);
                             int entry = dtable[index];
-                            bits2 <<= entry & 63;
+                            bits2 <<= entry & 0x3F;
                             op2[0] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits3 >> 53);
                             int entry = dtable[index];
-                            bits3 <<= entry & 63;
+                            bits3 <<= entry & 0x3F;
                             op3[0] = (byte)(entry >> 8 & 0xFF);
                         }
                     }
@@ -605,28 +697,28 @@ namespace ZstdSharp.Unsafe
                         {
                             int index = (int)(bits0 >> 53);
                             int entry = dtable[index];
-                            bits0 <<= entry & 63;
+                            bits0 <<= entry & 0x3F;
                             op0[1] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits1 >> 53);
                             int entry = dtable[index];
-                            bits1 <<= entry & 63;
+                            bits1 <<= entry & 0x3F;
                             op1[1] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits2 >> 53);
                             int entry = dtable[index];
-                            bits2 <<= entry & 63;
+                            bits2 <<= entry & 0x3F;
                             op2[1] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits3 >> 53);
                             int entry = dtable[index];
-                            bits3 <<= entry & 63;
+                            bits3 <<= entry & 0x3F;
                             op3[1] = (byte)(entry >> 8 & 0xFF);
                         }
                     }
@@ -635,28 +727,28 @@ namespace ZstdSharp.Unsafe
                         {
                             int index = (int)(bits0 >> 53);
                             int entry = dtable[index];
-                            bits0 <<= entry & 63;
+                            bits0 <<= entry & 0x3F;
                             op0[2] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits1 >> 53);
                             int entry = dtable[index];
-                            bits1 <<= entry & 63;
+                            bits1 <<= entry & 0x3F;
                             op1[2] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits2 >> 53);
                             int entry = dtable[index];
-                            bits2 <<= entry & 63;
+                            bits2 <<= entry & 0x3F;
                             op2[2] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits3 >> 53);
                             int entry = dtable[index];
-                            bits3 <<= entry & 63;
+                            bits3 <<= entry & 0x3F;
                             op3[2] = (byte)(entry >> 8 & 0xFF);
                         }
                     }
@@ -665,28 +757,28 @@ namespace ZstdSharp.Unsafe
                         {
                             int index = (int)(bits0 >> 53);
                             int entry = dtable[index];
-                            bits0 <<= entry & 63;
+                            bits0 <<= entry & 0x3F;
                             op0[3] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits1 >> 53);
                             int entry = dtable[index];
-                            bits1 <<= entry & 63;
+                            bits1 <<= entry & 0x3F;
                             op1[3] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits2 >> 53);
                             int entry = dtable[index];
-                            bits2 <<= entry & 63;
+                            bits2 <<= entry & 0x3F;
                             op2[3] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits3 >> 53);
                             int entry = dtable[index];
-                            bits3 <<= entry & 63;
+                            bits3 <<= entry & 0x3F;
                             op3[3] = (byte)(entry >> 8 & 0xFF);
                         }
                     }
@@ -695,70 +787,72 @@ namespace ZstdSharp.Unsafe
                         {
                             int index = (int)(bits0 >> 53);
                             int entry = dtable[index];
-                            bits0 <<= entry & 63;
+                            bits0 <<= entry & 0x3F;
                             op0[4] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits1 >> 53);
                             int entry = dtable[index];
-                            bits1 <<= entry & 63;
+                            bits1 <<= entry & 0x3F;
                             op1[4] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits2 >> 53);
                             int entry = dtable[index];
-                            bits2 <<= entry & 63;
+                            bits2 <<= entry & 0x3F;
                             op2[4] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
                             int index = (int)(bits3 >> 53);
                             int entry = dtable[index];
-                            bits3 <<= entry & 63;
+                            bits3 <<= entry & 0x3F;
                             op3[4] = (byte)(entry >> 8 & 0xFF);
                         }
                     }
 
                     {
-                        int ctz = (int)ZSTD_countTrailingZeros64(bits0);
-                        int nbBits = ctz & 7;
-                        int nbBytes = ctz >> 3;
-                        op0 += 5;
-                        ip0 -= nbBytes;
-                        bits0 = MEM_read64(ip0) | 1;
-                        bits0 <<= nbBits;
-                    }
+                        {
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits0);
+                            int nbBits = ctz & 7;
+                            int nbBytes = ctz >> 3;
+                            op0 += 5;
+                            ip0 -= nbBytes;
+                            bits0 = MEM_read64(ip0) | 1;
+                            bits0 <<= nbBits;
+                        }
 
-                    {
-                        int ctz = (int)ZSTD_countTrailingZeros64(bits1);
-                        int nbBits = ctz & 7;
-                        int nbBytes = ctz >> 3;
-                        op1 += 5;
-                        ip1 -= nbBytes;
-                        bits1 = MEM_read64(ip1) | 1;
-                        bits1 <<= nbBits;
-                    }
+                        {
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits1);
+                            int nbBits = ctz & 7;
+                            int nbBytes = ctz >> 3;
+                            op1 += 5;
+                            ip1 -= nbBytes;
+                            bits1 = MEM_read64(ip1) | 1;
+                            bits1 <<= nbBits;
+                        }
 
-                    {
-                        int ctz = (int)ZSTD_countTrailingZeros64(bits2);
-                        int nbBits = ctz & 7;
-                        int nbBytes = ctz >> 3;
-                        op2 += 5;
-                        ip2 -= nbBytes;
-                        bits2 = MEM_read64(ip2) | 1;
-                        bits2 <<= nbBits;
-                    }
+                        {
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits2);
+                            int nbBits = ctz & 7;
+                            int nbBytes = ctz >> 3;
+                            op2 += 5;
+                            ip2 -= nbBytes;
+                            bits2 = MEM_read64(ip2) | 1;
+                            bits2 <<= nbBits;
+                        }
 
-                    {
-                        int ctz = (int)ZSTD_countTrailingZeros64(bits3);
-                        int nbBits = ctz & 7;
-                        int nbBytes = ctz >> 3;
-                        op3 += 5;
-                        ip3 -= nbBytes;
-                        bits3 = MEM_read64(ip3) | 1;
-                        bits3 <<= nbBits;
+                        {
+                            int ctz = (int)ZSTD_countTrailingZeros64(bits3);
+                            int nbBits = ctz & 7;
+                            int nbBytes = ctz >> 3;
+                            op3 += 5;
+                            ip3 -= nbBytes;
+                            bits3 = MEM_read64(ip3) | 1;
+                            bits3 <<= nbBits;
+                        }
                     }
                 }
                 while (op3 < olimit);
@@ -787,8 +881,8 @@ namespace ZstdSharp.Unsafe
         private static nuint HUF_decompress4X1_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, void* loopFn)
         {
             void* dt = DTable + 1;
-            byte* iend = (byte*)cSrc + 6;
-            byte* oend = (byte*)dst + dstSize;
+            byte* ilowest = (byte*)cSrc;
+            byte* oend = ZSTD_maybeNullPtrAdd((byte*)dst, (nint)dstSize);
             HUF_DecompressFastArgs args;
             {
                 nuint ret = HUF_DecompressFastArgs_init(&args, dst, dstSize, cSrc, cSrcSize, DTable);
@@ -804,13 +898,16 @@ namespace ZstdSharp.Unsafe
                     return 0;
             }
 
-            assert(args.ip.e0 >= args.ilimit);
+            assert(args.ip.e0 >= args.ilowest);
             ((delegate* managed<HUF_DecompressFastArgs*, void>)loopFn)(&args);
-            assert(args.ip.e0 >= iend);
-            assert(args.ip.e1 >= iend);
-            assert(args.ip.e2 >= iend);
-            assert(args.ip.e3 >= iend);
+            assert(args.ip.e0 >= ilowest);
+            assert(args.ip.e0 >= ilowest);
+            assert(args.ip.e1 >= ilowest);
+            assert(args.ip.e2 >= ilowest);
+            assert(args.ip.e3 >= ilowest);
             assert(args.op.e3 <= oend);
+            assert(ilowest == args.ilowest);
+            assert(ilowest + 6 == args.iend.e0);
             {
                 nuint segmentSize = (dstSize + 3) / 4;
                 byte* segmentEnd = (byte*)dst;
@@ -1217,24 +1314,48 @@ namespace ZstdSharp.Unsafe
                 {
                     while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd - 9)
                     {
-                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        {
+                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        }
+
+                        {
+                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        }
+
+                        {
+                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        }
+
+                        {
+                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        }
+
+                        {
+                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        }
                     }
                 }
                 else
                 {
                     while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd - (sizeof(nuint) - 1))
                     {
-                        if (MEM_64bits)
+                        {
+                            if (MEM_64bits)
+                                p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        }
+
+                        {
                             p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
+                            if (MEM_64bits)
+                                p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        }
+
+                        {
                             p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        if (MEM_64bits)
-                            p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
-                        p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                        }
                     }
                 }
             }
@@ -1246,9 +1367,14 @@ namespace ZstdSharp.Unsafe
             if ((nuint)(pEnd - p) >= 2)
             {
                 while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p <= pEnd - 2)
+                {
                     p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                }
+
                 while (p <= pEnd - 2)
+                {
                     p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
+                }
             }
 
             if (p < pEnd)
@@ -1262,13 +1388,15 @@ namespace ZstdSharp.Unsafe
             BIT_DStream_t bitD;
             {
                 nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
-                if (ERR_isError(_var_err__))
-                    return _var_err__;
+                {
+                    if (ERR_isError(_var_err__))
+                        return _var_err__;
+                }
             }
 
             {
                 byte* ostart = (byte*)dst;
-                byte* oend = ostart + dstSize;
+                byte* oend = ZSTD_maybeNullPtrAdd(ostart, (nint)dstSize);
                 /* force compiler to not use strict-aliasing */
                 void* dtPtr = DTable + 1;
                 HUF_DEltX2* dt = (HUF_DEltX2*)dtPtr;
@@ -1289,6 +1417,8 @@ namespace ZstdSharp.Unsafe
         private static nuint HUF_decompress4X2_usingDTable_internal_body(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
             if (cSrcSize < 10)
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+            if (dstSize < 6)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             {
                 byte* istart = (byte*)cSrc;
@@ -1326,66 +1456,117 @@ namespace ZstdSharp.Unsafe
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 if (opStart4 > oend)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
-                if (dstSize < 6)
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                assert(dstSize >= 6);
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD1, istart1, length1);
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
+                    {
+                        if (ERR_isError(_var_err__))
+                            return _var_err__;
+                    }
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD2, istart2, length2);
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
+                    {
+                        if (ERR_isError(_var_err__))
+                            return _var_err__;
+                    }
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD3, istart3, length3);
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
+                    {
+                        if (ERR_isError(_var_err__))
+                            return _var_err__;
+                    }
                 }
 
                 {
                     nuint _var_err__ = BIT_initDStream(&bitD4, istart4, length4);
-                    if (ERR_isError(_var_err__))
-                        return _var_err__;
+                    {
+                        if (ERR_isError(_var_err__))
+                            return _var_err__;
+                    }
                 }
 
                 if ((nuint)(oend - op4) >= (nuint)sizeof(nuint))
                 {
                     for (; (endSignal & (uint)(op4 < olimit ? 1 : 0)) != 0;)
                     {
-                        if (MEM_64bits)
+                        {
+                            if (MEM_64bits)
+                                op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
+                        }
+
+                        {
                             op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
+                            if (MEM_64bits)
+                                op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
+                        }
+
+                        {
                             op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
-                        if (MEM_64bits)
-                            op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
-                        op1 += HUF_decodeSymbolX2(op1, &bitD1, dt, dtLog);
-                        if (MEM_64bits)
+                        }
+
+                        {
+                            if (MEM_64bits)
+                                op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
+                        }
+
+                        {
                             op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
+                            if (MEM_64bits)
+                                op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
+                        }
+
+                        {
                             op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
-                        if (MEM_64bits)
-                            op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
-                        op2 += HUF_decodeSymbolX2(op2, &bitD2, dt, dtLog);
+                        }
+
                         endSignal &= BIT_reloadDStreamFast(&bitD1) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                         endSignal &= BIT_reloadDStreamFast(&bitD2) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
-                        if (MEM_64bits)
+                        {
+                            if (MEM_64bits)
+                                op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
+                        }
+
+                        {
                             op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
+                            if (MEM_64bits)
+                                op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
+                        }
+
+                        {
                             op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
-                        if (MEM_64bits)
-                            op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
-                        op3 += HUF_decodeSymbolX2(op3, &bitD3, dt, dtLog);
-                        if (MEM_64bits)
+                        }
+
+                        {
+                            if (MEM_64bits)
+                                op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
+                        }
+
+                        {
                             op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
-                        if (MEM_64bits || 12 <= 12)
+                        }
+
+                        {
+                            if (MEM_64bits)
+                                op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
+                        }
+
+                        {
                             op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
-                        if (MEM_64bits)
-                            op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
-                        op4 += HUF_decodeSymbolX2(op4, &bitD4, dt, dtLog);
+                        }
+
                         endSignal &= BIT_reloadDStreamFast(&bitD3) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                         endSignal &= BIT_reloadDStreamFast(&bitD4) == BIT_DStream_status.BIT_DStream_unfinished ? 1U : 0U;
                     }
@@ -1423,7 +1604,7 @@ namespace ZstdSharp.Unsafe
             byte* op0, op1, op2, op3;
             byte* oend0, oend1, oend2, oend3;
             HUF_DEltX2* dtable = (HUF_DEltX2*)args->dt;
-            byte* ilimit = args->ilimit;
+            byte* ilowest = args->ilowest;
             bits0 = args->bits[0];
             bits1 = args->bits[1];
             bits2 = args->bits[2];
@@ -1446,25 +1627,24 @@ namespace ZstdSharp.Unsafe
             {
                 byte* olimit;
                 int stream;
-                int symbol;
                 {
                     assert(op0 <= oend0);
-                    assert(ip0 >= ilimit);
+                    assert(ip0 >= ilowest);
                 }
 
                 {
                     assert(op1 <= oend1);
-                    assert(ip1 >= ilimit);
+                    assert(ip1 >= ilowest);
                 }
 
                 {
                     assert(op2 <= oend2);
-                    assert(ip2 >= ilimit);
+                    assert(ip2 >= ilowest);
                 }
 
                 {
                     assert(op3 <= oend3);
-                    assert(ip3 >= ilimit);
+                    assert(ip3 >= ilowest);
                 }
 
                 {
@@ -1476,7 +1656,7 @@ namespace ZstdSharp.Unsafe
                      * We also know that each input pointer is >= ip[0]. So we can run
                      * iters loops before running out of input.
                      */
-                    nuint iters = (nuint)(ip0 - ilimit) / 7;
+                    nuint iters = (nuint)(ip0 - ilowest) / 7;
                     {
                         nuint oiters = (nuint)(oend0 - op0) / 10;
                         iters = iters < oiters ? iters : oiters;
@@ -1498,7 +1678,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                     olimit = op3 + iters * 5;
-                    if (op3 + 10 > olimit)
+                    if (op3 == olimit)
                         break;
                     {
                         if (ip1 < ip0)
@@ -1535,7 +1715,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits0 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits;
+                            bits0 <<= entry.nbBits & 0x3F;
                             op0 += entry.length;
                         }
 
@@ -1543,7 +1723,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits1 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits;
+                            bits1 <<= entry.nbBits & 0x3F;
                             op1 += entry.length;
                         }
 
@@ -1551,7 +1731,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits2 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits;
+                            bits2 <<= entry.nbBits & 0x3F;
                             op2 += entry.length;
                         }
                     }
@@ -1561,7 +1741,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits0 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits;
+                            bits0 <<= entry.nbBits & 0x3F;
                             op0 += entry.length;
                         }
 
@@ -1569,7 +1749,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits1 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits;
+                            bits1 <<= entry.nbBits & 0x3F;
                             op1 += entry.length;
                         }
 
@@ -1577,7 +1757,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits2 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits;
+                            bits2 <<= entry.nbBits & 0x3F;
                             op2 += entry.length;
                         }
                     }
@@ -1587,7 +1767,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits0 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits;
+                            bits0 <<= entry.nbBits & 0x3F;
                             op0 += entry.length;
                         }
 
@@ -1595,7 +1775,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits1 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits;
+                            bits1 <<= entry.nbBits & 0x3F;
                             op1 += entry.length;
                         }
 
@@ -1603,7 +1783,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits2 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits;
+                            bits2 <<= entry.nbBits & 0x3F;
                             op2 += entry.length;
                         }
                     }
@@ -1613,7 +1793,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits0 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits;
+                            bits0 <<= entry.nbBits & 0x3F;
                             op0 += entry.length;
                         }
 
@@ -1621,7 +1801,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits1 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits;
+                            bits1 <<= entry.nbBits & 0x3F;
                             op1 += entry.length;
                         }
 
@@ -1629,7 +1809,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits2 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits;
+                            bits2 <<= entry.nbBits & 0x3F;
                             op2 += entry.length;
                         }
                     }
@@ -1639,7 +1819,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits0 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits;
+                            bits0 <<= entry.nbBits & 0x3F;
                             op0 += entry.length;
                         }
 
@@ -1647,7 +1827,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits1 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits;
+                            bits1 <<= entry.nbBits & 0x3F;
                             op1 += entry.length;
                         }
 
@@ -1655,7 +1835,7 @@ namespace ZstdSharp.Unsafe
                             int index = (int)(bits2 >> 53);
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits;
+                            bits2 <<= entry.nbBits & 0x3F;
                             op2 += entry.length;
                         }
                     }
@@ -1664,83 +1844,85 @@ namespace ZstdSharp.Unsafe
                         int index = (int)(bits3 >> 53);
                         HUF_DEltX2 entry = dtable[index];
                         MEM_write16(op3, entry.sequence);
-                        bits3 <<= entry.nbBits;
+                        bits3 <<= entry.nbBits & 0x3F;
                         op3 += entry.length;
                     }
 
                     {
                         {
-                            int index = (int)(bits3 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op3, entry.sequence);
-                            bits3 <<= entry.nbBits;
-                            op3 += entry.length;
+                            {
+                                int index = (int)(bits3 >> 53);
+                                HUF_DEltX2 entry = dtable[index];
+                                MEM_write16(op3, entry.sequence);
+                                bits3 <<= entry.nbBits & 0x3F;
+                                op3 += entry.length;
+                            }
+
+                            {
+                                int ctz = (int)ZSTD_countTrailingZeros64(bits0);
+                                int nbBits = ctz & 7;
+                                int nbBytes = ctz >> 3;
+                                ip0 -= nbBytes;
+                                bits0 = MEM_read64(ip0) | 1;
+                                bits0 <<= nbBits;
+                            }
                         }
 
                         {
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits0);
-                            int nbBits = ctz & 7;
-                            int nbBytes = ctz >> 3;
-                            ip0 -= nbBytes;
-                            bits0 = MEM_read64(ip0) | 1;
-                            bits0 <<= nbBits;
-                        }
-                    }
+                            {
+                                int index = (int)(bits3 >> 53);
+                                HUF_DEltX2 entry = dtable[index];
+                                MEM_write16(op3, entry.sequence);
+                                bits3 <<= entry.nbBits & 0x3F;
+                                op3 += entry.length;
+                            }
 
-                    {
-                        {
-                            int index = (int)(bits3 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op3, entry.sequence);
-                            bits3 <<= entry.nbBits;
-                            op3 += entry.length;
-                        }
-
-                        {
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits1);
-                            int nbBits = ctz & 7;
-                            int nbBytes = ctz >> 3;
-                            ip1 -= nbBytes;
-                            bits1 = MEM_read64(ip1) | 1;
-                            bits1 <<= nbBits;
-                        }
-                    }
-
-                    {
-                        {
-                            int index = (int)(bits3 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op3, entry.sequence);
-                            bits3 <<= entry.nbBits;
-                            op3 += entry.length;
+                            {
+                                int ctz = (int)ZSTD_countTrailingZeros64(bits1);
+                                int nbBits = ctz & 7;
+                                int nbBytes = ctz >> 3;
+                                ip1 -= nbBytes;
+                                bits1 = MEM_read64(ip1) | 1;
+                                bits1 <<= nbBits;
+                            }
                         }
 
                         {
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits2);
-                            int nbBits = ctz & 7;
-                            int nbBytes = ctz >> 3;
-                            ip2 -= nbBytes;
-                            bits2 = MEM_read64(ip2) | 1;
-                            bits2 <<= nbBits;
-                        }
-                    }
+                            {
+                                int index = (int)(bits3 >> 53);
+                                HUF_DEltX2 entry = dtable[index];
+                                MEM_write16(op3, entry.sequence);
+                                bits3 <<= entry.nbBits & 0x3F;
+                                op3 += entry.length;
+                            }
 
-                    {
-                        {
-                            int index = (int)(bits3 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op3, entry.sequence);
-                            bits3 <<= entry.nbBits;
-                            op3 += entry.length;
+                            {
+                                int ctz = (int)ZSTD_countTrailingZeros64(bits2);
+                                int nbBits = ctz & 7;
+                                int nbBytes = ctz >> 3;
+                                ip2 -= nbBytes;
+                                bits2 = MEM_read64(ip2) | 1;
+                                bits2 <<= nbBits;
+                            }
                         }
 
                         {
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits3);
-                            int nbBits = ctz & 7;
-                            int nbBytes = ctz >> 3;
-                            ip3 -= nbBytes;
-                            bits3 = MEM_read64(ip3) | 1;
-                            bits3 <<= nbBits;
+                            {
+                                int index = (int)(bits3 >> 53);
+                                HUF_DEltX2 entry = dtable[index];
+                                MEM_write16(op3, entry.sequence);
+                                bits3 <<= entry.nbBits & 0x3F;
+                                op3 += entry.length;
+                            }
+
+                            {
+                                int ctz = (int)ZSTD_countTrailingZeros64(bits3);
+                                int nbBits = ctz & 7;
+                                int nbBytes = ctz >> 3;
+                                ip3 -= nbBytes;
+                                bits3 = MEM_read64(ip3) | 1;
+                                bits3 <<= nbBits;
+                            }
                         }
                     }
                 }
@@ -1765,8 +1947,8 @@ namespace ZstdSharp.Unsafe
         private static nuint HUF_decompress4X2_usingDTable_internal_fast(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable, void* loopFn)
         {
             void* dt = DTable + 1;
-            byte* iend = (byte*)cSrc + 6;
-            byte* oend = (byte*)dst + dstSize;
+            byte* ilowest = (byte*)cSrc;
+            byte* oend = ZSTD_maybeNullPtrAdd((byte*)dst, (nint)dstSize);
             HUF_DecompressFastArgs args;
             {
                 nuint ret = HUF_DecompressFastArgs_init(&args, dst, dstSize, cSrc, cSrcSize, DTable);
@@ -1782,13 +1964,15 @@ namespace ZstdSharp.Unsafe
                     return 0;
             }
 
-            assert(args.ip.e0 >= args.ilimit);
+            assert(args.ip.e0 >= args.ilowest);
             ((delegate* managed<HUF_DecompressFastArgs*, void>)loopFn)(&args);
-            assert(args.ip.e0 >= iend);
-            assert(args.ip.e1 >= iend);
-            assert(args.ip.e2 >= iend);
-            assert(args.ip.e3 >= iend);
+            assert(args.ip.e0 >= ilowest);
+            assert(args.ip.e1 >= ilowest);
+            assert(args.ip.e2 >= ilowest);
+            assert(args.ip.e3 >= ilowest);
             assert(args.op.e3 <= oend);
+            assert(ilowest == args.ilowest);
+            assert(ilowest + 6 == args.iend.e0);
             {
                 nuint segmentSize = (dstSize + 3) / 4;
                 byte* segmentEnd = (byte*)dst;

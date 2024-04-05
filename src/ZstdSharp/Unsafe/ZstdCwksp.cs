@@ -147,9 +147,11 @@ namespace ZstdSharp.Unsafe
                         void* alloc = ws->objectEnd;
                         nuint bytesToAlign = ZSTD_cwksp_bytes_to_align_ptr(alloc, 64);
                         void* objectEnd = (byte*)alloc + bytesToAlign;
-                        if (objectEnd > ws->workspaceEnd)
                         {
-                            return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                            if (objectEnd > ws->workspaceEnd)
+                            {
+                                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                            }
                         }
 
                         ws->objectEnd = objectEnd;
@@ -239,7 +241,7 @@ namespace ZstdSharp.Unsafe
 
         /**
          * Aligned on 64 bytes. These buffers have the special property that
-         * their values remain constrained, allowing us to re-use them without
+         * their values remain constrained, allowing us to reuse them without
          * memset()-ing them.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -367,6 +369,18 @@ namespace ZstdSharp.Unsafe
             ZSTD_cwksp_assert_internal_consistency(ws);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_cwksp_sizeof(ZSTD_cwksp* ws)
+        {
+            return (nuint)((byte*)ws->workspaceEnd - (byte*)ws->workspace);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_cwksp_used(ZSTD_cwksp* ws)
+        {
+            return (nuint)((byte*)ws->tableEnd - (byte*)ws->workspace) + (nuint)((byte*)ws->workspaceEnd - (byte*)ws->allocStart);
+        }
+
         /**
          * The provided workspace takes ownership of the buffer [start, start+size).
          * Any existing values in the workspace are ignored (the previously managed
@@ -392,9 +406,11 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_cwksp_create(ZSTD_cwksp* ws, nuint size, ZSTD_customMem customMem)
         {
             void* workspace = ZSTD_customMalloc(size, customMem);
-            if (workspace == null)
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                if (workspace == null)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                }
             }
 
             ZSTD_cwksp_init(ws, workspace, size, ZSTD_cwksp_static_alloc_e.ZSTD_cwksp_dynamic_alloc);
@@ -418,18 +434,6 @@ namespace ZstdSharp.Unsafe
         {
             *dst = *src;
             memset(src, 0, (uint)sizeof(ZSTD_cwksp));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint ZSTD_cwksp_sizeof(ZSTD_cwksp* ws)
-        {
-            return (nuint)((byte*)ws->workspaceEnd - (byte*)ws->workspace);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint ZSTD_cwksp_used(ZSTD_cwksp* ws)
-        {
-            return (nuint)((byte*)ws->tableEnd - (byte*)ws->workspace) + (nuint)((byte*)ws->workspaceEnd - (byte*)ws->allocStart);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

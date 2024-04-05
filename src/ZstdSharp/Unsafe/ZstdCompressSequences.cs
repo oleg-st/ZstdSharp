@@ -474,9 +474,11 @@ namespace ZstdSharp.Unsafe
                         }
                     }
 
-                    if (dstCapacity == 0)
                     {
-                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                        if (dstCapacity == 0)
+                        {
+                            return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                        }
                     }
 
                     *op = codeTable[0];
@@ -553,9 +555,11 @@ namespace ZstdSharp.Unsafe
             FSE_CState_t stateMatchLength;
             FSE_CState_t stateOffsetBits;
             FSE_CState_t stateLitLength;
-            if (ERR_isError(BIT_initCStream(&blockStream, dst, dstCapacity)))
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                if (ERR_isError(BIT_initCStream(&blockStream, dst, dstCapacity)))
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
             }
 
             FSE_initCState2(&stateMatchLength, CTable_MatchLength, mlCodeTable[nbSeq - 1]);
@@ -633,9 +637,11 @@ namespace ZstdSharp.Unsafe
             FSE_flushCState(&blockStream, &stateLitLength);
             {
                 nuint streamSize = BIT_closeCStream(&blockStream);
-                if (streamSize == 0)
                 {
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                    if (streamSize == 0)
+                    {
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                    }
                 }
 
                 return streamSize;

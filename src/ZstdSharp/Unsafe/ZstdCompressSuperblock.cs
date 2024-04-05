@@ -78,7 +78,7 @@ namespace ZstdSharp.Unsafe
             {
                 case 3:
                     {
-                        uint lhc = (uint)(hType + ((singleStream == 0 ? 1 : 0) << 2)) + ((uint)litSize << 4) + ((uint)cLitSize << 14);
+                        uint lhc = (uint)hType + ((singleStream == 0 ? 1U : 0U) << 2) + ((uint)litSize << 4) + ((uint)cLitSize << 14);
                         MEM_writeLE24(ostart, lhc);
                         break;
                     }
@@ -107,29 +107,22 @@ namespace ZstdSharp.Unsafe
             return (nuint)(op - ostart);
         }
 
-        private static nuint ZSTD_seqDecompressedSize(seqStore_t* seqStore, seqDef_s* sequences, nuint nbSeq, nuint litSize, int lastSequence)
+        private static nuint ZSTD_seqDecompressedSize(seqStore_t* seqStore, seqDef_s* sequences, nuint nbSeqs, nuint litSize, int lastSubBlock)
         {
-            seqDef_s* sstart = sequences;
-            seqDef_s* send = sequences + nbSeq;
-            seqDef_s* sp = sstart;
             nuint matchLengthSum = 0;
             nuint litLengthSum = 0;
-            while (send - sp > 0)
+            nuint n;
+            for (n = 0; n < nbSeqs; n++)
             {
-                ZSTD_sequenceLength seqLen = ZSTD_getSequenceLength(seqStore, sp);
+                ZSTD_sequenceLength seqLen = ZSTD_getSequenceLength(seqStore, sequences + n);
                 litLengthSum += seqLen.litLength;
                 matchLengthSum += seqLen.matchLength;
-                sp++;
             }
 
-            assert(litLengthSum <= litSize);
-#if DEBUG
-            if (lastSequence == 0)
-            {
+            if (lastSubBlock == 0)
                 assert(litLengthSum == litSize);
-            }
-#endif
-
+            else
+                assert(litLengthSum <= litSize);
             return matchLengthSum + litSize;
         }
 
@@ -151,12 +144,14 @@ namespace ZstdSharp.Unsafe
             byte* op = ostart;
             byte* seqHead;
             *entropyWritten = 0;
-            if (oend - op < 3 + 1)
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                if (oend - op < 3 + 1)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
             }
 
-            if (nbSeq < 0x7F)
+            if (nbSeq < 128)
                 *op++ = (byte)nbSeq;
             else if (nbSeq < 0x7F00)
             {
@@ -346,12 +341,13 @@ namespace ZstdSharp.Unsafe
             return cSeqSizeEstimate + sequencesSectionHeaderSize;
         }
 
-        private static nuint ZSTD_estimateSubBlockSize(byte* literals, nuint litSize, byte* ofCodeTable, byte* llCodeTable, byte* mlCodeTable, nuint nbSeq, ZSTD_entropyCTables_t* entropy, ZSTD_entropyCTablesMetadata_t* entropyMetadata, void* workspace, nuint wkspSize, int writeLitEntropy, int writeSeqEntropy)
+        private static EstimatedBlockSize ZSTD_estimateSubBlockSize(byte* literals, nuint litSize, byte* ofCodeTable, byte* llCodeTable, byte* mlCodeTable, nuint nbSeq, ZSTD_entropyCTables_t* entropy, ZSTD_entropyCTablesMetadata_t* entropyMetadata, void* workspace, nuint wkspSize, int writeLitEntropy, int writeSeqEntropy)
         {
-            nuint cSizeEstimate = 0;
-            cSizeEstimate += ZSTD_estimateSubBlockSize_literal(literals, litSize, &entropy->huf, &entropyMetadata->hufMetadata, workspace, wkspSize, writeLitEntropy);
-            cSizeEstimate += ZSTD_estimateSubBlockSize_sequences(ofCodeTable, llCodeTable, mlCodeTable, nbSeq, &entropy->fse, &entropyMetadata->fseMetadata, workspace, wkspSize, writeSeqEntropy);
-            return cSizeEstimate + ZSTD_blockHeaderSize;
+            EstimatedBlockSize ebs;
+            ebs.estLitSize = ZSTD_estimateSubBlockSize_literal(literals, litSize, &entropy->huf, &entropyMetadata->hufMetadata, workspace, wkspSize, writeLitEntropy);
+            ebs.estBlockSize = ZSTD_estimateSubBlockSize_sequences(ofCodeTable, llCodeTable, mlCodeTable, nbSeq, &entropy->fse, &entropyMetadata->fseMetadata, workspace, wkspSize, writeSeqEntropy);
+            ebs.estBlockSize += ebs.estLitSize + ZSTD_blockHeaderSize;
+            return ebs;
         }
 
         private static int ZSTD_needSequenceEntropyTables(ZSTD_fseCTablesMetadata_t* fseMetadata)
@@ -365,21 +361,59 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
+        private static nuint countLiterals(seqStore_t* seqStore, seqDef_s* sp, nuint seqCount)
+        {
+            nuint n, total = 0;
+            assert(sp != null);
+            for (n = 0; n < seqCount; n++)
+            {
+                total += ZSTD_getSequenceLength(seqStore, sp + n).litLength;
+            }
+
+            return total;
+        }
+
+        private static nuint sizeBlockSequences(seqDef_s* sp, nuint nbSeqs, nuint targetBudget, nuint avgLitCost, nuint avgSeqCost, int firstSubBlock)
+        {
+            nuint n, budget = 0, inSize = 0;
+            /* generous estimate */
+            nuint headerSize = (nuint)firstSubBlock * 120 * 256;
+            assert(firstSubBlock == 0 || firstSubBlock == 1);
+            budget += headerSize;
+            budget += sp[0].litLength * avgLitCost + avgSeqCost;
+            if (budget > targetBudget)
+                return 1;
+            inSize = (nuint)(sp[0].litLength + (sp[0].mlBase + 3));
+            for (n = 1; n < nbSeqs; n++)
+            {
+                nuint currentCost = sp[n].litLength * avgLitCost + avgSeqCost;
+                budget += currentCost;
+                inSize += (nuint)(sp[n].litLength + (sp[n].mlBase + 3));
+                if (budget > targetBudget && budget < inSize * 256)
+                    break;
+            }
+
+            return n;
+        }
+
         /** ZSTD_compressSubBlock_multi() :
          *  Breaks super-block into multiple sub-blocks and compresses them.
-         *  Entropy will be written to the first block.
-         *  The following blocks will use repeat mode to compress.
-         *  All sub-blocks are compressed blocks (no raw or rle blocks).
-         *  @return : compressed size of the super block (which is multiple ZSTD blocks)
-         *            Or 0 if it failed to compress. */
+         *  Entropy will be written into the first block.
+         *  The following blocks use repeat_mode to compress.
+         *  Sub-blocks are all compressed, except the last one when beneficial.
+         *  @return : compressed size of the super block (which features multiple ZSTD blocks)
+         *            or 0 if it failed to compress. */
         private static nuint ZSTD_compressSubBlock_multi(seqStore_t* seqStorePtr, ZSTD_compressedBlockState_t* prevCBlock, ZSTD_compressedBlockState_t* nextCBlock, ZSTD_entropyCTablesMetadata_t* entropyMetadata, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, void* src, nuint srcSize, int bmi2, uint lastBlock, void* workspace, nuint wkspSize)
         {
             seqDef_s* sstart = seqStorePtr->sequencesStart;
             seqDef_s* send = seqStorePtr->sequences;
+            /* tracks progresses within seqStorePtr->sequences */
             seqDef_s* sp = sstart;
+            nuint nbSeqs = (nuint)(send - sstart);
             byte* lstart = seqStorePtr->litStart;
             byte* lend = seqStorePtr->lit;
             byte* lp = lstart;
+            nuint nbLiterals = (nuint)(lend - lstart);
             byte* ip = (byte*)src;
             byte* iend = ip + srcSize;
             byte* ostart = (byte*)dst;
@@ -388,75 +422,109 @@ namespace ZstdSharp.Unsafe
             byte* llCodePtr = seqStorePtr->llCode;
             byte* mlCodePtr = seqStorePtr->mlCode;
             byte* ofCodePtr = seqStorePtr->ofCode;
-            nuint targetCBlockSize = cctxParams->targetCBlockSize;
-            nuint litSize, seqCount;
+            /* enforce minimum size, to reduce undesirable side effects */
+            const nuint minTarget = 1340;
+            nuint targetCBlockSize = minTarget > cctxParams->targetCBlockSize ? minTarget : cctxParams->targetCBlockSize;
             int writeLitEntropy = entropyMetadata->hufMetadata.hType == symbolEncodingType_e.set_compressed ? 1 : 0;
             int writeSeqEntropy = 1;
-            int lastSequence = 0;
-            litSize = 0;
-            seqCount = 0;
-            do
+            if (nbSeqs > 0)
             {
-                nuint cBlockSizeEstimate = 0;
-                if (sstart == send)
+                EstimatedBlockSize ebs = ZSTD_estimateSubBlockSize(lp, nbLiterals, ofCodePtr, llCodePtr, mlCodePtr, nbSeqs, &nextCBlock->entropy, entropyMetadata, workspace, wkspSize, writeLitEntropy, writeSeqEntropy);
+                /* quick estimation */
+                nuint avgLitCost = nbLiterals != 0 ? ebs.estLitSize * 256 / nbLiterals : 256;
+                nuint avgSeqCost = (ebs.estBlockSize - ebs.estLitSize) * 256 / nbSeqs;
+                nuint nbSubBlocks = (ebs.estBlockSize + targetCBlockSize / 2) / targetCBlockSize > 1 ? (ebs.estBlockSize + targetCBlockSize / 2) / targetCBlockSize : 1;
+                nuint n, avgBlockBudget, blockBudgetSupp = 0;
+                avgBlockBudget = ebs.estBlockSize * 256 / nbSubBlocks;
+                if (ebs.estBlockSize > srcSize)
+                    return 0;
+                assert(nbSubBlocks > 0);
+                for (n = 0; n < nbSubBlocks - 1; n++)
                 {
-                    lastSequence = 1;
-                }
-                else
-                {
-                    seqDef_s* sequence = sp + seqCount;
-                    lastSequence = sequence == send - 1 ? 1 : 0;
-                    litSize += ZSTD_getSequenceLength(seqStorePtr, sequence).litLength;
-                    seqCount++;
-                }
-
-                if (lastSequence != 0)
-                {
-                    assert(lp <= lend);
-                    assert(litSize <= (nuint)(lend - lp));
-                    litSize = (nuint)(lend - lp);
-                }
-
-                cBlockSizeEstimate = ZSTD_estimateSubBlockSize(lp, litSize, ofCodePtr, llCodePtr, mlCodePtr, seqCount, &nextCBlock->entropy, entropyMetadata, workspace, wkspSize, writeLitEntropy, writeSeqEntropy);
-                if (cBlockSizeEstimate > targetCBlockSize || lastSequence != 0)
-                {
-                    int litEntropyWritten = 0;
-                    int seqEntropyWritten = 0;
-                    nuint decompressedSize = ZSTD_seqDecompressedSize(seqStorePtr, sp, seqCount, litSize, lastSequence);
-                    nuint cSize = ZSTD_compressSubBlock(&nextCBlock->entropy, entropyMetadata, sp, seqCount, lp, litSize, llCodePtr, mlCodePtr, ofCodePtr, cctxParams, op, (nuint)(oend - op), bmi2, writeLitEntropy, writeSeqEntropy, &litEntropyWritten, &seqEntropyWritten, lastBlock != 0 && lastSequence != 0 ? 1U : 0U);
+                    /* determine nb of sequences for current sub-block + nbLiterals from next sequence */
+                    nuint seqCount = sizeBlockSequences(sp, (nuint)(send - sp), avgBlockBudget + blockBudgetSupp, avgLitCost, avgSeqCost, n == 0 ? 1 : 0);
+                    assert(seqCount <= (nuint)(send - sp));
+                    if (sp + seqCount == send)
+                        break;
+                    assert(seqCount > 0);
                     {
-                        nuint err_code = cSize;
-                        if (ERR_isError(err_code))
+                        int litEntropyWritten = 0;
+                        int seqEntropyWritten = 0;
+                        nuint litSize = countLiterals(seqStorePtr, sp, seqCount);
+                        nuint decompressedSize = ZSTD_seqDecompressedSize(seqStorePtr, sp, seqCount, litSize, 0);
+                        nuint cSize = ZSTD_compressSubBlock(&nextCBlock->entropy, entropyMetadata, sp, seqCount, lp, litSize, llCodePtr, mlCodePtr, ofCodePtr, cctxParams, op, (nuint)(oend - op), bmi2, writeLitEntropy, writeSeqEntropy, &litEntropyWritten, &seqEntropyWritten, 0);
                         {
-                            return err_code;
-                        }
-                    }
-
-                    if (cSize > 0 && cSize < decompressedSize)
-                    {
-                        assert(ip + decompressedSize <= iend);
-                        ip += decompressedSize;
-                        sp += seqCount;
-                        lp += litSize;
-                        op += cSize;
-                        llCodePtr += seqCount;
-                        mlCodePtr += seqCount;
-                        ofCodePtr += seqCount;
-                        litSize = 0;
-                        seqCount = 0;
-                        if (litEntropyWritten != 0)
-                        {
-                            writeLitEntropy = 0;
+                            nuint err_code = cSize;
+                            if (ERR_isError(err_code))
+                            {
+                                return err_code;
+                            }
                         }
 
-                        if (seqEntropyWritten != 0)
+                        if (cSize > 0 && cSize < decompressedSize)
                         {
-                            writeSeqEntropy = 0;
+                            assert(ip + decompressedSize <= iend);
+                            ip += decompressedSize;
+                            lp += litSize;
+                            op += cSize;
+                            llCodePtr += seqCount;
+                            mlCodePtr += seqCount;
+                            ofCodePtr += seqCount;
+                            if (litEntropyWritten != 0)
+                            {
+                                writeLitEntropy = 0;
+                            }
+
+                            if (seqEntropyWritten != 0)
+                            {
+                                writeSeqEntropy = 0;
+                            }
+
+                            sp += seqCount;
+                            blockBudgetSupp = 0;
                         }
                     }
                 }
             }
-            while (lastSequence == 0);
+
+            {
+                int litEntropyWritten = 0;
+                int seqEntropyWritten = 0;
+                nuint litSize = (nuint)(lend - lp);
+                nuint seqCount = (nuint)(send - sp);
+                nuint decompressedSize = ZSTD_seqDecompressedSize(seqStorePtr, sp, seqCount, litSize, 1);
+                nuint cSize = ZSTD_compressSubBlock(&nextCBlock->entropy, entropyMetadata, sp, seqCount, lp, litSize, llCodePtr, mlCodePtr, ofCodePtr, cctxParams, op, (nuint)(oend - op), bmi2, writeLitEntropy, writeSeqEntropy, &litEntropyWritten, &seqEntropyWritten, lastBlock);
+                {
+                    nuint err_code = cSize;
+                    if (ERR_isError(err_code))
+                    {
+                        return err_code;
+                    }
+                }
+
+                if (cSize > 0 && cSize < decompressedSize)
+                {
+                    assert(ip + decompressedSize <= iend);
+                    ip += decompressedSize;
+                    lp += litSize;
+                    op += cSize;
+                    llCodePtr += seqCount;
+                    mlCodePtr += seqCount;
+                    ofCodePtr += seqCount;
+                    if (litEntropyWritten != 0)
+                    {
+                        writeLitEntropy = 0;
+                    }
+
+                    if (seqEntropyWritten != 0)
+                    {
+                        writeSeqEntropy = 0;
+                    }
+
+                    sp += seqCount;
+                }
+            }
+
             if (writeLitEntropy != 0)
             {
                 memcpy(&nextCBlock->entropy.huf, &prevCBlock->entropy.huf, (uint)sizeof(ZSTD_hufCTables_t));
@@ -469,7 +537,9 @@ namespace ZstdSharp.Unsafe
 
             if (ip < iend)
             {
-                nuint cSize = ZSTD_noCompressBlock(op, (nuint)(oend - op), ip, (nuint)(iend - ip), lastBlock);
+                /* some data left : last part of the block sent uncompressed */
+                nuint rSize = (nuint)(iend - ip);
+                nuint cSize = ZSTD_noCompressBlock(op, (nuint)(oend - op), ip, rSize, lastBlock);
                 {
                     nuint err_code = cSize;
                     if (ERR_isError(err_code))

@@ -258,9 +258,11 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_noCompressBlock(void* dst, nuint dstCapacity, void* src, nuint srcSize, uint lastBlock)
         {
             uint cBlockHeader24 = lastBlock + ((uint)blockType_e.bt_raw << 1) + (uint)(srcSize << 3);
-            if (srcSize + ZSTD_blockHeaderSize > dstCapacity)
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                if (srcSize + ZSTD_blockHeaderSize > dstCapacity)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
             }
 
             MEM_writeLE24(dst, cBlockHeader24);
@@ -273,9 +275,11 @@ namespace ZstdSharp.Unsafe
         {
             byte* op = (byte*)dst;
             uint cBlockHeader = lastBlock + ((uint)blockType_e.bt_rle << 1) + (uint)(srcSize << 3);
-            if (dstCapacity < 4)
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                if (dstCapacity < 4)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
             }
 
             MEM_writeLE24(op, cBlockHeader);
@@ -1040,6 +1044,13 @@ namespace ZstdSharp.Unsafe
             uint tag1 = (uint)(packedTag1 & (1U << 8) - 1);
             uint tag2 = (uint)(packedTag2 & (1U << 8) - 1);
             return tag1 == tag2 ? 1 : 0;
+        }
+
+        /* Returns 1 if an external sequence producer is registered, otherwise returns 0. */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_hasExtSeqProd(ZSTD_CCtx_params_s* @params)
+        {
+            return @params->extSeqProdFunc != null ? 1 : 0;
         }
     }
 }

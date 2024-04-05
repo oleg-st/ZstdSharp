@@ -404,9 +404,11 @@ namespace ZstdSharp.Unsafe
 
             if (dictContentSize < minContentSize)
             {
-                if (hSize + minContentSize > dictBufferCapacity)
                 {
-                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                    if (hSize + minContentSize > dictBufferCapacity)
+                    {
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                    }
                 }
 
                 paddingSize = minContentSize - dictContentSize;

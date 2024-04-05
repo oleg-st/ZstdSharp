@@ -22,7 +22,7 @@ namespace ZstdSharp.Unsafe
         public byte* tagTable;
         /* For row-based matchFinder: a cache of hashes to improve speed */
         public fixed uint hashCache[8];
-        /* For row-based matchFinder: salts the hash for re-use of tag table */
+        /* For row-based matchFinder: salts the hash for reuse of tag table */
         public ulong hashSalt;
         /* For row-based matchFinder: collects entropy for salt generation */
         public uint hashSaltEntropy;

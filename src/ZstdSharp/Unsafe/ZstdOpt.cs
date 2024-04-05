@@ -1059,14 +1059,6 @@ namespace ZstdSharp.Unsafe
             ZSTD_optLdm_maybeAddMatch(matches, nbMatches, optLdm, currPosInBlock);
         }
 
-        /*-*******************************
-         *  Optimal parser
-         *********************************/
-        private static uint ZSTD_totalLen(ZSTD_optimal_t sol)
-        {
-            return sol.litlen + sol.mlen;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_compressBlock_opt_generic(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, int optLevel, ZSTD_dictMode_e dictMode)
         {
@@ -1085,9 +1077,9 @@ namespace ZstdSharp.Unsafe
             uint nextToUpdate3 = ms->nextToUpdate;
             ZSTD_optimal_t* opt = optStatePtr->priceTable;
             ZSTD_match_t* matches = optStatePtr->matchTable;
-            ZSTD_optimal_t lastSequence;
+            ZSTD_optimal_t lastStretch;
             ZSTD_optLdm_t optLdm;
-            memset(&lastSequence, 0, (uint)sizeof(ZSTD_optimal_t));
+            memset(&lastStretch, 0, (uint)sizeof(ZSTD_optimal_t));
             optLdm.seqStore = ms->ldmSeqStore != null ? *ms->ldmSeqStore : kNullRawSeqStore;
             optLdm.endPosInBlock = optLdm.startPosInBlock = optLdm.offset = 0;
             ZSTD_opt_getNextMatchAndUpdateSeqStore(&optLdm, (uint)(ip - istart), (uint)(iend - ip));
@@ -1108,37 +1100,33 @@ namespace ZstdSharp.Unsafe
                         continue;
                     }
 
-                    {
-                        uint i;
-                        for (i = 0; i < 3; i++)
-                            opt[0].rep[i] = rep[i];
-                    }
-
                     opt[0].mlen = 0;
                     opt[0].litlen = litlen;
                     opt[0].price = (int)ZSTD_litLengthPrice(litlen, optStatePtr, optLevel);
+                    memcpy(&opt[0].rep[0], rep, sizeof(uint) * 3);
                     {
                         uint maxML = matches[nbMatches - 1].len;
                         uint maxOffBase = matches[nbMatches - 1].off;
                         if (maxML > sufficient_len)
                         {
-                            lastSequence.litlen = litlen;
-                            lastSequence.mlen = maxML;
-                            lastSequence.off = maxOffBase;
+                            lastStretch.litlen = 0;
+                            lastStretch.mlen = maxML;
+                            lastStretch.off = maxOffBase;
                             cur = 0;
-                            last_pos = ZSTD_totalLen(lastSequence);
+                            last_pos = maxML;
                             goto _shortestPath;
                         }
                     }
 
                     assert(opt[0].price >= 0);
                     {
-                        uint literalsPrice = (uint)opt[0].price + ZSTD_litLengthPrice(0, optStatePtr, optLevel);
                         uint pos;
                         uint matchNb;
                         for (pos = 1; pos < minMatch; pos++)
                         {
                             opt[pos].price = 1 << 30;
+                            opt[pos].mlen = 0;
+                            opt[pos].litlen = litlen + pos;
                         }
 
                         for (matchNb = 0; matchNb < nbMatches; matchNb++)
@@ -1147,46 +1135,63 @@ namespace ZstdSharp.Unsafe
                             uint end = matches[matchNb].len;
                             for (; pos <= end; pos++)
                             {
-                                uint matchPrice = ZSTD_getMatchPrice(offBase, pos, optStatePtr, optLevel);
-                                uint sequencePrice = literalsPrice + matchPrice;
+                                int matchPrice = (int)ZSTD_getMatchPrice(offBase, pos, optStatePtr, optLevel);
+                                int sequencePrice = opt[0].price + matchPrice;
                                 opt[pos].mlen = pos;
                                 opt[pos].off = offBase;
-                                opt[pos].litlen = litlen;
-                                opt[pos].price = (int)sequencePrice;
+                                opt[pos].litlen = 0;
+                                opt[pos].price = sequencePrice + (int)ZSTD_litLengthPrice(0, optStatePtr, optLevel);
                             }
                         }
 
                         last_pos = pos - 1;
+                        opt[pos].price = 1 << 30;
                     }
                 }
 
                 for (cur = 1; cur <= last_pos; cur++)
                 {
                     byte* inr = ip + cur;
-                    assert(cur < 1 << 12);
+                    assert(cur <= 1 << 12);
                     {
-                        uint litlen = opt[cur - 1].mlen == 0 ? opt[cur - 1].litlen + 1 : 1;
-                        int price = opt[cur - 1].price + (int)ZSTD_rawLiteralsCost(ip + cur - 1, 1, optStatePtr, optLevel) + (int)ZSTD_litLengthPrice(litlen, optStatePtr, optLevel) - (int)ZSTD_litLengthPrice(litlen - 1, optStatePtr, optLevel);
+                        uint litlen = opt[cur - 1].litlen + 1;
+                        int price = opt[cur - 1].price + (int)ZSTD_rawLiteralsCost(ip + cur - 1, 1, optStatePtr, optLevel) + ((int)ZSTD_litLengthPrice(litlen, optStatePtr, optLevel) - (int)ZSTD_litLengthPrice(litlen - 1, optStatePtr, optLevel));
                         assert(price < 1000000000);
                         if (price <= opt[cur].price)
                         {
-                            opt[cur].mlen = 0;
-                            opt[cur].off = 0;
+                            ZSTD_optimal_t prevMatch = opt[cur];
+                            opt[cur] = opt[cur - 1];
                             opt[cur].litlen = litlen;
                             opt[cur].price = price;
+                            if (optLevel >= 1 && prevMatch.litlen == 0 && (int)ZSTD_litLengthPrice(1, optStatePtr, optLevel) - (int)ZSTD_litLengthPrice(1 - 1, optStatePtr, optLevel) < 0 && ip + cur < iend)
+                            {
+                                /* check next position, in case it would be cheaper */
+                                int with1literal = prevMatch.price + (int)ZSTD_rawLiteralsCost(ip + cur, 1, optStatePtr, optLevel) + ((int)ZSTD_litLengthPrice(1, optStatePtr, optLevel) - (int)ZSTD_litLengthPrice(1 - 1, optStatePtr, optLevel));
+                                int withMoreLiterals = price + (int)ZSTD_rawLiteralsCost(ip + cur, 1, optStatePtr, optLevel) + ((int)ZSTD_litLengthPrice(litlen + 1, optStatePtr, optLevel) - (int)ZSTD_litLengthPrice(litlen + 1 - 1, optStatePtr, optLevel));
+                                if (with1literal < withMoreLiterals && with1literal < opt[cur + 1].price)
+                                {
+                                    /* update offset history - before it disappears */
+                                    uint prev = cur - prevMatch.mlen;
+                                    repcodes_s newReps = ZSTD_newRep(opt[prev].rep, prevMatch.off, opt[prev].litlen == 0 ? 1U : 0U);
+                                    assert(cur >= prevMatch.mlen);
+                                    opt[cur + 1] = prevMatch;
+                                    memcpy(opt[cur + 1].rep, &newReps, (uint)sizeof(repcodes_s));
+                                    opt[cur + 1].litlen = 1;
+                                    opt[cur + 1].price = with1literal;
+                                    if (last_pos < cur + 1)
+                                        last_pos = cur + 1;
+                                }
+                            }
                         }
                     }
 
                     assert(cur >= opt[cur].mlen);
-                    if (opt[cur].mlen != 0)
+                    if (opt[cur].litlen == 0)
                     {
+                        /* just finished a match => alter offset history */
                         uint prev = cur - opt[cur].mlen;
-                        repcodes_s newReps = ZSTD_newRep(opt[prev].rep, opt[cur].off, opt[cur].litlen == 0 ? 1U : 0U);
+                        repcodes_s newReps = ZSTD_newRep(opt[prev].rep, opt[cur].off, opt[prev].litlen == 0 ? 1U : 0U);
                         memcpy(opt[cur].rep, &newReps, (uint)sizeof(repcodes_s));
-                    }
-                    else
-                    {
-                        memcpy(opt[cur].rep, opt[cur - 1].rep, (uint)sizeof(repcodes_s));
                     }
 
                     if (inr > ilimit)
@@ -1200,10 +1205,9 @@ namespace ZstdSharp.Unsafe
 
                     assert(opt[cur].price >= 0);
                     {
-                        uint ll0 = opt[cur].mlen != 0 ? 1U : 0U;
-                        uint litlen = opt[cur].mlen == 0 ? opt[cur].litlen : 0;
-                        uint previousPrice = (uint)opt[cur].price;
-                        uint basePrice = previousPrice + ZSTD_litLengthPrice(0, optStatePtr, optLevel);
+                        uint ll0 = opt[cur].litlen == 0 ? 1U : 0U;
+                        int previousPrice = opt[cur].price;
+                        int basePrice = previousPrice + (int)ZSTD_litLengthPrice(0, optStatePtr, optLevel);
                         uint nbMatches = ((delegate* managed<ZSTD_match_t*, ZSTD_matchState_t*, uint*, byte*, byte*, uint*, uint, uint, uint>)getAllMatches)(matches, ms, &nextToUpdate3, inr, iend, opt[cur].rep, ll0, minMatch);
                         uint matchNb;
                         ZSTD_optLdm_processMatchCandidate(&optLdm, matches, &nbMatches, (uint)(inr - istart), (uint)(iend - inr));
@@ -1213,16 +1217,13 @@ namespace ZstdSharp.Unsafe
                         }
 
                         {
-                            uint maxML = matches[nbMatches - 1].len;
-                            if (maxML > sufficient_len || cur + maxML >= 1 << 12)
+                            uint longestML = matches[nbMatches - 1].len;
+                            if (longestML > sufficient_len || cur + longestML >= 1 << 12 || ip + cur + longestML >= iend)
                             {
-                                lastSequence.mlen = maxML;
-                                lastSequence.off = matches[nbMatches - 1].off;
-                                lastSequence.litlen = litlen;
-                                cur -= opt[cur].mlen == 0 ? opt[cur].litlen : 0;
-                                last_pos = cur + ZSTD_totalLen(lastSequence);
-                                if (cur > 1 << 12)
-                                    cur = 0;
+                                lastStretch.mlen = longestML;
+                                lastStretch.off = matches[nbMatches - 1].off;
+                                lastStretch.litlen = 0;
+                                last_pos = cur + longestML;
                                 goto _shortestPath;
                             }
                         }
@@ -1236,18 +1237,19 @@ namespace ZstdSharp.Unsafe
                             for (mlen = lastML; mlen >= startML; mlen--)
                             {
                                 uint pos = cur + mlen;
-                                int price = (int)basePrice + (int)ZSTD_getMatchPrice(offset, mlen, optStatePtr, optLevel);
+                                int price = basePrice + (int)ZSTD_getMatchPrice(offset, mlen, optStatePtr, optLevel);
                                 if (pos > last_pos || price < opt[pos].price)
                                 {
                                     while (last_pos < pos)
                                     {
-                                        opt[last_pos + 1].price = 1 << 30;
                                         last_pos++;
+                                        opt[last_pos].price = 1 << 30;
+                                        opt[last_pos].litlen = 0 == 0 ? 1U : 0U;
                                     }
 
                                     opt[pos].mlen = mlen;
                                     opt[pos].off = offset;
-                                    opt[pos].litlen = litlen;
+                                    opt[pos].litlen = 0;
                                     opt[pos].price = price;
                                 }
                                 else
@@ -1258,35 +1260,69 @@ namespace ZstdSharp.Unsafe
                             }
                         }
                     }
+
+                    opt[last_pos + 1].price = 1 << 30;
                 }
 
-                lastSequence = opt[last_pos];
-                cur = last_pos > ZSTD_totalLen(lastSequence) ? last_pos - ZSTD_totalLen(lastSequence) : 0;
-                assert(cur < 1 << 12);
+                lastStretch = opt[last_pos];
+                assert(cur >= lastStretch.mlen);
+                cur = last_pos - lastStretch.mlen;
             _shortestPath:
                 assert(opt[0].mlen == 0);
-                if (lastSequence.mlen != 0)
+                assert(last_pos >= lastStretch.mlen);
+                assert(cur == last_pos - lastStretch.mlen);
+                if (lastStretch.mlen == 0)
                 {
-                    repcodes_s reps = ZSTD_newRep(opt[cur].rep, lastSequence.off, lastSequence.litlen == 0 ? 1U : 0U);
+                    assert(lastStretch.litlen == (uint)(ip - anchor) + last_pos);
+                    ip += last_pos;
+                    continue;
+                }
+
+                assert(lastStretch.off > 0);
+                if (lastStretch.litlen == 0)
+                {
+                    /* finishing on a match : update offset history */
+                    repcodes_s reps = ZSTD_newRep(opt[cur].rep, lastStretch.off, opt[cur].litlen == 0 ? 1U : 0U);
                     memcpy(rep, &reps, (uint)sizeof(repcodes_s));
                 }
                 else
                 {
-                    memcpy(rep, opt[cur].rep, (uint)sizeof(repcodes_s));
+                    memcpy(rep, lastStretch.rep, (uint)sizeof(repcodes_s));
+                    assert(cur >= lastStretch.litlen);
+                    cur -= lastStretch.litlen;
                 }
 
                 {
-                    uint storeEnd = cur + 1;
+                    uint storeEnd = cur + 2;
                     uint storeStart = storeEnd;
-                    uint seqPos = cur;
-                    assert(storeEnd < 1 << 12);
-                    opt[storeEnd] = lastSequence;
-                    while (seqPos > 0)
+                    uint stretchPos = cur;
+                    assert(storeEnd < (1 << 12) + 3);
+                    if (lastStretch.litlen > 0)
                     {
-                        uint backDist = ZSTD_totalLen(opt[seqPos]);
+                        opt[storeEnd].litlen = lastStretch.litlen;
+                        opt[storeEnd].mlen = 0;
+                        storeStart = storeEnd - 1;
+                        opt[storeStart] = lastStretch;
+                    }
+
+                    {
+                        opt[storeEnd] = lastStretch;
+                        storeStart = storeEnd;
+                    }
+
+                    while (true)
+                    {
+                        ZSTD_optimal_t nextStretch = opt[stretchPos];
+                        opt[storeStart].litlen = nextStretch.litlen;
+                        if (nextStretch.mlen == 0)
+                        {
+                            break;
+                        }
+
                         storeStart--;
-                        opt[storeStart] = opt[seqPos];
-                        seqPos = seqPos > backDist ? seqPos - backDist : 0;
+                        opt[storeStart] = nextStretch;
+                        assert(nextStretch.litlen + nextStretch.mlen <= stretchPos);
+                        stretchPos -= nextStretch.litlen + nextStretch.mlen;
                     }
 
                     {
@@ -1361,6 +1397,9 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
+        /* note : no btultra2 variant for extDict nor dictMatchState,
+         * because btultra2 is not meant to work with dictionaries
+         * and is only specific for the first block (no prefix) */
         private static nuint ZSTD_compressBlock_btultra2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint curr = (uint)((byte*)src - ms->window.@base);
@@ -1378,14 +1417,14 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        private static nuint ZSTD_compressBlock_btultra_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
-        {
-            return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_dictMatchState);
-        }
-
         private static nuint ZSTD_compressBlock_btopt_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_extDict);
+        }
+
+        private static nuint ZSTD_compressBlock_btultra_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        {
+            return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
         private static nuint ZSTD_compressBlock_btultra_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)

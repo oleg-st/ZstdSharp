@@ -7,10 +7,11 @@ namespace ZstdSharp.Unsafe
      * op [in/out] - The output pointers, must be updated to reflect what is written.
      * bits [in/out] - The bitstream containers, must be updated to reflect the current state.
      * dt [in] - The decoding table.
-     * ilimit [in] - The input limit, stop when any input pointer is below ilimit.
+     * ilowest [in] - The beginning of the valid range of the input. Decoders may read
+     *                down to this pointer. It may be below iend[0].
      * oend [in] - The end of the output stream. op[3] must not cross oend.
      * iend [in] - The end of each input stream. ip[i] may cross iend[i],
-     *             as long as it is above ilimit, but that indicates corruption.
+     *             as long as it is above ilowest, but that indicates corruption.
      */
     public unsafe struct HUF_DecompressFastArgs
     {
@@ -18,7 +19,7 @@ namespace ZstdSharp.Unsafe
         public _op_e__FixedBuffer op;
         public fixed ulong bits[4];
         public void* dt;
-        public byte* ilimit;
+        public byte* ilowest;
         public byte* oend;
         public _iend_e__FixedBuffer iend;
         public unsafe struct _ip_e__FixedBuffer

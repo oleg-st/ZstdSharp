@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public struct ZSTD_CCtx_params_s
+    public unsafe struct ZSTD_CCtx_params_s
     {
         public ZSTD_format_e format;
         public ZSTD_compressionParameters cParams;
@@ -47,10 +47,11 @@ namespace ZstdSharp.Unsafe
         /* Controls whether zstd will fall back to an internal matchfinder
          * if the external matchfinder returns an error code. */
         public int enableMatchFinderFallback;
-        /* Indicates whether an external matchfinder has been referenced.
-         * Users can't set this externally.
-         * It is set internally in ZSTD_registerSequenceProducer(). */
-        public int useSequenceProducer;
+        /* Parameters for the external sequence producer API.
+         * Users set these parameters through ZSTD_registerSequenceProducer().
+         * It is not possible to set these parameters individually through the public API. */
+        public void* extSeqProdState;
+        public void* extSeqProdFunc;
         /* Adjust the max block size*/
         public nuint maxBlockSize;
         /* Controls repcode search in external sequence parsing */

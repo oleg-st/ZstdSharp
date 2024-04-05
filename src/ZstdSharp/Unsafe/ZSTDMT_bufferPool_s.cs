@@ -7,11 +7,6 @@ namespace ZstdSharp.Unsafe
         public uint totalBuffers;
         public uint nbBuffers;
         public ZSTD_customMem cMem;
-        /* variable size */
-        public _bTable_e__FixedBuffer bTable;
-        public unsafe struct _bTable_e__FixedBuffer
-        {
-            public buffer_s e0;
-        }
+        public buffer_s* buffers;
     }
 }

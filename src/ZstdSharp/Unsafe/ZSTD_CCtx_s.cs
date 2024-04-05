@@ -66,7 +66,8 @@ namespace ZstdSharp.Unsafe
         public ZSTDMT_CCtx_s* mtctx;
         /* Workspace for block splitter */
         public ZSTD_blockSplitCtx blockSplitCtx;
-        /* Workspace for external matchfinder */
-        public ZSTD_externalMatchCtx externalMatchCtx;
+        /* Buffer for output from external sequence producer */
+        public ZSTD_Sequence* extSeqBuf;
+        public nuint extSeqBufCapacity;
     }
 }

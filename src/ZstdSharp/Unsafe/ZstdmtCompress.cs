@@ -6,12 +6,38 @@ namespace ZstdSharp.Unsafe
     public static unsafe partial class Methods
     {
         private static readonly buffer_s g_nullBuffer = new buffer_s(start: null, capacity: 0);
+        private static void ZSTDMT_freeBufferPool(ZSTDMT_bufferPool_s* bufPool)
+        {
+            if (bufPool == null)
+                return;
+            if (bufPool->buffers != null)
+            {
+                uint u;
+                for (u = 0; u < bufPool->totalBuffers; u++)
+                {
+                    ZSTD_customFree(bufPool->buffers[u].start, bufPool->cMem);
+                }
+
+                ZSTD_customFree(bufPool->buffers, bufPool->cMem);
+            }
+
+            SynchronizationWrapper.Free(&bufPool->poolMutex);
+            ZSTD_customFree(bufPool, bufPool->cMem);
+        }
+
         private static ZSTDMT_bufferPool_s* ZSTDMT_createBufferPool(uint maxNbBuffers, ZSTD_customMem cMem)
         {
-            ZSTDMT_bufferPool_s* bufPool = (ZSTDMT_bufferPool_s*)ZSTD_customCalloc((uint)sizeof(ZSTDMT_bufferPool_s) + (maxNbBuffers - 1) * (uint)sizeof(buffer_s), cMem);
+            ZSTDMT_bufferPool_s* bufPool = (ZSTDMT_bufferPool_s*)ZSTD_customCalloc((nuint)sizeof(ZSTDMT_bufferPool_s), cMem);
             if (bufPool == null)
                 return null;
             SynchronizationWrapper.Init(&bufPool->poolMutex);
+            bufPool->buffers = (buffer_s*)ZSTD_customCalloc(maxNbBuffers * (uint)sizeof(buffer_s), cMem);
+            if (bufPool->buffers == null)
+            {
+                ZSTDMT_freeBufferPool(bufPool);
+                return null;
+            }
+
             bufPool->bufferSize = 64 * (1 << 10);
             bufPool->totalBuffers = maxNbBuffers;
             bufPool->nbBuffers = 0;
@@ -19,31 +45,18 @@ namespace ZstdSharp.Unsafe
             return bufPool;
         }
 
-        private static void ZSTDMT_freeBufferPool(ZSTDMT_bufferPool_s* bufPool)
-        {
-            uint u;
-            if (bufPool == null)
-                return;
-            for (u = 0; u < bufPool->totalBuffers; u++)
-            {
-                ZSTD_customFree((&bufPool->bTable.e0)[u].start, bufPool->cMem);
-            }
-
-            SynchronizationWrapper.Free(&bufPool->poolMutex);
-            ZSTD_customFree(bufPool, bufPool->cMem);
-        }
-
         /* only works at initialization, not during compression */
         private static nuint ZSTDMT_sizeof_bufferPool(ZSTDMT_bufferPool_s* bufPool)
         {
-            nuint poolSize = (uint)sizeof(ZSTDMT_bufferPool_s) + (bufPool->totalBuffers - 1) * (uint)sizeof(buffer_s);
+            nuint poolSize = (nuint)sizeof(ZSTDMT_bufferPool_s);
+            nuint arraySize = bufPool->totalBuffers * (uint)sizeof(buffer_s);
             uint u;
             nuint totalBufferSize = 0;
             SynchronizationWrapper.Enter(&bufPool->poolMutex);
             for (u = 0; u < bufPool->totalBuffers; u++)
-                totalBufferSize += (&bufPool->bTable.e0)[u].capacity;
+                totalBufferSize += bufPool->buffers[u].capacity;
             SynchronizationWrapper.Exit(&bufPool->poolMutex);
-            return poolSize + totalBufferSize;
+            return poolSize + arraySize + totalBufferSize;
         }
 
         /* ZSTDMT_setBufferSize() :
@@ -87,9 +100,9 @@ namespace ZstdSharp.Unsafe
             SynchronizationWrapper.Enter(&bufPool->poolMutex);
             if (bufPool->nbBuffers != 0)
             {
-                buffer_s buf = (&bufPool->bTable.e0)[--bufPool->nbBuffers];
+                buffer_s buf = bufPool->buffers[--bufPool->nbBuffers];
                 nuint availBufferSize = buf.capacity;
-                (&bufPool->bTable.e0)[bufPool->nbBuffers] = g_nullBuffer;
+                bufPool->buffers[bufPool->nbBuffers] = g_nullBuffer;
                 if (availBufferSize >= bSize && availBufferSize >> 3 <= bSize)
                 {
                     SynchronizationWrapper.Exit(&bufPool->poolMutex);
@@ -117,7 +130,7 @@ namespace ZstdSharp.Unsafe
             SynchronizationWrapper.Enter(&bufPool->poolMutex);
             if (bufPool->nbBuffers < bufPool->totalBuffers)
             {
-                (&bufPool->bTable.e0)[bufPool->nbBuffers++] = buf;
+                bufPool->buffers[bufPool->nbBuffers++] = buf;
                 SynchronizationWrapper.Exit(&bufPool->poolMutex);
                 return;
             }
@@ -186,13 +199,20 @@ namespace ZstdSharp.Unsafe
             return ZSTDMT_expandBufferPool(pool, nbWorkers);
         }
 
-        /* note : all CCtx borrowed from the pool should be released back to the pool _before_ freeing the pool */
+        /* note : all CCtx borrowed from the pool must be reverted back to the pool _before_ freeing the pool */
         private static void ZSTDMT_freeCCtxPool(ZSTDMT_CCtxPool* pool)
         {
-            int cid;
-            for (cid = 0; cid < pool->totalCCtx; cid++)
-                ZSTD_freeCCtx((&pool->cctx.e0)[cid]);
+            if (pool == null)
+                return;
             SynchronizationWrapper.Free(&pool->poolMutex);
+            if (pool->cctxs != null)
+            {
+                int cid;
+                for (cid = 0; cid < pool->totalCCtx; cid++)
+                    ZSTD_freeCCtx(pool->cctxs[cid]);
+                ZSTD_customFree(pool->cctxs, pool->cMem);
+            }
+
             ZSTD_customFree(pool, pool->cMem);
         }
 
@@ -200,21 +220,28 @@ namespace ZstdSharp.Unsafe
          * implies nbWorkers >= 1 , checked by caller ZSTDMT_createCCtx() */
         private static ZSTDMT_CCtxPool* ZSTDMT_createCCtxPool(int nbWorkers, ZSTD_customMem cMem)
         {
-            ZSTDMT_CCtxPool* cctxPool = (ZSTDMT_CCtxPool*)ZSTD_customCalloc((nuint)(sizeof(ZSTDMT_CCtxPool) + (nbWorkers - 1) * sizeof(ZSTD_CCtx_s*)), cMem);
+            ZSTDMT_CCtxPool* cctxPool = (ZSTDMT_CCtxPool*)ZSTD_customCalloc((nuint)sizeof(ZSTDMT_CCtxPool), cMem);
             assert(nbWorkers > 0);
             if (cctxPool == null)
                 return null;
             SynchronizationWrapper.Init(&cctxPool->poolMutex);
-            cctxPool->cMem = cMem;
             cctxPool->totalCCtx = nbWorkers;
-            cctxPool->availCCtx = 1;
-            cctxPool->cctx.e0 = ZSTD_createCCtx_advanced(cMem);
-            if (cctxPool->cctx.e0 == null)
+            cctxPool->cctxs = (ZSTD_CCtx_s**)ZSTD_customCalloc((nuint)(nbWorkers * sizeof(ZSTD_CCtx_s*)), cMem);
+            if (cctxPool->cctxs == null)
             {
                 ZSTDMT_freeCCtxPool(cctxPool);
                 return null;
             }
 
+            cctxPool->cMem = cMem;
+            cctxPool->cctxs[0] = ZSTD_createCCtx_advanced(cMem);
+            if (cctxPool->cctxs[0] == null)
+            {
+                ZSTDMT_freeCCtxPool(cctxPool);
+                return null;
+            }
+
+            cctxPool->availCCtx = 1;
             return cctxPool;
         }
 
@@ -237,17 +264,18 @@ namespace ZstdSharp.Unsafe
             SynchronizationWrapper.Enter(&cctxPool->poolMutex);
             {
                 uint nbWorkers = (uint)cctxPool->totalCCtx;
-                nuint poolSize = (uint)sizeof(ZSTDMT_CCtxPool) + (nbWorkers - 1) * (uint)sizeof(ZSTD_CCtx_s*);
-                uint u;
+                nuint poolSize = (nuint)sizeof(ZSTDMT_CCtxPool);
+                nuint arraySize = (nuint)(cctxPool->totalCCtx * sizeof(ZSTD_CCtx_s*));
                 nuint totalCCtxSize = 0;
+                uint u;
                 for (u = 0; u < nbWorkers; u++)
                 {
-                    totalCCtxSize += ZSTD_sizeof_CCtx((&cctxPool->cctx.e0)[u]);
+                    totalCCtxSize += ZSTD_sizeof_CCtx(cctxPool->cctxs[u]);
                 }
 
                 SynchronizationWrapper.Exit(&cctxPool->poolMutex);
                 assert(nbWorkers > 0);
-                return poolSize + totalCCtxSize;
+                return poolSize + arraySize + totalCCtxSize;
             }
         }
 
@@ -258,7 +286,7 @@ namespace ZstdSharp.Unsafe
             {
                 cctxPool->availCCtx--;
                 {
-                    ZSTD_CCtx_s* cctx = (&cctxPool->cctx.e0)[cctxPool->availCCtx];
+                    ZSTD_CCtx_s* cctx = cctxPool->cctxs[cctxPool->availCCtx];
                     SynchronizationWrapper.Exit(&cctxPool->poolMutex);
                     return cctx;
                 }
@@ -274,7 +302,7 @@ namespace ZstdSharp.Unsafe
                 return;
             SynchronizationWrapper.Enter(&pool->poolMutex);
             if (pool->availCCtx < pool->totalCCtx)
-                (&pool->cctx.e0)[pool->availCCtx++] = cctx;
+                pool->cctxs[pool->availCCtx++] = cctx;
             else
             {
                 ZSTD_freeCCtx(cctx);
@@ -400,9 +428,8 @@ namespace ZstdSharp.Unsafe
             SynchronizationWrapper.Exit(&serialState->mutex);
             if (seqStore.size > 0)
             {
-                nuint err = ZSTD_referenceExternalSequences(jobCCtx, seqStore.seq, seqStore.size);
+                ZSTD_referenceExternalSequences(jobCCtx, seqStore.seq, seqStore.size);
                 assert(serialState->@params.ldmParams.enableLdm == ZSTD_paramSwitch_e.ZSTD_ps_enable);
-                assert(!ERR_isError(err));
             }
         }
 

@@ -10,9 +10,9 @@ namespace ZstdSharp.Unsafe
         public uint* matchLengthFreq;
         /* table of offCode statistics, of size (MaxOff+1) */
         public uint* offCodeFreq;
-        /* list of found matches, of size ZSTD_OPT_NUM+1 */
+        /* list of found matches, of size ZSTD_OPT_SIZE */
         public ZSTD_match_t* matchTable;
-        /* All positions tracked by optimal parser, of size ZSTD_OPT_NUM+1 */
+        /* All positions tracked by optimal parser, of size ZSTD_OPT_SIZE */
         public ZSTD_optimal_t* priceTable;
         /* nb of literals */
         public uint litSum;

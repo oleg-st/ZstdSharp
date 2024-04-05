@@ -11,9 +11,11 @@ namespace ZstdSharp.Unsafe
         {
             byte* ostart = (byte*)dst;
             uint flSize = (uint)(1 + (srcSize > 31 ? 1 : 0) + (srcSize > 4095 ? 1 : 0));
-            if (srcSize + flSize > dstCapacity)
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                if (srcSize + flSize > dstCapacity)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
             }
 
             switch (flSize)
@@ -116,9 +118,11 @@ namespace ZstdSharp.Unsafe
                 return ZSTD_noCompressLiterals(dst, dstCapacity, src, srcSize);
             if (srcSize < ZSTD_minLiteralsToCompress(strategy, prevHuf->repeatMode))
                 return ZSTD_noCompressLiterals(dst, dstCapacity, src, srcSize);
-            if (dstCapacity < lhSize + 1)
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                if (dstCapacity < lhSize + 1)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
             }
 
             {

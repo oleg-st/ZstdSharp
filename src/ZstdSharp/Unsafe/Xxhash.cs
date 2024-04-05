@@ -7,16 +7,28 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
+        /*!
+         * @internal
+         * @brief Modify this function to use a different routine than malloc().
+         */
         private static void* XXH_malloc(nuint s)
         {
             return malloc(s);
         }
 
+        /*!
+         * @internal
+         * @brief Modify this function to use a different routine than free().
+         */
         private static void XXH_free(void* p)
         {
             free(p);
         }
 
+        /*!
+         * @internal
+         * @brief Modify this function to use a different routine than memcpy().
+         */
         [InlineMethod.Inline]
         private static void XXH_memcpy(void* dest, void* src, nuint size)
         {
@@ -53,7 +65,7 @@ namespace ZstdSharp.Unsafe
         /*! @ingroup public */
         private static uint ZSTD_XXH_versionNumber()
         {
-            return 0 * 100 * 100 + 8 * 100 + 1;
+            return 0 * 100 * 100 + 8 * 100 + 2;
         }
 
         /*!
@@ -82,17 +94,17 @@ namespace ZstdSharp.Unsafe
          * The final mix ensures that all input bits have a chance to impact any bit in
          * the output digest, resulting in an unbiased distribution.
          *
-         * @param h32 The hash to avalanche.
+         * @param hash The hash to avalanche.
          * @return The avalanched hash.
          */
-        private static uint XXH32_avalanche(uint h32)
+        private static uint XXH32_avalanche(uint hash)
         {
-            h32 ^= h32 >> 15;
-            h32 *= 0x85EBCA77U;
-            h32 ^= h32 >> 13;
-            h32 *= 0xC2B2AE3DU;
-            h32 ^= h32 >> 16;
-            return h32;
+            hash ^= hash >> 15;
+            hash *= 0x85EBCA77U;
+            hash ^= hash >> 13;
+            hash *= 0xC2B2AE3DU;
+            hash ^= hash >> 16;
+            return hash;
         }
 
         /*!
@@ -103,21 +115,22 @@ namespace ZstdSharp.Unsafe
          * This final stage will digest them to ensure that all input bytes are present
          * in the final mix.
          *
-         * @param h32 The hash to finalize.
+         * @param hash The hash to finalize.
          * @param ptr The pointer to the remaining input.
          * @param len The remaining length, modulo 16.
          * @param align Whether @p ptr is aligned.
          * @return The finalized hash.
+         * @see XXH64_finalize().
          */
-        private static uint XXH32_finalize(uint h32, byte* ptr, nuint len, XXH_alignment align)
+        private static uint XXH32_finalize(uint hash, byte* ptr, nuint len, XXH_alignment align)
         {
             len &= 15;
             while (len >= 4)
             {
                 {
-                    h32 += XXH_readLE32_align(ptr, align) * 0xC2B2AE3DU;
+                    hash += XXH_readLE32_align(ptr, align) * 0xC2B2AE3DU;
                     ptr += 4;
-                    h32 = BitOperations.RotateLeft(h32, 17) * 0x27D4EB2FU;
+                    hash = BitOperations.RotateLeft(hash, 17) * 0x27D4EB2FU;
                 }
 
                 len -= 4;
@@ -126,14 +139,14 @@ namespace ZstdSharp.Unsafe
             while (len > 0)
             {
                 {
-                    h32 += *ptr++ * 0x165667B1U;
-                    h32 = BitOperations.RotateLeft(h32, 11) * 0x9E3779B1U;
+                    hash += *ptr++ * 0x165667B1U;
+                    hash = BitOperations.RotateLeft(hash, 11) * 0x9E3779B1U;
                 }
 
                 --len;
             }
 
-            return XXH32_avalanche(h32);
+            return XXH32_avalanche(hash);
         }
 
         /*!
@@ -178,35 +191,32 @@ namespace ZstdSharp.Unsafe
             return XXH32_finalize(h32, input, len & 15, align);
         }
 
-        /*! @ingroup xxh32_family */
+        /*! @ingroup XXH32_family */
         private static uint ZSTD_XXH32(void* input, nuint len, uint seed)
         {
             return XXH32_endian_align((byte*)input, len, seed, XXH_alignment.XXH_unaligned);
         }
 
-        /*******   Hash streaming   *******/
-        /*!
-         * @ingroup xxh32_family
-         */
+        /*! @ingroup XXH32_family */
         private static XXH32_state_s* ZSTD_XXH32_createState()
         {
             return (XXH32_state_s*)XXH_malloc((nuint)sizeof(XXH32_state_s));
         }
 
-        /*! @ingroup xxh32_family */
+        /*! @ingroup XXH32_family */
         private static XXH_errorcode ZSTD_XXH32_freeState(XXH32_state_s* statePtr)
         {
             XXH_free(statePtr);
             return XXH_errorcode.XXH_OK;
         }
 
-        /*! @ingroup xxh32_family */
+        /*! @ingroup XXH32_family */
         private static void ZSTD_XXH32_copyState(XXH32_state_s* dstState, XXH32_state_s* srcState)
         {
             XXH_memcpy(dstState, srcState, (nuint)sizeof(XXH32_state_s));
         }
 
-        /*! @ingroup xxh32_family */
+        /*! @ingroup XXH32_family */
         private static XXH_errorcode ZSTD_XXH32_reset(XXH32_state_s* statePtr, uint seed)
         {
             memset(statePtr, 0, (uint)sizeof(XXH32_state_s));
@@ -217,7 +227,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
-        /*! @ingroup xxh32_family */
+        /*! @ingroup XXH32_family */
         private static XXH_errorcode ZSTD_XXH32_update(XXH32_state_s* state, void* input, nuint len)
         {
             if (input == null)
@@ -282,7 +292,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
-        /*! @ingroup xxh32_family */
+        /*! @ingroup XXH32_family */
         private static uint ZSTD_XXH32_digest(XXH32_state_s* state)
         {
             uint h32;
@@ -299,28 +309,16 @@ namespace ZstdSharp.Unsafe
             return XXH32_finalize(h32, (byte*)state->mem32, state->memsize, XXH_alignment.XXH_aligned);
         }
 
-        /*!
-         * @ingroup xxh32_family
-         * The default return values from XXH functions are unsigned 32 and 64 bit
-         * integers.
-         *
-         * The canonical representation uses big endian convention, the same convention
-         * as human-readable numbers (large digits first).
-         *
-         * This way, hash values can be written into a file or buffer, remaining
-         * comparable across different systems.
-         *
-         * The following functions allow transformation of hash values to and from their
-         * canonical format.
-         */
+        /*! @ingroup XXH32_family */
         private static void ZSTD_XXH32_canonicalFromHash(XXH32_canonical_t* dst, uint hash)
         {
+            assert(sizeof(XXH32_canonical_t) == sizeof(uint));
             if (BitConverter.IsLittleEndian)
                 hash = BinaryPrimitives.ReverseEndianness(hash);
             XXH_memcpy(dst, &hash, (nuint)sizeof(XXH32_canonical_t));
         }
 
-        /*! @ingroup xxh32_family */
+        /*! @ingroup XXH32_family */
         private static uint ZSTD_XXH32_hashFromCanonical(XXH32_canonical_t* src)
         {
             return XXH_readBE32(src);
@@ -346,6 +344,7 @@ namespace ZstdSharp.Unsafe
                 return BitConverter.IsLittleEndian ? *(ulong*)ptr : BinaryPrimitives.ReverseEndianness(*(ulong*)ptr);
         }
 
+        /*! @copydoc XXH32_round */
         [InlineMethod.Inline]
         private static ulong XXH64_round(ulong acc, ulong input)
         {
@@ -364,46 +363,70 @@ namespace ZstdSharp.Unsafe
             return acc;
         }
 
-        private static ulong XXH64_avalanche(ulong h64)
+        /*! @copydoc XXH32_avalanche */
+        private static ulong XXH64_avalanche(ulong hash)
         {
-            h64 ^= h64 >> 33;
-            h64 *= 0xC2B2AE3D27D4EB4FUL;
-            h64 ^= h64 >> 29;
-            h64 *= 0x165667B19E3779F9UL;
-            h64 ^= h64 >> 32;
-            return h64;
+            hash ^= hash >> 33;
+            hash *= 0xC2B2AE3D27D4EB4FUL;
+            hash ^= hash >> 29;
+            hash *= 0x165667B19E3779F9UL;
+            hash ^= hash >> 32;
+            return hash;
         }
 
-        private static ulong XXH64_finalize(ulong h64, byte* ptr, nuint len, XXH_alignment align)
+        /*!
+         * @internal
+         * @brief Processes the last 0-31 bytes of @p ptr.
+         *
+         * There may be up to 31 bytes remaining to consume from the input.
+         * This final stage will digest them to ensure that all input bytes are present
+         * in the final mix.
+         *
+         * @param hash The hash to finalize.
+         * @param ptr The pointer to the remaining input.
+         * @param len The remaining length, modulo 32.
+         * @param align Whether @p ptr is aligned.
+         * @return The finalized hash
+         * @see XXH32_finalize().
+         */
+        private static ulong XXH64_finalize(ulong hash, byte* ptr, nuint len, XXH_alignment align)
         {
             len &= 31;
             while (len >= 8)
             {
                 ulong k1 = XXH64_round(0, XXH_readLE64_align(ptr, align));
                 ptr += 8;
-                h64 ^= k1;
-                h64 = BitOperations.RotateLeft(h64, 27) * 0x9E3779B185EBCA87UL + 0x85EBCA77C2B2AE63UL;
+                hash ^= k1;
+                hash = BitOperations.RotateLeft(hash, 27) * 0x9E3779B185EBCA87UL + 0x85EBCA77C2B2AE63UL;
                 len -= 8;
             }
 
             if (len >= 4)
             {
-                h64 ^= XXH_readLE32_align(ptr, align) * 0x9E3779B185EBCA87UL;
+                hash ^= XXH_readLE32_align(ptr, align) * 0x9E3779B185EBCA87UL;
                 ptr += 4;
-                h64 = BitOperations.RotateLeft(h64, 23) * 0xC2B2AE3D27D4EB4FUL + 0x165667B19E3779F9UL;
+                hash = BitOperations.RotateLeft(hash, 23) * 0xC2B2AE3D27D4EB4FUL + 0x165667B19E3779F9UL;
                 len -= 4;
             }
 
             while (len > 0)
             {
-                h64 ^= *ptr++ * 0x27D4EB2F165667C5UL;
-                h64 = BitOperations.RotateLeft(h64, 11) * 0x9E3779B185EBCA87UL;
+                hash ^= *ptr++ * 0x27D4EB2F165667C5UL;
+                hash = BitOperations.RotateLeft(hash, 11) * 0x9E3779B185EBCA87UL;
                 --len;
             }
 
-            return XXH64_avalanche(h64);
+            return XXH64_avalanche(hash);
         }
 
+        /*!
+         * @internal
+         * @brief The implementation for @ref XXH64().
+         *
+         * @param input , len , seed Directly passed from @ref XXH64().
+         * @param align Whether @p input is aligned.
+         * @return The calculated hash.
+         */
         private static ulong XXH64_endian_align(byte* input, nuint len, ulong seed, XXH_alignment align)
         {
             ulong h64;
@@ -442,32 +465,32 @@ namespace ZstdSharp.Unsafe
             return XXH64_finalize(h64, input, len, align);
         }
 
-        /*! @ingroup xxh64_family */
+        /*! @ingroup XXH64_family */
         private static ulong ZSTD_XXH64(void* input, nuint len, ulong seed)
         {
             return XXH64_endian_align((byte*)input, len, seed, XXH_alignment.XXH_unaligned);
         }
 
-        /*! @ingroup xxh64_family*/
+        /*! @ingroup XXH64_family*/
         private static XXH64_state_s* ZSTD_XXH64_createState()
         {
             return (XXH64_state_s*)XXH_malloc((nuint)sizeof(XXH64_state_s));
         }
 
-        /*! @ingroup xxh64_family */
+        /*! @ingroup XXH64_family */
         private static XXH_errorcode ZSTD_XXH64_freeState(XXH64_state_s* statePtr)
         {
             XXH_free(statePtr);
             return XXH_errorcode.XXH_OK;
         }
 
-        /*! @ingroup xxh64_family */
+        /*! @ingroup XXH64_family */
         private static void ZSTD_XXH64_copyState(XXH64_state_s* dstState, XXH64_state_s* srcState)
         {
             XXH_memcpy(dstState, srcState, (nuint)sizeof(XXH64_state_s));
         }
 
-        /*! @ingroup xxh64_family */
+        /*! @ingroup XXH64_family */
         private static XXH_errorcode ZSTD_XXH64_reset(XXH64_state_s* statePtr, ulong seed)
         {
             memset(statePtr, 0, (uint)sizeof(XXH64_state_s));
@@ -478,7 +501,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
-        /*! @ingroup xxh64_family */
+        /*! @ingroup XXH64_family */
         private static XXH_errorcode ZSTD_XXH64_update(XXH64_state_s* state, void* input, nuint len)
         {
             if (input == null)
@@ -535,7 +558,7 @@ namespace ZstdSharp.Unsafe
             return XXH_errorcode.XXH_OK;
         }
 
-        /*! @ingroup xxh64_family */
+        /*! @ingroup XXH64_family */
         private static ulong ZSTD_XXH64_digest(XXH64_state_s* state)
         {
             ulong h64;
@@ -556,15 +579,16 @@ namespace ZstdSharp.Unsafe
             return XXH64_finalize(h64, (byte*)state->mem64, (nuint)state->total_len, XXH_alignment.XXH_aligned);
         }
 
-        /*! @ingroup xxh64_family */
+        /*! @ingroup XXH64_family */
         private static void ZSTD_XXH64_canonicalFromHash(XXH64_canonical_t* dst, ulong hash)
         {
+            assert(sizeof(XXH64_canonical_t) == sizeof(ulong));
             if (BitConverter.IsLittleEndian)
                 hash = BinaryPrimitives.ReverseEndianness(hash);
             XXH_memcpy(dst, &hash, (nuint)sizeof(XXH64_canonical_t));
         }
 
-        /*! @ingroup xxh64_family */
+        /*! @ingroup XXH64_family */
         private static ulong ZSTD_XXH64_hashFromCanonical(XXH64_canonical_t* src)
         {
             return XXH_readBE64(src);

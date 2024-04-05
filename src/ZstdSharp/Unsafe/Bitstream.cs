@@ -312,6 +312,22 @@ namespace ZstdSharp.Unsafe
             return value;
         }
 
+        /*! BIT_reloadDStream_internal() :
+         *  Simple variant of BIT_reloadDStream(), with two conditions:
+         *  1. bitstream is valid : bitsConsumed <= sizeof(bitD->bitContainer)*8
+         *  2. look window is valid after shifted down : bitD->ptr >= bitD->start
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static BIT_DStream_status BIT_reloadDStream_internal(BIT_DStream_t* bitD)
+        {
+            assert(bitD->bitsConsumed <= (uint)(sizeof(nuint) * 8));
+            bitD->ptr -= bitD->bitsConsumed >> 3;
+            assert(bitD->ptr >= bitD->start);
+            bitD->bitsConsumed &= 7;
+            bitD->bitContainer = MEM_readLEST(bitD->ptr);
+            return BIT_DStream_status.BIT_DStream_unfinished;
+        }
+
         /*! BIT_reloadDStreamFast() :
          *  Similar to BIT_reloadDStream(), but with two differences:
          *  1. bitsConsumed <= sizeof(bitD->bitContainer)*8 must hold!
@@ -324,26 +340,45 @@ namespace ZstdSharp.Unsafe
         {
             if (bitD->ptr < bitD->limitPtr)
                 return BIT_DStream_status.BIT_DStream_overflow;
-            assert(bitD->bitsConsumed <= (uint)(sizeof(nuint) * 8));
-            bitD->ptr -= bitD->bitsConsumed >> 3;
-            bitD->bitsConsumed &= 7;
-            bitD->bitContainer = MEM_readLEST(bitD->ptr);
-            return BIT_DStream_status.BIT_DStream_unfinished;
+            return BIT_reloadDStream_internal(bitD);
         }
 
+#if NET7_0_OR_GREATER
+        private static ReadOnlySpan<byte> Span_static_zeroFilled => new byte[]
+        {
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        };
+        private static nuint* static_zeroFilled => (nuint*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(Span_static_zeroFilled));
+#else
+
+        private static readonly nuint* static_zeroFilled = (nuint*)GetArrayPointer(new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 });
+#endif
         /*! BIT_reloadDStream() :
          *  Refill `bitD` from buffer previously set in BIT_initDStream() .
-         *  This function is safe, it guarantees it will not read beyond src buffer.
+         *  This function is safe, it guarantees it will not never beyond src buffer.
          * @return : status of `BIT_DStream_t` internal register.
          *           when status == BIT_DStream_unfinished, internal register is filled with at least 25 or 57 bits */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static BIT_DStream_status BIT_reloadDStream(BIT_DStream_t* bitD)
         {
             if (bitD->bitsConsumed > (uint)(sizeof(nuint) * 8))
+            {
+                const nuint zeroFilled = 0;
+                bitD->ptr = (sbyte*)&static_zeroFilled[0];
                 return BIT_DStream_status.BIT_DStream_overflow;
+            }
+
+            assert(bitD->ptr >= bitD->start);
             if (bitD->ptr >= bitD->limitPtr)
             {
-                return BIT_reloadDStreamFast(bitD);
+                return BIT_reloadDStream_internal(bitD);
             }
 
             if (bitD->ptr == bitD->start)
@@ -516,26 +551,28 @@ namespace ZstdSharp.Unsafe
         {
             if (bitD.ptr < bitD.limitPtr)
                 return BIT_DStream_status.BIT_DStream_overflow;
-            assert(bitD.bitsConsumed <= (uint)(sizeof(nuint) * 8));
-            bitD.ptr -= bitD.bitsConsumed >> 3;
-            bitD.bitsConsumed &= 7;
-            bitD.bitContainer = MEM_readLEST(bitD.ptr);
-            return BIT_DStream_status.BIT_DStream_unfinished;
+            return BIT_reloadDStream_internal(ref bitD);
         }
 
         /*! BIT_reloadDStream() :
          *  Refill `bitD` from buffer previously set in BIT_initDStream() .
-         *  This function is safe, it guarantees it will not read beyond src buffer.
+         *  This function is safe, it guarantees it will not never beyond src buffer.
          * @return : status of `BIT_DStream_t` internal register.
          *           when status == BIT_DStream_unfinished, internal register is filled with at least 25 or 57 bits */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static BIT_DStream_status BIT_reloadDStream(ref BIT_DStream_t bitD)
         {
             if (bitD.bitsConsumed > (uint)(sizeof(nuint) * 8))
+            {
+                const nuint zeroFilled = 0;
+                bitD.ptr = (sbyte*)&static_zeroFilled[0];
                 return BIT_DStream_status.BIT_DStream_overflow;
+            }
+
+            assert(bitD.ptr >= bitD.start);
             if (bitD.ptr >= bitD.limitPtr)
             {
-                return BIT_reloadDStreamFast(ref bitD);
+                return BIT_reloadDStream_internal(ref bitD);
             }
 
             if (bitD.ptr == bitD.start)
@@ -559,6 +596,22 @@ namespace ZstdSharp.Unsafe
                 bitD.bitContainer = MEM_readLEST(bitD.ptr);
                 return result;
             }
+        }
+
+        /*! BIT_reloadDStream_internal() :
+         *  Simple variant of BIT_reloadDStream(), with two conditions:
+         *  1. bitstream is valid : bitsConsumed <= sizeof(bitD->bitContainer)*8
+         *  2. look window is valid after shifted down : bitD->ptr >= bitD->start
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static BIT_DStream_status BIT_reloadDStream_internal(ref BIT_DStream_t bitD)
+        {
+            assert(bitD.bitsConsumed <= (uint)(sizeof(nuint) * 8));
+            bitD.ptr -= bitD.bitsConsumed >> 3;
+            assert(bitD.ptr >= bitD.start);
+            bitD.bitsConsumed &= 7;
+            bitD.bitContainer = MEM_readLEST(bitD.ptr);
+            return BIT_DStream_status.BIT_DStream_unfinished;
         }
     }
 }

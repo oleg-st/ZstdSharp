@@ -38,6 +38,7 @@ namespace ZstdSharp.Unsafe
         public nuint litSize;
         public nuint rleSize;
         public nuint staticSize;
+        public int isFrameDecompression;
         /* dictionary */
         public ZSTD_DDict_s* ddictLocal;
         /* set by ZSTD_initDStream_usingDDict(), or ZSTD_DCtx_refDDict() */
@@ -51,6 +52,7 @@ namespace ZstdSharp.Unsafe
         /* User specified: if == 1, will allow references to multiple DDicts. Default == 0 (disabled) */
         public ZSTD_refMultipleDDicts_e refMultipleDDicts;
         public int disableHufAsm;
+        public int maxBlockSizeParam;
         /* streaming */
         public ZSTD_dStreamStage streamStage;
         public sbyte* inBuff;
