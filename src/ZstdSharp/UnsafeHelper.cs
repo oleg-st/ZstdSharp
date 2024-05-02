@@ -22,31 +22,45 @@ namespace ZstdSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void* malloc(uint size)
         {
-#if DEBUG
-            return PoisonMemory((void*)Marshal.AllocHGlobal((int)size), size);
+#if NET6_0_OR_GREATER
+            var ptr = NativeMemory.Alloc(size);
 #else
-            return (void*) Marshal.AllocHGlobal((int) size);
+            var ptr = (void*) Marshal.AllocHGlobal((int) size);
+#endif
+#if DEBUG
+            return PoisonMemory(ptr, size);
+#else
+            return ptr;
 #endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void* malloc(ulong size)
         {
-#if DEBUG
-            return PoisonMemory((void*) Marshal.AllocHGlobal((nint) size), size);
+#if NET6_0_OR_GREATER
+            var ptr = NativeMemory.Alloc((nuint) size);
 #else
-            return (void*) Marshal.AllocHGlobal((nint) size);
+            var ptr = (void*) Marshal.AllocHGlobal((int) size);
+#endif
+#if DEBUG
+            return PoisonMemory(ptr, size);
+#else
+            return ptr;
 #endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void* calloc(ulong num, ulong size)
         {
+#if NET6_0_OR_GREATER
+            return NativeMemory.AllocZeroed((nuint) num, (nuint) size);
+#else
             var total = num * size;
             assert(total <= uint.MaxValue);
             var destination = (void*) Marshal.AllocHGlobal((nint) total);
             memset(destination, 0, (uint) total);
             return destination;
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -68,7 +82,11 @@ namespace ZstdSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void free(void* ptr)
         {
+#if NET6_0_OR_GREATER
+            NativeMemory.Free(ptr);
+#else
             Marshal.FreeHGlobal((IntPtr) ptr);
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
