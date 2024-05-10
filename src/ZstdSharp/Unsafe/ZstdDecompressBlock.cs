@@ -421,11 +421,11 @@ namespace ZstdSharp.Unsafe
             uint maxSV1 = maxSymbolValue + 1;
             uint tableSize = (uint)(1 << (int)tableLog);
             ushort* symbolNext = (ushort*)wksp;
-            byte* spread = (byte*)(symbolNext + (35 > 52 ? 35 : 52) + 1);
+            byte* spread = (byte*)(symbolNext + 52 + 1);
             uint highThreshold = tableSize - 1;
-            assert(maxSymbolValue <= (35 > 52 ? 35 : 52));
-            assert(tableLog <= ((9 > 9 ? 9 : 9) > 8 ? 9 > 9 ? 9 : 9 : 8));
-            assert(wkspSize >= sizeof(short) * ((35 > 52 ? 35 : 52) + 1) + (1U << ((9 > 9 ? 9 : 9) > 8 ? 9 > 9 ? 9 : 9 : 8)) + sizeof(ulong));
+            assert(maxSymbolValue <= 52);
+            assert(tableLog <= 9);
+            assert(wkspSize >= sizeof(short) * (52 + 1) + (1U << 9) + sizeof(ulong));
             {
                 ZSTD_seqSymbol_header DTableH;
                 DTableH.tableLog = tableLog;
@@ -1194,7 +1194,7 @@ namespace ZstdSharp.Unsafe
                             /* Always read extra bits, this keeps the logic simple,
                              * avoids branches, and avoids accidentally reading 0 bits.
                              */
-                            uint extraBits = 30 > 25 ? 30 - 25 : 0;
+                            const uint extraBits = 30 - 25;
                             offset = ofBase + (BIT_readBitsFast(&seqState->DStream, ofBits - extraBits) << (int)extraBits);
                             BIT_reloadDStream(&seqState->DStream);
                             offset += BIT_readBitsFast(&seqState->DStream, extraBits);
@@ -1238,7 +1238,7 @@ namespace ZstdSharp.Unsafe
 
                 if (mlBits > 0)
                     seq.matchLength += BIT_readBitsFast(&seqState->DStream, mlBits);
-                if (MEM_32bits && mlBits + llBits >= 25 - (30 > 25 ? 30 - 25 : 0))
+                if (MEM_32bits && mlBits + llBits >= 25 - (30 - 25))
                     BIT_reloadDStream(&seqState->DStream);
                 if (MEM_64bits && totalBits >= 57 - (9 + 9 + 8))
                     BIT_reloadDStream(&seqState->DStream);
@@ -1478,7 +1478,7 @@ namespace ZstdSharp.Unsafe
                                     /* Always read extra bits, this keeps the logic simple,
                                      * avoids branches, and avoids accidentally reading 0 bits.
                                      */
-                                    uint extraBits = 30 > 25 ? 30 - 25 : 0;
+                                    const uint extraBits = 30 - 25;
                                     offset = ofBase + (BIT_readBitsFast(ref seqState.DStream, ofBits - extraBits) << (int)extraBits);
                                     BIT_reloadDStream(ref seqState.DStream);
                                     offset += BIT_readBitsFast(ref seqState.DStream, extraBits);
@@ -1522,7 +1522,7 @@ namespace ZstdSharp.Unsafe
 
                         if (mlBits > 0)
                             sequence_matchLength += BIT_readBitsFast(ref seqState.DStream, mlBits);
-                        if (MEM_32bits && mlBits + llBits >= 25 - (30 > 25 ? 30 - 25 : 0))
+                        if (MEM_32bits && mlBits + llBits >= 25 - (30 - 25))
                             BIT_reloadDStream(ref seqState.DStream);
                         if (MEM_64bits && totalBits >= 57 - (9 + 9 + 8))
                             BIT_reloadDStream(ref seqState.DStream);

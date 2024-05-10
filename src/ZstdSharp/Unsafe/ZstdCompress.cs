@@ -94,11 +94,11 @@ namespace ZstdSharp.Unsafe
             memset(cctx, 0, (uint)sizeof(ZSTD_CCtx_s));
             ZSTD_cwksp_move(&cctx->workspace, &ws);
             cctx->staticSize = workspaceSize;
-            if (ZSTD_cwksp_check_available(&cctx->workspace, (nuint)((8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2) + 2 * sizeof(ZSTD_compressedBlockState_t))) == 0)
+            if (ZSTD_cwksp_check_available(&cctx->workspace, (nuint)((8 << 10) + 512 + sizeof(uint) * (52 + 2) + 2 * sizeof(ZSTD_compressedBlockState_t))) == 0)
                 return null;
             cctx->blockState.prevCBlock = (ZSTD_compressedBlockState_t*)ZSTD_cwksp_reserve_object(&cctx->workspace, (nuint)sizeof(ZSTD_compressedBlockState_t));
             cctx->blockState.nextCBlock = (ZSTD_compressedBlockState_t*)ZSTD_cwksp_reserve_object(&cctx->workspace, (nuint)sizeof(ZSTD_compressedBlockState_t));
-            cctx->entropyWorkspace = (uint*)ZSTD_cwksp_reserve_object(&cctx->workspace, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2));
+            cctx->entropyWorkspace = (uint*)ZSTD_cwksp_reserve_object(&cctx->workspace, (8 << 10) + 512 + sizeof(uint) * (52 + 2));
             cctx->bmi2 = 0;
             return cctx;
         }
@@ -1958,7 +1958,7 @@ namespace ZstdSharp.Unsafe
             nuint blockSize = ZSTD_resolveMaxBlockSize(maxBlockSize) < windowSize ? ZSTD_resolveMaxBlockSize(maxBlockSize) : windowSize;
             nuint maxNbSeq = ZSTD_maxNbSeq(blockSize, cParams->minMatch, useSequenceProducer);
             nuint tokenSpace = ZSTD_cwksp_alloc_size(32 + blockSize) + ZSTD_cwksp_aligned_alloc_size(maxNbSeq * (nuint)sizeof(seqDef_s)) + 3 * ZSTD_cwksp_alloc_size(maxNbSeq * sizeof(byte));
-            nuint entropySpace = ZSTD_cwksp_alloc_size((8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2));
+            nuint entropySpace = ZSTD_cwksp_alloc_size((8 << 10) + 512 + sizeof(uint) * (52 + 2));
             nuint blockStateSpace = 2 * ZSTD_cwksp_alloc_size((nuint)sizeof(ZSTD_compressedBlockState_t));
             /* enableDedicatedDictSearch */
             nuint matchStateSize = ZSTD_sizeof_matchState(cParams, useRowMatchFinder, 0, 1);
@@ -2413,7 +2413,7 @@ namespace ZstdSharp.Unsafe
                             return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
                         }
 
-                        zc->entropyWorkspace = (uint*)ZSTD_cwksp_reserve_object(ws, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2));
+                        zc->entropyWorkspace = (uint*)ZSTD_cwksp_reserve_object(ws, (8 << 10) + 512 + sizeof(uint) * (52 + 2));
                         if (zc->entropyWorkspace == null)
                         {
                             return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
@@ -2977,8 +2977,8 @@ namespace ZstdSharp.Unsafe
             byte* op = ostart;
             nuint lastCountSize;
             int longOffsets = 0;
-            entropyWorkspace = count + ((35 > 52 ? 35 : 52) + 1);
-            entropyWkspSize -= ((35 > 52 ? 35 : 52) + 1) * sizeof(uint);
+            entropyWorkspace = count + (52 + 1);
+            entropyWkspSize -= (52 + 1) * sizeof(uint);
             assert(entropyWkspSize >= (8 << 10) + 512);
             {
                 byte* literals = seqStorePtr->litStart;
@@ -3832,8 +3832,8 @@ namespace ZstdSharp.Unsafe
             byte* oend = ostart + sizeof(byte) * 133;
             byte* op = ostart;
             uint* countWorkspace = (uint*)workspace;
-            uint* entropyWorkspace = countWorkspace + ((35 > 52 ? 35 : 52) + 1);
-            nuint entropyWorkspaceSize = wkspSize - ((35 > 52 ? 35 : 52) + 1) * sizeof(uint);
+            uint* entropyWorkspace = countWorkspace + (52 + 1);
+            nuint entropyWorkspaceSize = wkspSize - (52 + 1) * sizeof(uint);
             ZSTD_symbolEncodingTypeStats_t stats;
             stats = nbSeq != 0 ? ZSTD_buildSequencesStatistics(seqStorePtr, nbSeq, prevEntropy, nextEntropy, op, oend, strategy, countWorkspace, entropyWorkspace, entropyWorkspaceSize) : ZSTD_buildDummySequencesStatistics(nextEntropy);
             {
@@ -3984,14 +3984,14 @@ namespace ZstdSharp.Unsafe
         {
             ZSTD_entropyCTablesMetadata_t* entropyMetadata = &zc->blockSplitCtx.entropyMetadata;
             {
-                nuint err_code = ZSTD_buildBlockEntropyStats(seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, entropyMetadata, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2));
+                nuint err_code = ZSTD_buildBlockEntropyStats(seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, entropyMetadata, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * (52 + 2));
                 if (ERR_isError(err_code))
                 {
                     return err_code;
                 }
             }
 
-            return ZSTD_estimateBlockSize(seqStore->litStart, (nuint)(seqStore->lit - seqStore->litStart), seqStore->ofCode, seqStore->llCode, seqStore->mlCode, (nuint)(seqStore->sequences - seqStore->sequencesStart), &zc->blockState.nextCBlock->entropy, entropyMetadata, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2), entropyMetadata->hufMetadata.hType == symbolEncodingType_e.set_compressed ? 1 : 0, 1);
+            return ZSTD_estimateBlockSize(seqStore->litStart, (nuint)(seqStore->lit - seqStore->litStart), seqStore->ofCode, seqStore->llCode, seqStore->mlCode, (nuint)(seqStore->sequences - seqStore->sequencesStart), &zc->blockState.nextCBlock->entropy, entropyMetadata, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * (52 + 2), entropyMetadata->hufMetadata.hType == symbolEncodingType_e.set_compressed ? 1 : 0, 1);
         }
 
         /* Returns literals bytes represented in a seqStore */
@@ -4152,7 +4152,7 @@ namespace ZstdSharp.Unsafe
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
-            cSeqsSize = ZSTD_entropyCompressSeqStore(seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, op + ZSTD_blockHeaderSize, dstCapacity - ZSTD_blockHeaderSize, srcSize, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2), zc->bmi2);
+            cSeqsSize = ZSTD_entropyCompressSeqStore(seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, op + ZSTD_blockHeaderSize, dstCapacity - ZSTD_blockHeaderSize, srcSize, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * (52 + 2), zc->bmi2);
             {
                 nuint err_code = cSeqsSize;
                 if (ERR_isError(err_code))
@@ -4475,7 +4475,7 @@ namespace ZstdSharp.Unsafe
                 return 0;
             }
 
-            cSize = ZSTD_entropyCompressSeqStore(&zc->seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, dst, dstCapacity, srcSize, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2), zc->bmi2);
+            cSize = ZSTD_entropyCompressSeqStore(&zc->seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, dst, dstCapacity, srcSize, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * (52 + 2), zc->bmi2);
             if (frame != 0 && zc->isFirstBlock == 0 && cSize < rleMaxLength && ZSTD_isRLE(ip, srcSize) != 0)
             {
                 cSize = 1;
@@ -7381,7 +7381,7 @@ namespace ZstdSharp.Unsafe
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
                 }
 
-                compressedSeqsSize = ZSTD_entropyCompressSeqStore(&cctx->seqStore, &cctx->blockState.prevCBlock->entropy, &cctx->blockState.nextCBlock->entropy, &cctx->appliedParams, op + ZSTD_blockHeaderSize, dstCapacity - ZSTD_blockHeaderSize, blockSize, cctx->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * ((35 > 52 ? 35 : 52) + 2), cctx->bmi2);
+                compressedSeqsSize = ZSTD_entropyCompressSeqStore(&cctx->seqStore, &cctx->blockState.prevCBlock->entropy, &cctx->blockState.nextCBlock->entropy, &cctx->appliedParams, op + ZSTD_blockHeaderSize, dstCapacity - ZSTD_blockHeaderSize, blockSize, cctx->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * (52 + 2), cctx->bmi2);
                 {
                     nuint err_code = compressedSeqsSize;
                     if (ERR_isError(err_code))
