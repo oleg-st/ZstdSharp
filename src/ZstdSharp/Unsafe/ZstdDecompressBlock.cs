@@ -64,7 +64,7 @@ namespace ZstdSharp.Unsafe
                 dctx->litBufferEnd = dctx->litBuffer + litSize;
                 dctx->litBufferLocation = ZSTD_litLocation_e.ZSTD_in_dst;
             }
-            else if (litSize <= (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10))
+            else if (litSize <= 1 << 16)
             {
                 dctx->litBuffer = dctx->litExtraBuffer;
                 dctx->litBufferEnd = dctx->litBuffer + litSize;
@@ -72,11 +72,11 @@ namespace ZstdSharp.Unsafe
             }
             else
             {
-                assert(blockSizeMax > (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10));
+                assert(blockSizeMax > 1 << 16);
                 if (splitImmediately != 0)
                 {
-                    dctx->litBuffer = (byte*)dst + expectedWriteSize - litSize + (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10) - 32;
-                    dctx->litBufferEnd = dctx->litBuffer + litSize - (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
+                    dctx->litBuffer = (byte*)dst + expectedWriteSize - litSize + (1 << 16) - 32;
+                    dctx->litBufferEnd = dctx->litBuffer + litSize - (1 << 16);
                 }
                 else
                 {
@@ -222,10 +222,10 @@ namespace ZstdSharp.Unsafe
 
                             if (dctx->litBufferLocation == ZSTD_litLocation_e.ZSTD_split)
                             {
-                                assert(litSize > (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10));
-                                memcpy(dctx->litExtraBuffer, dctx->litBufferEnd - (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10), 1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
-                                memmove(dctx->litBuffer + (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10) - 32, dctx->litBuffer, litSize - (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10));
-                                dctx->litBuffer += (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10) - 32;
+                                assert(litSize > 1 << 16);
+                                memcpy(dctx->litExtraBuffer, dctx->litBufferEnd - (1 << 16), 1 << 16);
+                                memmove(dctx->litBuffer + (1 << 16) - 32, dctx->litBuffer, litSize - (1 << 16));
+                                dctx->litBuffer += (1 << 16) - 32;
                                 dctx->litBufferEnd -= 32;
                                 assert(dctx->litBufferEnd <= (byte*)dst + blockSizeMax);
                             }
@@ -296,8 +296,8 @@ namespace ZstdSharp.Unsafe
 
                                 if (dctx->litBufferLocation == ZSTD_litLocation_e.ZSTD_split)
                                 {
-                                    memcpy(dctx->litBuffer, istart + lhSize, (uint)(litSize - (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10)));
-                                    memcpy(dctx->litExtraBuffer, istart + lhSize + litSize - (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10), 1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
+                                    memcpy(dctx->litBuffer, istart + lhSize, (uint)(litSize - (1 << 16)));
+                                    memcpy(dctx->litExtraBuffer, istart + lhSize + litSize - (1 << 16), 1 << 16);
                                 }
                                 else
                                 {
@@ -367,8 +367,8 @@ namespace ZstdSharp.Unsafe
                             ZSTD_allocateLiteralsBuffer(dctx, dst, dstCapacity, litSize, streaming, expectedWriteSize, 1);
                             if (dctx->litBufferLocation == ZSTD_litLocation_e.ZSTD_split)
                             {
-                                memset(dctx->litBuffer, istart[lhSize], (uint)(litSize - (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10)));
-                                memset(dctx->litExtraBuffer, istart[lhSize], 1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
+                                memset(dctx->litBuffer, istart[lhSize], (uint)(litSize - (1 << 16)));
+                                memset(dctx->litExtraBuffer, istart[lhSize], 1 << 16);
                             }
                             else
                             {
@@ -1329,7 +1329,7 @@ namespace ZstdSharp.Unsafe
                         }
 
                         litPtr = dctx->litExtraBuffer;
-                        litBufferEnd = dctx->litExtraBuffer + (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
+                        litBufferEnd = dctx->litExtraBuffer + (1 << 16);
                         dctx->litBufferLocation = ZSTD_litLocation_e.ZSTD_not_in_dst;
                         {
                             nuint oneSeqSize = ZSTD_execSequence(op, oend, sequence, &litPtr, litBufferEnd, prefixStart, vBase, dictEnd);
@@ -1387,7 +1387,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 litPtr = dctx->litExtraBuffer;
-                litBufferEnd = dctx->litExtraBuffer + (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
+                litBufferEnd = dctx->litExtraBuffer + (1 << 16);
                 dctx->litBufferLocation = ZSTD_litLocation_e.ZSTD_not_in_dst;
             }
 
@@ -1757,7 +1757,7 @@ namespace ZstdSharp.Unsafe
                         }
 
                         litPtr = dctx->litExtraBuffer;
-                        litBufferEnd = dctx->litExtraBuffer + (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
+                        litBufferEnd = dctx->litExtraBuffer + (1 << 16);
                         dctx->litBufferLocation = ZSTD_litLocation_e.ZSTD_not_in_dst;
                         {
                             nuint oneSeqSize = ZSTD_execSequence(op, oend, sequences[seqNb - 8 & 8 - 1], &litPtr, litBufferEnd, prefixStart, dictStart, dictEnd);
@@ -1805,7 +1805,7 @@ namespace ZstdSharp.Unsafe
                         }
 
                         litPtr = dctx->litExtraBuffer;
-                        litBufferEnd = dctx->litExtraBuffer + (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
+                        litBufferEnd = dctx->litExtraBuffer + (1 << 16);
                         dctx->litBufferLocation = ZSTD_litLocation_e.ZSTD_not_in_dst;
                         {
                             nuint oneSeqSize = ZSTD_execSequence(op, oend, *sequence, &litPtr, litBufferEnd, prefixStart, dictStart, dictEnd);
@@ -1845,7 +1845,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 litPtr = dctx->litExtraBuffer;
-                litBufferEnd = dctx->litExtraBuffer + (1 << 16 <= 64 ? 64 : 1 << 16 <= 128 << 10 ? 1 << 16 : 128 << 10);
+                litBufferEnd = dctx->litExtraBuffer + (1 << 16);
             }
 
             {
