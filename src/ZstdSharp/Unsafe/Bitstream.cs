@@ -408,7 +408,6 @@ namespace ZstdSharp.Unsafe
          * @return : 1 if DStream has _exactly_ reached its end (all bits consumed).
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static uint BIT_endOfDStream(BIT_DStream_t* DStream)
         {
             return DStream->ptr == DStream->start && DStream->bitsConsumed == (uint)(sizeof(nuint) * 8) ? 1U : 0U;
@@ -612,6 +611,15 @@ namespace ZstdSharp.Unsafe
             bitD.bitsConsumed &= 7;
             bitD.bitContainer = MEM_readLEST(bitD.ptr);
             return BIT_DStream_status.BIT_DStream_unfinished;
+        }
+
+        /*! BIT_endOfDStream() :
+         * @return : 1 if DStream has _exactly_ reached its end (all bits consumed).
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint BIT_endOfDStream(ref BIT_DStream_t DStream)
+        {
+            return DStream.ptr == DStream.start && DStream.bitsConsumed == (uint)(sizeof(nuint) * 8) ? 1U : 0U;
         }
     }
 }

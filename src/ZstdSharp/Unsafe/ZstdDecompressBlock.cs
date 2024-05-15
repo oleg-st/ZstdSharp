@@ -1444,6 +1444,7 @@ namespace ZstdSharp.Unsafe
                 ZSTD_initFseState(ref seqState.stateOffb, ref seqState.DStream, dctx->OFTptr);
                 ZSTD_initFseState(ref seqState.stateML, ref seqState.DStream, dctx->MLTptr);
                 assert(dst != null);
+                BIT_DStream_t seqState_DStream = seqState.DStream;
                 for (; nbSeq != 0; nbSeq--)
                 {
                     nuint sequence_litLength;
@@ -1479,15 +1480,15 @@ namespace ZstdSharp.Unsafe
                                      * avoids branches, and avoids accidentally reading 0 bits.
                                      */
                                     const uint extraBits = 30 - 25;
-                                    offset = ofBase + (BIT_readBitsFast(ref seqState.DStream, ofBits - extraBits) << (int)extraBits);
-                                    BIT_reloadDStream(ref seqState.DStream);
-                                    offset += BIT_readBitsFast(ref seqState.DStream, extraBits);
+                                    offset = ofBase + (BIT_readBitsFast(ref seqState_DStream, ofBits - extraBits) << (int)extraBits);
+                                    BIT_reloadDStream(ref seqState_DStream);
+                                    offset += BIT_readBitsFast(ref seqState_DStream, extraBits);
                                 }
                                 else
                                 {
-                                    offset = ofBase + BIT_readBitsFast(ref seqState.DStream, ofBits);
+                                    offset = ofBase + BIT_readBitsFast(ref seqState_DStream, ofBits);
                                     if (MEM_32bits)
-                                        BIT_reloadDStream(ref seqState.DStream);
+                                        BIT_reloadDStream(ref seqState_DStream);
                                 }
 
                                 seqState.prevOffset.e2 = seqState.prevOffset.e1;
@@ -1505,7 +1506,7 @@ namespace ZstdSharp.Unsafe
                                 }
                                 else
                                 {
-                                    offset = ofBase + ll0 + BIT_readBitsFast(ref seqState.DStream, 1);
+                                    offset = ofBase + ll0 + BIT_readBitsFast(ref seqState_DStream, 1);
                                     {
                                         nuint temp = offset == 3 ? seqState.prevOffset.e0 - 1 : System.Runtime.CompilerServices.Unsafe.Add(ref seqState.prevOffset.e0, (int)offset);
                                         temp -= temp == 0 ? 1U : 0U;
@@ -1521,23 +1522,23 @@ namespace ZstdSharp.Unsafe
                         }
 
                         if (mlBits > 0)
-                            sequence_matchLength += BIT_readBitsFast(ref seqState.DStream, mlBits);
+                            sequence_matchLength += BIT_readBitsFast(ref seqState_DStream, mlBits);
                         if (MEM_32bits && mlBits + llBits >= 25 - (30 - 25))
-                            BIT_reloadDStream(ref seqState.DStream);
+                            BIT_reloadDStream(ref seqState_DStream);
                         if (MEM_64bits && totalBits >= 57 - (9 + 9 + 8))
-                            BIT_reloadDStream(ref seqState.DStream);
+                            BIT_reloadDStream(ref seqState_DStream);
                         if (llBits > 0)
-                            sequence_litLength += BIT_readBitsFast(ref seqState.DStream, llBits);
+                            sequence_litLength += BIT_readBitsFast(ref seqState_DStream, llBits);
                         if (MEM_32bits)
-                            BIT_reloadDStream(ref seqState.DStream);
+                            BIT_reloadDStream(ref seqState_DStream);
                         if ((nbSeq == 1 ? 1 : 0) == 0)
                         {
-                            ZSTD_updateFseStateWithDInfo(ref seqState.stateLL, ref seqState.DStream, llNext, llnbBits);
-                            ZSTD_updateFseStateWithDInfo(ref seqState.stateML, ref seqState.DStream, mlNext, mlnbBits);
+                            ZSTD_updateFseStateWithDInfo(ref seqState.stateLL, ref seqState_DStream, llNext, llnbBits);
+                            ZSTD_updateFseStateWithDInfo(ref seqState.stateML, ref seqState_DStream, mlNext, mlnbBits);
                             if (MEM_32bits)
-                                BIT_reloadDStream(ref seqState.DStream);
-                            ZSTD_updateFseStateWithDInfo(ref seqState.stateOffb, ref seqState.DStream, ofNext, ofnbBits);
-                            BIT_reloadDStream(ref seqState.DStream);
+                                BIT_reloadDStream(ref seqState_DStream);
+                            ZSTD_updateFseStateWithDInfo(ref seqState.stateOffb, ref seqState_DStream, ofNext, ofnbBits);
+                            BIT_reloadDStream(ref seqState_DStream);
                         }
                     }
 
@@ -1626,7 +1627,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 assert(nbSeq == 0);
-                if (BIT_endOfDStream(&seqState.DStream) == 0)
+                if (BIT_endOfDStream(ref seqState_DStream) == 0)
                 {
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
                 }
