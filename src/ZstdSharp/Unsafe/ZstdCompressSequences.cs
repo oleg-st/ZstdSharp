@@ -486,6 +486,7 @@ namespace ZstdSharp.Unsafe
                     return 0;
                 case symbolEncodingType_e.set_basic:
                     {
+                        /* note : could be pre-calculated */
                         nuint err_code = FSE_buildCTable_wksp(nextCTable, defaultNorm, defaultMax, defaultNormLog, entropyWorkspace, entropyWorkspaceSize);
                         if (ERR_isError(err_code))
                         {

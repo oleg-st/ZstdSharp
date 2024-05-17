@@ -1125,6 +1125,7 @@ namespace ZstdSharp.Unsafe
 
                 if (ddict != null)
                 {
+                    /* we were called from ZSTD_decompress_usingDDict */
                     nuint err_code = ZSTD_decompressBegin_usingDDict(dctx, ddict);
                     if (ERR_isError(err_code))
                     {
@@ -1133,6 +1134,8 @@ namespace ZstdSharp.Unsafe
                 }
                 else
                 {
+                    /* this will initialize correctly with no dict if dict == NULL, so
+                     * use this in all cases but ddict */
                     nuint err_code = ZSTD_decompressBegin_usingDict(dctx, dict, dictSize);
                     if (ERR_isError(err_code))
                     {
@@ -2556,6 +2559,7 @@ namespace ZstdSharp.Unsafe
 
                                     input->pos = input->size;
                                     {
+                                        /* check first few bytes */
                                         nuint err_code = ZSTD_getFrameHeader_advanced(&zds->fParams, zds->headerBuffer, zds->lhSize, zds->format);
                                         if (ERR_isError(err_code))
                                         {

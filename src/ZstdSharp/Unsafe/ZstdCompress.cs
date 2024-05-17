@@ -1270,6 +1270,7 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_CCtx_setCParams(ZSTD_CCtx_s* cctx, ZSTD_compressionParameters cparams)
         {
             {
+                /* only update if all parameters are valid */
                 nuint err_code = ZSTD_checkCParams(cparams);
                 if (ERR_isError(err_code))
                 {
@@ -1376,6 +1377,7 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_CCtx_setParams(ZSTD_CCtx_s* cctx, ZSTD_parameters @params)
         {
             {
+                /* First check cParams, because we want to update all or none. */
                 nuint err_code = ZSTD_checkCParams(@params.cParams);
                 if (ERR_isError(err_code))
                 {
@@ -1384,6 +1386,7 @@ namespace ZstdSharp.Unsafe
             }
 
             {
+                /* Next set fParams, because this could fail if the cctx isn't in init stage. */
                 nuint err_code = ZSTD_CCtx_setFParams(cctx, @params.fParams);
                 if (ERR_isError(err_code))
                 {
@@ -1392,6 +1395,7 @@ namespace ZstdSharp.Unsafe
             }
 
             {
+                /* Finally set cParams, which should succeed. */
                 nuint err_code = ZSTD_CCtx_setCParams(cctx, @params.cParams);
                 if (ERR_isError(err_code))
                 {
@@ -3347,6 +3351,7 @@ namespace ZstdSharp.Unsafe
                     ldmSeqStore.seq = zc->ldmSequences;
                     ldmSeqStore.capacity = zc->maxNbLdmSequences;
                     {
+                        /* Updates ldmSeqStore.size */
                         nuint err_code = ZSTD_ldm_generateSequences(&zc->ldmState, &ldmSeqStore, &zc->appliedParams.ldmParams, src, srcSize);
                         if (ERR_isError(err_code))
                         {
@@ -5343,6 +5348,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_compressBegin_advanced_internal(ZSTD_CCtx_s* cctx, void* dict, nuint dictSize, ZSTD_dictContentType_e dictContentType, ZSTD_dictTableLoadMethod_e dtlm, ZSTD_CDict_s* cdict, ZSTD_CCtx_params_s* @params, ulong pledgedSrcSize)
         {
             {
+                /* compression parameters verification and optimization */
                 nuint err_code = ZSTD_checkCParams(@params->cParams);
                 if (ERR_isError(err_code))
                 {
@@ -5908,6 +5914,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_compress_usingCDict_internal(ZSTD_CCtx_s* cctx, void* dst, nuint dstCapacity, void* src, nuint srcSize, ZSTD_CDict_s* cdict, ZSTD_frameParameters fParams)
         {
             {
+                /* will check if cdict != NULL */
                 nuint err_code = ZSTD_compressBegin_usingCDict_internal(cctx, cdict, fParams, srcSize);
                 if (ERR_isError(err_code))
                 {
@@ -6048,6 +6055,7 @@ namespace ZstdSharp.Unsafe
             }
             else
             {
+                /* Dictionary is cleared if !cdict */
                 nuint err_code = ZSTD_CCtx_refCDict(zcs, cdict);
                 if (ERR_isError(err_code))
                 {
@@ -6617,6 +6625,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_CCtx_params_s @params = cctx->requestedParams;
             ZSTD_prefixDict_s prefixDict = cctx->prefixDict;
             {
+                /* Init the local dict if present. */
                 nuint err_code = ZSTD_initLocalDict(cctx);
                 if (ERR_isError(err_code))
                 {
@@ -6771,6 +6780,7 @@ namespace ZstdSharp.Unsafe
             }
 
             {
+                /* end of transparent initialization stage */
                 nuint err_code = ZSTD_checkBufferStability(cctx, output, input, endOp);
                 if (ERR_isError(err_code))
                 {

@@ -50,6 +50,7 @@ namespace ZstdSharp.Unsafe
 
             tableLog = FSE_optimalTableLog(tableLog, wtSize, maxSymbolValue);
             {
+                /* useLowProbCount */
                 nuint _var_err__ = FSE_normalizeCount(wksp->norm, tableLog, wksp->count, wtSize, maxSymbolValue, 0);
                 if (ERR_isError(_var_err__))
                     return _var_err__;
@@ -63,6 +64,7 @@ namespace ZstdSharp.Unsafe
             }
 
             {
+                /* Compress */
                 nuint _var_err__ = FSE_buildCTable_wksp(wksp->CTable, wksp->norm, maxSymbolValue, tableLog, wksp->scratchBuffer, sizeof(uint) * 41);
                 if (ERR_isError(_var_err__))
                     return _var_err__;
@@ -197,6 +199,7 @@ namespace ZstdSharp.Unsafe
             uint tableLog = 0;
             uint nbSymbols = 0;
             nuint* ct = CTable + 1;
+            /* get symbol weights */
             nuint readSize = HUF_readStats(huffWeight, 255 + 1, rankVal, &nbSymbols, &tableLog, src, srcSize);
             if (ERR_isError(readSize))
                 return readSize;

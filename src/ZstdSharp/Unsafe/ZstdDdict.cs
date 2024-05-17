@@ -109,6 +109,7 @@ namespace ZstdSharp.Unsafe
             ddict->dictSize = dictSize;
             ddict->entropy.hufTable[0] = 12 * 0x1000001;
             {
+                /* parse dictionary content */
                 nuint err_code = ZSTD_loadEntropy_intoDDict(ddict, dictContentType);
                 if (ERR_isError(err_code))
                 {

@@ -570,28 +570,36 @@ namespace ZstdSharp.Unsafe
                 {
                     {
                         {
+                            /* Decode 5 symbols in each of the 4 streams */
                             int index = (int)(bits0 >> 53);
+                            /* Decode 5 symbols in each of the 4 streams */
                             int entry = dtable[index];
                             bits0 <<= entry & 0x3F;
                             op0[0] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
+                            /* Decode 5 symbols in each of the 4 streams */
                             int index = (int)(bits1 >> 53);
+                            /* Decode 5 symbols in each of the 4 streams */
                             int entry = dtable[index];
                             bits1 <<= entry & 0x3F;
                             op1[0] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
+                            /* Decode 5 symbols in each of the 4 streams */
                             int index = (int)(bits2 >> 53);
+                            /* Decode 5 symbols in each of the 4 streams */
                             int entry = dtable[index];
                             bits2 <<= entry & 0x3F;
                             op2[0] = (byte)(entry >> 8 & 0xFF);
                         }
 
                         {
+                            /* Decode 5 symbols in each of the 4 streams */
                             int index = (int)(bits3 >> 53);
+                            /* Decode 5 symbols in each of the 4 streams */
                             int entry = dtable[index];
                             bits3 <<= entry & 0x3F;
                             op3[0] = (byte)(entry >> 8 & 0xFF);
@@ -720,8 +728,11 @@ namespace ZstdSharp.Unsafe
 
                     {
                         {
+                            /* Reload each of the 4 the bitstreams */
                             int ctz = (int)ZSTD_countTrailingZeros64(bits0);
+                            /* Reload each of the 4 the bitstreams */
                             int nbBits = ctz & 7;
+                            /* Reload each of the 4 the bitstreams */
                             int nbBytes = ctz >> 3;
                             op0 += 5;
                             ip0 -= nbBytes;
@@ -730,8 +741,11 @@ namespace ZstdSharp.Unsafe
                         }
 
                         {
+                            /* Reload each of the 4 the bitstreams */
                             int ctz = (int)ZSTD_countTrailingZeros64(bits1);
+                            /* Reload each of the 4 the bitstreams */
                             int nbBits = ctz & 7;
+                            /* Reload each of the 4 the bitstreams */
                             int nbBytes = ctz >> 3;
                             op1 += 5;
                             ip1 -= nbBytes;
@@ -740,8 +754,11 @@ namespace ZstdSharp.Unsafe
                         }
 
                         {
+                            /* Reload each of the 4 the bitstreams */
                             int ctz = (int)ZSTD_countTrailingZeros64(bits2);
+                            /* Reload each of the 4 the bitstreams */
                             int nbBits = ctz & 7;
+                            /* Reload each of the 4 the bitstreams */
                             int nbBytes = ctz >> 3;
                             op2 += 5;
                             ip2 -= nbBytes;
@@ -750,8 +767,11 @@ namespace ZstdSharp.Unsafe
                         }
 
                         {
+                            /* Reload each of the 4 the bitstreams */
                             int ctz = (int)ZSTD_countTrailingZeros64(bits3);
+                            /* Reload each of the 4 the bitstreams */
                             int nbBits = ctz & 7;
+                            /* Reload each of the 4 the bitstreams */
                             int nbBytes = ctz >> 3;
                             op3 += 5;
                             ip3 -= nbBytes;
@@ -1262,6 +1282,7 @@ namespace ZstdSharp.Unsafe
         {
             BIT_DStream_t bitD;
             {
+                /* Init */
                 nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
                 if (ERR_isError(_var_err__))
                     return _var_err__;
@@ -1529,7 +1550,15 @@ namespace ZstdSharp.Unsafe
                 {
                     {
                         {
+                            /* Decode 5 symbols from each of the first 3 streams.
+                             * The final stream will be decoded during the reload phase
+                             * to reduce register pressure.
+                             */
                             int index = (int)(bits0 >> 53);
+                            /* Decode 5 symbols from each of the first 3 streams.
+                             * The final stream will be decoded during the reload phase
+                             * to reduce register pressure.
+                             */
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op0, entry.sequence);
                             bits0 <<= entry.nbBits & 0x3F;
@@ -1537,7 +1566,15 @@ namespace ZstdSharp.Unsafe
                         }
 
                         {
+                            /* Decode 5 symbols from each of the first 3 streams.
+                             * The final stream will be decoded during the reload phase
+                             * to reduce register pressure.
+                             */
                             int index = (int)(bits1 >> 53);
+                            /* Decode 5 symbols from each of the first 3 streams.
+                             * The final stream will be decoded during the reload phase
+                             * to reduce register pressure.
+                             */
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op1, entry.sequence);
                             bits1 <<= entry.nbBits & 0x3F;
@@ -1545,7 +1582,15 @@ namespace ZstdSharp.Unsafe
                         }
 
                         {
+                            /* Decode 5 symbols from each of the first 3 streams.
+                             * The final stream will be decoded during the reload phase
+                             * to reduce register pressure.
+                             */
                             int index = (int)(bits2 >> 53);
+                            /* Decode 5 symbols from each of the first 3 streams.
+                             * The final stream will be decoded during the reload phase
+                             * to reduce register pressure.
+                             */
                             HUF_DEltX2 entry = dtable[index];
                             MEM_write16(op2, entry.sequence);
                             bits2 <<= entry.nbBits & 0x3F;
@@ -1658,7 +1703,9 @@ namespace ZstdSharp.Unsafe
                     }
 
                     {
+                        /* Decode one symbol from the final stream */
                         int index = (int)(bits3 >> 53);
+                        /* Decode one symbol from the final stream */
                         HUF_DEltX2 entry = dtable[index];
                         MEM_write16(op3, entry.sequence);
                         bits3 <<= entry.nbBits & 0x3F;
@@ -1668,7 +1715,15 @@ namespace ZstdSharp.Unsafe
                     {
                         {
                             {
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int index = (int)(bits3 >> 53);
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 HUF_DEltX2 entry = dtable[index];
                                 MEM_write16(op3, entry.sequence);
                                 bits3 <<= entry.nbBits & 0x3F;
@@ -1676,8 +1731,20 @@ namespace ZstdSharp.Unsafe
                             }
 
                             {
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int ctz = (int)ZSTD_countTrailingZeros64(bits0);
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int nbBits = ctz & 7;
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int nbBytes = ctz >> 3;
                                 ip0 -= nbBytes;
                                 bits0 = MEM_read64(ip0) | 1;
@@ -1687,7 +1754,15 @@ namespace ZstdSharp.Unsafe
 
                         {
                             {
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int index = (int)(bits3 >> 53);
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 HUF_DEltX2 entry = dtable[index];
                                 MEM_write16(op3, entry.sequence);
                                 bits3 <<= entry.nbBits & 0x3F;
@@ -1695,8 +1770,20 @@ namespace ZstdSharp.Unsafe
                             }
 
                             {
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int ctz = (int)ZSTD_countTrailingZeros64(bits1);
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int nbBits = ctz & 7;
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int nbBytes = ctz >> 3;
                                 ip1 -= nbBytes;
                                 bits1 = MEM_read64(ip1) | 1;
@@ -1706,7 +1793,15 @@ namespace ZstdSharp.Unsafe
 
                         {
                             {
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int index = (int)(bits3 >> 53);
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 HUF_DEltX2 entry = dtable[index];
                                 MEM_write16(op3, entry.sequence);
                                 bits3 <<= entry.nbBits & 0x3F;
@@ -1714,8 +1809,20 @@ namespace ZstdSharp.Unsafe
                             }
 
                             {
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int ctz = (int)ZSTD_countTrailingZeros64(bits2);
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int nbBits = ctz & 7;
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int nbBytes = ctz >> 3;
                                 ip2 -= nbBytes;
                                 bits2 = MEM_read64(ip2) | 1;
@@ -1725,7 +1832,15 @@ namespace ZstdSharp.Unsafe
 
                         {
                             {
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int index = (int)(bits3 >> 53);
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 HUF_DEltX2 entry = dtable[index];
                                 MEM_write16(op3, entry.sequence);
                                 bits3 <<= entry.nbBits & 0x3F;
@@ -1733,8 +1848,20 @@ namespace ZstdSharp.Unsafe
                             }
 
                             {
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int ctz = (int)ZSTD_countTrailingZeros64(bits3);
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int nbBits = ctz & 7;
+                                /* Decode 4 symbols from the final stream & reload bitstreams.
+                                 * The final stream is reloaded last, meaning that all 5 symbols
+                                 * are decoded from the final stream before it is reloaded.
+                                 */
                                 int nbBytes = ctz >> 3;
                                 ip3 -= nbBytes;
                                 bits3 = MEM_read64(ip3) | 1;

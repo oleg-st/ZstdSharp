@@ -144,6 +144,7 @@ namespace ZstdSharp.Unsafe
             FSE_DState_t state1;
             FSE_DState_t state2;
             {
+                /* Init */
                 nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
                 if (ERR_isError(_var_err__))
                     return _var_err__;

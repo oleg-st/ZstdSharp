@@ -1011,6 +1011,7 @@ namespace ZstdSharp.Unsafe
             assert(!(dict != null && cdict != null));
             if (@params.nbWorkers != mtctx->@params.nbWorkers)
             {
+                /* init */
                 nuint err_code = ZSTDMT_resize(mtctx, (uint)@params.nbWorkers);
                 if (ERR_isError(err_code))
                 {
