@@ -36,9 +36,11 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_initCCtx(ZSTD_CCtx_s* cctx, ZSTD_customMem memManager)
         {
             assert(cctx != null);
-            memset(cctx, 0, (uint)sizeof(ZSTD_CCtx_s));
-            cctx->customMem = memManager;
-            cctx->bmi2 = 0;
+            *cctx = new ZSTD_CCtx_s
+            {
+                customMem = memManager,
+                bmi2 = 0
+            };
             {
                 nuint err = ZSTD_CCtx_reset(cctx, ZSTD_ResetDirective.ZSTD_reset_parameters);
                 assert(!ERR_isError(err));
@@ -91,7 +93,7 @@ namespace ZstdSharp.Unsafe
             cctx = (ZSTD_CCtx_s*)ZSTD_cwksp_reserve_object(&ws, (nuint)sizeof(ZSTD_CCtx_s));
             if (cctx == null)
                 return null;
-            memset(cctx, 0, (uint)sizeof(ZSTD_CCtx_s));
+            *cctx = new ZSTD_CCtx_s();
             ZSTD_cwksp_move(&cctx->workspace, &ws);
             cctx->staticSize = workspaceSize;
             if (ZSTD_cwksp_check_available(&cctx->workspace, (nuint)((8 << 10) + 512 + sizeof(uint) * (52 + 2) + 2 * sizeof(ZSTD_compressedBlockState_t))) == 0)
@@ -110,8 +112,8 @@ namespace ZstdSharp.Unsafe
         {
             ZSTD_customFree(cctx->localDict.dictBuffer, cctx->customMem);
             ZSTD_freeCDict(cctx->localDict.cdict);
-            memset(&cctx->localDict, 0, (uint)sizeof(ZSTD_localDict));
-            memset(&cctx->prefixDict, 0, (uint)sizeof(ZSTD_prefixDict_s));
+            cctx->localDict = new ZSTD_localDict();
+            cctx->prefixDict = new ZSTD_prefixDict_s();
             cctx->cdict = null;
         }
 
@@ -370,8 +372,10 @@ namespace ZstdSharp.Unsafe
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
             }
 
-            memset(cctxParams, 0, (uint)sizeof(ZSTD_CCtx_params_s));
-            cctxParams->compressionLevel = compressionLevel;
+            *cctxParams = new ZSTD_CCtx_params_s
+            {
+                compressionLevel = compressionLevel
+            };
             cctxParams->fParams.contentSizeFlag = 1;
             return 0;
         }
@@ -383,12 +387,14 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_CCtxParams_init_internal(ZSTD_CCtx_params_s* cctxParams, ZSTD_parameters* @params, int compressionLevel)
         {
             assert(ZSTD_checkCParams(@params->cParams) == 0);
-            memset(cctxParams, 0, (uint)sizeof(ZSTD_CCtx_params_s));
-            cctxParams->cParams = @params->cParams;
-            cctxParams->fParams = @params->fParams;
-            cctxParams->compressionLevel = compressionLevel;
-            cctxParams->useRowMatchFinder = ZSTD_resolveRowMatchFinderMode(cctxParams->useRowMatchFinder, &@params->cParams);
-            cctxParams->useBlockSplitter = ZSTD_resolveBlockSplitterMode(cctxParams->useBlockSplitter, &@params->cParams);
+            *cctxParams = new ZSTD_CCtx_params_s
+            {
+                cParams = @params->cParams,
+                fParams = @params->fParams,
+                compressionLevel = compressionLevel,
+                useRowMatchFinder = ZSTD_resolveRowMatchFinderMode(cctxParams->useRowMatchFinder, &@params->cParams),
+                useBlockSplitter = ZSTD_resolveBlockSplitterMode(cctxParams->useBlockSplitter, &@params->cParams)
+            };
             cctxParams->ldmParams.enableLdm = ZSTD_resolveEnableLdm(cctxParams->ldmParams.enableLdm, &@params->cParams);
             cctxParams->validateSequences = ZSTD_resolveExternalSequenceValidation(cctxParams->validateSequences);
             cctxParams->maxBlockSize = ZSTD_resolveMaxBlockSize(cctxParams->maxBlockSize);
@@ -3234,7 +3240,7 @@ namespace ZstdSharp.Unsafe
 
             if (srcSize == 0)
             {
-                memset(&outSeqs[0], 0, (uint)sizeof(ZSTD_Sequence));
+                outSeqs[0] = new ZSTD_Sequence();
                 return 1;
             }
 
@@ -3250,7 +3256,7 @@ namespace ZstdSharp.Unsafe
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_sequenceProducer_failed));
                 }
 
-                memset(&outSeqs[nbExternalSeqs], 0, (uint)sizeof(ZSTD_Sequence));
+                outSeqs[nbExternalSeqs] = new ZSTD_Sequence();
                 return nbExternalSeqs + 1;
             }
         }
@@ -4322,7 +4328,7 @@ namespace ZstdSharp.Unsafe
             repcodes_s cRep;
             memcpy(dRep.rep, zc->blockState.prevCBlock->rep, (uint)sizeof(repcodes_s));
             memcpy(cRep.rep, zc->blockState.prevCBlock->rep, (uint)sizeof(repcodes_s));
-            memset(nextSeqStore, 0, (uint)sizeof(seqStore_t));
+            *nextSeqStore = new seqStore_t();
             if (numSplits == 0)
             {
                 nuint cSizeSingleBlock = ZSTD_compressSeqStore_singleBlock(zc, &zc->seqStore, &dRep, &cRep, op, dstCapacity, ip, blockSize, lastBlock, 0);
@@ -5677,7 +5683,7 @@ namespace ZstdSharp.Unsafe
         public static ZSTD_CDict_s* ZSTD_createCDict_advanced(void* dictBuffer, nuint dictSize, ZSTD_dictLoadMethod_e dictLoadMethod, ZSTD_dictContentType_e dictContentType, ZSTD_compressionParameters cParams, ZSTD_customMem customMem)
         {
             ZSTD_CCtx_params_s cctxParams;
-            memset(&cctxParams, 0, (uint)sizeof(ZSTD_CCtx_params_s));
+            cctxParams = new ZSTD_CCtx_params_s();
             ZSTD_CCtxParams_init(&cctxParams, 0);
             cctxParams.cParams = cParams;
             cctxParams.customMem = customMem;
@@ -6618,7 +6624,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            memset(&cctx->prefixDict, 0, (uint)sizeof(ZSTD_prefixDict_s));
+            cctx->prefixDict = new ZSTD_prefixDict_s();
             assert(prefixDict.dict == null || cctx->cdict == null);
             if (cctx->cdict != null && cctx->localDict.cdict == null)
             {
@@ -7715,8 +7721,10 @@ namespace ZstdSharp.Unsafe
         {
             ZSTD_parameters @params;
             ZSTD_compressionParameters cParams = ZSTD_getCParams_internal(compressionLevel, srcSizeHint, dictSize, mode);
-            memset(&@params, 0, (uint)sizeof(ZSTD_parameters));
-            @params.cParams = cParams;
+            @params = new ZSTD_parameters
+            {
+                cParams = cParams
+            };
             @params.fParams.contentSizeFlag = 1;
             return @params;
         }

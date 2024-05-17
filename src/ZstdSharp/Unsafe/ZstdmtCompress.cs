@@ -321,7 +321,7 @@ namespace ZstdSharp.Unsafe
             }
             else
             {
-                memset(&@params.ldmParams, 0, (uint)sizeof(ldmParams_t));
+                @params.ldmParams = new ldmParams_t();
             }
 
             serialState->nextJobID = 0;
@@ -376,7 +376,7 @@ namespace ZstdSharp.Unsafe
         private static int ZSTDMT_serialState_init(serialState_t* serialState)
         {
             int initError = 0;
-            memset(serialState, 0, (uint)sizeof(serialState_t));
+            *serialState = new serialState_t();
             SynchronizationWrapper.Init(&serialState->mutex);
             initError |= 0;
             initError |= 0;
@@ -764,9 +764,11 @@ namespace ZstdSharp.Unsafe
                 void* mutex = mtctx->jobs[jobID].job_mutex;
                 void* cond = mtctx->jobs[jobID].job_cond;
                 ZSTDMT_releaseBuffer(mtctx->bufPool, mtctx->jobs[jobID].dstBuff);
-                memset(&mtctx->jobs[jobID], 0, (uint)sizeof(ZSTDMT_jobDescription));
-                mtctx->jobs[jobID].job_mutex = mutex;
-                mtctx->jobs[jobID].job_cond = cond;
+                mtctx->jobs[jobID] = new ZSTDMT_jobDescription
+                {
+                    job_mutex = mutex,
+                    job_cond = cond
+                };
             }
 
             mtctx->inBuff.buffer = g_nullBuffer;

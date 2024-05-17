@@ -1079,7 +1079,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_match_t* matches = optStatePtr->matchTable;
             ZSTD_optimal_t lastStretch;
             ZSTD_optLdm_t optLdm;
-            memset(&lastStretch, 0, (uint)sizeof(ZSTD_optimal_t));
+            lastStretch = new ZSTD_optimal_t();
             optLdm.seqStore = ms->ldmSeqStore != null ? *ms->ldmSeqStore : kNullRawSeqStore;
             optLdm.endPosInBlock = optLdm.startPosInBlock = optLdm.offset = 0;
             ZSTD_opt_getNextMatchAndUpdateSeqStore(&optLdm, (uint)(ip - istart), (uint)(iend - ip));

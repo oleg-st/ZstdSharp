@@ -135,11 +135,13 @@ namespace ZstdSharp.Unsafe
         private static void HUF_writeCTableHeader(nuint* ctable, uint tableLog, uint maxSymbolValue)
         {
             HUF_CTableHeader header;
-            memset(&header, 0, (uint)sizeof(HUF_CTableHeader));
+            header = new HUF_CTableHeader
+            {
+                tableLog = (byte)tableLog,
+                maxSymbolValue = (byte)maxSymbolValue
+            };
             assert(tableLog < 256);
-            header.tableLog = (byte)tableLog;
             assert(maxSymbolValue < 256);
-            header.maxSymbolValue = (byte)maxSymbolValue;
             memcpy(ctable, &header, (uint)sizeof(HUF_CTableHeader));
         }
 
@@ -699,10 +701,12 @@ namespace ZstdSharp.Unsafe
          */
         private static nuint HUF_initCStream(HUF_CStream_t* bitC, void* startPtr, nuint dstCapacity)
         {
-            memset(bitC, 0, (uint)sizeof(HUF_CStream_t));
-            bitC->startPtr = (byte*)startPtr;
-            bitC->ptr = bitC->startPtr;
-            bitC->endPtr = bitC->startPtr + dstCapacity - sizeof(nuint);
+            *bitC = new HUF_CStream_t
+            {
+                startPtr = (byte*)startPtr,
+                ptr = (byte*)startPtr,
+                endPtr = (byte*)startPtr + dstCapacity - sizeof(nuint)
+            };
             if (dstCapacity <= (nuint)sizeof(nuint))
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             return 0;

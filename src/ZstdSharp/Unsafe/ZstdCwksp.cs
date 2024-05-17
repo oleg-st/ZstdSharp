@@ -417,7 +417,7 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_cwksp_free(ZSTD_cwksp* ws, ZSTD_customMem customMem)
         {
             void* ptr = ws->workspace;
-            memset(ws, 0, (uint)sizeof(ZSTD_cwksp));
+            *ws = new ZSTD_cwksp();
             ZSTD_customFree(ptr, customMem);
         }
 
@@ -429,7 +429,7 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_cwksp_move(ZSTD_cwksp* dst, ZSTD_cwksp* src)
         {
             *dst = *src;
-            memset(src, 0, (uint)sizeof(ZSTD_cwksp));
+            *src = new ZSTD_cwksp();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

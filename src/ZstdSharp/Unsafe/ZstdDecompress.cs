@@ -432,16 +432,18 @@ namespace ZstdSharp.Unsafe
                 return minInputSize;
             }
 
-            memset(zfhPtr, 0, (uint)sizeof(ZSTD_frameHeader));
+            *zfhPtr = new ZSTD_frameHeader();
             if (format != ZSTD_format_e.ZSTD_f_zstd1_magicless && MEM_readLE32(src) != 0xFD2FB528)
             {
                 if ((MEM_readLE32(src) & 0xFFFFFFF0) == 0x184D2A50)
                 {
                     if (srcSize < 8)
                         return 8;
-                    memset(zfhPtr, 0, (uint)sizeof(ZSTD_frameHeader));
-                    zfhPtr->frameContentSize = MEM_readLE32((sbyte*)src + 4);
-                    zfhPtr->frameType = ZSTD_frameType_e.ZSTD_skippableFrame;
+                    *zfhPtr = new ZSTD_frameHeader
+                    {
+                        frameContentSize = MEM_readLE32((sbyte*)src + 4),
+                        frameType = ZSTD_frameType_e.ZSTD_skippableFrame
+                    };
                     return 0;
                 }
 
@@ -742,7 +744,7 @@ namespace ZstdSharp.Unsafe
         private static ZSTD_frameSizeInfo ZSTD_findFrameSizeInfo(void* src, nuint srcSize, ZSTD_format_e format)
         {
             ZSTD_frameSizeInfo frameSizeInfo;
-            memset(&frameSizeInfo, 0, (uint)sizeof(ZSTD_frameSizeInfo));
+            frameSizeInfo = new ZSTD_frameSizeInfo();
             if (format == ZSTD_format_e.ZSTD_f_zstd1 && srcSize >= 8 && (MEM_readLE32(src) & 0xFFFFFFF0) == 0x184D2A50)
             {
                 frameSizeInfo.compressedSize = readSkippableFrameSize(src, srcSize);

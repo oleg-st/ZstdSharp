@@ -219,7 +219,7 @@ namespace ZstdSharp.Unsafe
         /*! @ingroup XXH32_family */
         private static XXH_errorcode ZSTD_XXH32_reset(XXH32_state_s* statePtr, uint seed)
         {
-            memset(statePtr, 0, (uint)sizeof(XXH32_state_s));
+            *statePtr = new XXH32_state_s();
             statePtr->v[0] = seed + 0x9E3779B1U + 0x85EBCA77U;
             statePtr->v[1] = seed + 0x85EBCA77U;
             statePtr->v[2] = seed + 0;
@@ -493,7 +493,7 @@ namespace ZstdSharp.Unsafe
         /*! @ingroup XXH64_family */
         private static XXH_errorcode ZSTD_XXH64_reset(XXH64_state_s* statePtr, ulong seed)
         {
-            memset(statePtr, 0, (uint)sizeof(XXH64_state_s));
+            *statePtr = new XXH64_state_s();
             statePtr->v[0] = seed + 0x9E3779B185EBCA87UL + 0xC2B2AE3D27D4EB4FUL;
             statePtr->v[1] = seed + 0xC2B2AE3D27D4EB4FUL;
             statePtr->v[2] = seed + 0;

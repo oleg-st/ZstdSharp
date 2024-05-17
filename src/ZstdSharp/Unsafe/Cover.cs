@@ -132,7 +132,7 @@ namespace ZstdSharp.Unsafe
             best->dict = null;
             best->dictSize = 0;
             best->compressedSize = unchecked((nuint)(-1));
-            memset(&best->parameters, 0, (uint)sizeof(ZDICT_cover_params_t));
+            best->parameters = new ZDICT_cover_params_t();
         }
 
         /**

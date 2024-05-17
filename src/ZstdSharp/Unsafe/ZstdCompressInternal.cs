@@ -936,13 +936,15 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_window_init(ZSTD_window_t* window)
         {
-            memset(window, 0, (uint)sizeof(ZSTD_window_t));
-            window->@base = stringToByte_20_00;
-            window->dictBase = stringToByte_20_00;
-            window->dictLimit = 2;
-            window->lowLimit = 2;
-            window->nextSrc = window->@base + 2;
-            window->nbOverflowCorrections = 0;
+            *window = new ZSTD_window_t
+            {
+                @base = stringToByte_20_00,
+                dictBase = stringToByte_20_00,
+                dictLimit = 2,
+                lowLimit = 2,
+                nextSrc = stringToByte_20_00 + 2,
+                nbOverflowCorrections = 0
+            };
         }
 
         /**

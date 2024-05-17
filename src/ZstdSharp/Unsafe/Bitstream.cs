@@ -175,7 +175,7 @@ namespace ZstdSharp.Unsafe
         {
             if (srcSize < 1)
             {
-                memset(bitD, 0, (uint)sizeof(BIT_DStream_t));
+                *bitD = new BIT_DStream_t();
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
@@ -427,7 +427,7 @@ namespace ZstdSharp.Unsafe
         {
             if (srcSize < 1)
             {
-                memset(ref bitD, 0, (uint)sizeof(BIT_DStream_t));
+                bitD = new BIT_DStream_t();
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 

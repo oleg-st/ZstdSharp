@@ -482,9 +482,11 @@ namespace ZstdSharp.Unsafe
         public static nuint ZDICT_trainFromBuffer(void* dictBuffer, nuint dictBufferCapacity, void* samplesBuffer, nuint* samplesSizes, uint nbSamples)
         {
             ZDICT_fastCover_params_t @params;
-            memset(&@params, 0, (uint)sizeof(ZDICT_fastCover_params_t));
-            @params.d = 8;
-            @params.steps = 4;
+            @params = new ZDICT_fastCover_params_t
+            {
+                d = 8,
+                steps = 4
+            };
             @params.zParams.compressionLevel = 3;
             return ZDICT_optimizeTrainFromBuffer_fastCover(dictBuffer, dictBufferCapacity, samplesBuffer, samplesSizes, nbSamples, &@params);
         }
@@ -492,7 +494,7 @@ namespace ZstdSharp.Unsafe
         public static nuint ZDICT_addEntropyTablesFromBuffer(void* dictBuffer, nuint dictContentSize, nuint dictBufferCapacity, void* samplesBuffer, nuint* samplesSizes, uint nbSamples)
         {
             ZDICT_params_t @params;
-            memset(&@params, 0, (uint)sizeof(ZDICT_params_t));
+            @params = new ZDICT_params_t();
             return ZDICT_addEntropyTablesFromBuffer_advanced(dictBuffer, dictContentSize, dictBufferCapacity, samplesBuffer, samplesSizes, nbSamples, @params);
         }
     }

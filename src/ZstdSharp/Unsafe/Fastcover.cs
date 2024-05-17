@@ -213,17 +213,19 @@ namespace ZstdSharp.Unsafe
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
-            memset(ctx, 0, (uint)sizeof(FASTCOVER_ctx_t));
-            ctx->samples = samples;
-            ctx->samplesSizes = samplesSizes;
-            ctx->nbSamples = nbSamples;
-            ctx->nbTrainSamples = nbTrainSamples;
-            ctx->nbTestSamples = nbTestSamples;
-            ctx->nbDmers = trainingSamplesSize - (d > sizeof(ulong) ? d : sizeof(ulong)) + 1;
-            ctx->d = d;
-            ctx->f = f;
-            ctx->accelParams = accelParams;
-            ctx->offsets = (nuint*)calloc(nbSamples + 1, (ulong)sizeof(nuint));
+            *ctx = new FASTCOVER_ctx_t
+            {
+                samples = samples,
+                samplesSizes = samplesSizes,
+                nbSamples = nbSamples,
+                nbTrainSamples = nbTrainSamples,
+                nbTestSamples = nbTestSamples,
+                nbDmers = trainingSamplesSize - (d > sizeof(ulong) ? d : sizeof(ulong)) + 1,
+                d = d,
+                f = f,
+                accelParams = accelParams,
+                offsets = (nuint*)calloc(nbSamples + 1, (ulong)sizeof(nuint))
+            };
             if (ctx->offsets == null)
             {
                 FASTCOVER_ctx_destroy(ctx);
@@ -388,7 +390,7 @@ namespace ZstdSharp.Unsafe
             parameters.splitPoint = 1;
             parameters.f = parameters.f == 0 ? 20 : parameters.f;
             parameters.accel = parameters.accel == 0 ? 1 : parameters.accel;
-            memset(&coverParams, 0, (uint)sizeof(ZDICT_cover_params_t));
+            coverParams = new ZDICT_cover_params_t();
             FASTCOVER_convertToCoverParams(parameters, &coverParams);
             if (FASTCOVER_checkParameters(coverParams, dictBufferCapacity, parameters.f, parameters.accel) == 0)
             {
@@ -509,7 +511,7 @@ namespace ZstdSharp.Unsafe
             }
 
             COVER_best_init(&best);
-            memset(&coverParams, 0, (uint)sizeof(ZDICT_cover_params_t));
+            coverParams = new ZDICT_cover_params_t();
             FASTCOVER_convertToCoverParams(*parameters, &coverParams);
             accelParams = FASTCOVER_defaultAccelParameters[accel];
             g_displayLevel = displayLevel == 0 ? 0 : displayLevel - 1;
