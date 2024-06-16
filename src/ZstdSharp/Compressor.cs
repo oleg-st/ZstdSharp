@@ -49,15 +49,8 @@ namespace ZstdSharp
         public void LoadDictionary(ReadOnlySpan<byte> dict)
         {
             using var cctx = handle.Acquire();
-            if (dict == null)
-            {
-                Methods.ZSTD_CCtx_loadDictionary(cctx, null, 0).EnsureZstdSuccess();
-            }
-            else
-            {
-                fixed (byte* dictPtr = dict)
-                    Methods.ZSTD_CCtx_loadDictionary(cctx, dictPtr, (nuint)dict.Length).EnsureZstdSuccess();
-            }
+            fixed (byte* dictPtr = dict)
+                Methods.ZSTD_CCtx_loadDictionary(cctx, dictPtr, (nuint)dict.Length).EnsureZstdSuccess();
         }
 
         public Compressor(int level = DefaultCompressionLevel)

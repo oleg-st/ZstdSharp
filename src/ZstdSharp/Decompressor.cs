@@ -35,15 +35,8 @@ namespace ZstdSharp
         public void LoadDictionary(ReadOnlySpan<byte> dict)
         {
             using var dctx = handle.Acquire();
-            if (dict == null)
-            {
-                Methods.ZSTD_DCtx_loadDictionary(dctx, null, 0).EnsureZstdSuccess();
-            }
-            else
-            {
-                fixed (byte* dictPtr = dict)
-                    Methods.ZSTD_DCtx_loadDictionary(dctx, dictPtr, (nuint)dict.Length).EnsureZstdSuccess();
-            }
+            fixed (byte* dictPtr = dict)
+                Methods.ZSTD_DCtx_loadDictionary(dctx, dictPtr, (nuint)dict.Length).EnsureZstdSuccess();
         }
 
         public static ulong GetDecompressedSize(ReadOnlySpan<byte> src)
