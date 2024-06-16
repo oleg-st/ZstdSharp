@@ -1,9 +1,7 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using InlineIL;
-
 // ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo
 
@@ -15,7 +13,7 @@ namespace ZstdSharp
     {
         public static void* PoisonMemory(void* destination, ulong size)
         {
-            memset(destination, 0xCC, (uint) size);
+            memset(destination, 0xCC, (uint)size);
             return destination;
         }
 
@@ -57,8 +55,8 @@ namespace ZstdSharp
 #else
             var total = num * size;
             assert(total <= uint.MaxValue);
-            var destination = (void*) Marshal.AllocHGlobal((nint) total);
-            memset(destination, 0, (uint) total);
+            var destination = (void*)Marshal.AllocHGlobal((nint)total);
+            memset(destination, 0, (uint)total);
             return destination;
 #endif
         }
@@ -92,8 +90,8 @@ namespace ZstdSharp
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* GetArrayPointer<T>(T[] array) where T : unmanaged
         {
-            var size = (uint) (sizeof(T) * array.Length);
-            var destination = (T*) malloc(size);
+            var size = (uint)(sizeof(T) * array.Length);
+            var destination = (T*)malloc(size);
             fixed (void* source = &array[0])
                 System.Runtime.CompilerServices.Unsafe.CopyBlockUnaligned(destination, source, size);
 
@@ -125,13 +123,7 @@ namespace ZstdSharp
         [InlineMethod.Inline]
         public static void SkipInit<T>(out T value)
         {
-            /* 
-             * Can be rewritten with
-             * System.Runtime.CompilerServices.Unsafe.SkipInit(out value);
-             * in .NET 5+
-             */
-            IL.Emit.Ret();
-            throw IL.Unreachable();
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out value);
         }
     }
 }
