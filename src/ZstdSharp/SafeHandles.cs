@@ -72,7 +72,7 @@ namespace ZstdSharp
 
         protected override bool ReleaseHandle()
         {
-            return Methods.ZSTD_freeCStream((ZSTD_CCtx_s*)handle) == 0;
+            return Methods.ZSTD_freeCCtx((ZSTD_CCtx_s*)handle) == 0;
         }
     }
 
@@ -117,7 +117,7 @@ namespace ZstdSharp
 
         protected override bool ReleaseHandle()
         {
-            return Methods.ZSTD_freeDStream((ZSTD_DCtx_s*)handle) == 0;
+            return Methods.ZSTD_freeDCtx((ZSTD_DCtx_s*)handle) == 0;
         }
     }
 
