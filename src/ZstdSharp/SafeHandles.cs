@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using ZstdSharp.Unsafe;
 
@@ -65,9 +65,12 @@ namespace ZstdSharp
         }
 
         /// <summary>
-        /// Acquires a reference to the 
+        /// Acquires a reference to the safe handle.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>
+        /// A <see cref="SafeHandleHolder{T}"/> instance that can be implicitly converted to a pointer
+        /// to <see cref="ZSTD_CCtx_s"/>.
+        /// </returns>
         public SafeHandleHolder<ZSTD_CCtx_s> Acquire() => new(this);
 
         protected override bool ReleaseHandle()
@@ -113,6 +116,13 @@ namespace ZstdSharp
             return safeHandle;
         }
 
+        /// <summary>
+        /// Acquires a reference to the safe handle.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="SafeHandleHolder{T}"/> instance that can be implicitly converted to a pointer
+        /// to <see cref="ZSTD_DCtx_s"/>.
+        /// </returns>
         public SafeHandleHolder<ZSTD_DCtx_s> Acquire() => new(this);
 
         protected override bool ReleaseHandle()
