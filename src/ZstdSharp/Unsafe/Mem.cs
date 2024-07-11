@@ -19,13 +19,13 @@ namespace ZstdSharp.Unsafe
         /*=== Static platform detection ===*/
         public static bool MEM_32bits
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [InlineMethod.Inline]
             get => sizeof(nint) == 4;
         }
 
         public static bool MEM_64bits
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [InlineMethod.Inline]
             get => sizeof(nint) == 8;
         }
 
