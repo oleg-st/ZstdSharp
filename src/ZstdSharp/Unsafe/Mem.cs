@@ -17,13 +17,13 @@ namespace ZstdSharp.Unsafe
          * but unfortunately reduces inlining in .NET 5 or below
         *****************************************************************/
         /*=== Static platform detection ===*/
-        public static bool MEM_32bits
+        private static bool MEM_32bits
         {
             [InlineMethod.Inline]
             get => sizeof(nint) == 4;
         }
 
-        public static bool MEM_64bits
+        private static bool MEM_64bits
         {
             [InlineMethod.Inline]
             get => sizeof(nint) == 8;
@@ -32,53 +32,33 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /* default method, safe and standard.
            can sometimes prove slower */
-        private static ushort MEM_read16(void* memPtr)
-        {
-            return BclUnsafe.ReadUnaligned<ushort>(memPtr);
-        }
+        private static ushort MEM_read16(void* memPtr) => BclUnsafe.ReadUnaligned<ushort>(memPtr);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint MEM_read32(void* memPtr)
-        {
-            return BclUnsafe.ReadUnaligned<uint>(memPtr);
-        }
+        private static uint MEM_read32(void* memPtr) => BclUnsafe.ReadUnaligned<uint>(memPtr);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong MEM_read64(void* memPtr)
-        {
-            return BclUnsafe.ReadUnaligned<ulong>(memPtr);
-        }
+        private static ulong MEM_read64(void* memPtr) => BclUnsafe.ReadUnaligned<ulong>(memPtr);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint MEM_readST(void* memPtr)
-        {
-            return BclUnsafe.ReadUnaligned<nuint>(memPtr);
-        }
+        private static nuint MEM_readST(void* memPtr) => BclUnsafe.ReadUnaligned<nuint>(memPtr);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void MEM_write16(void* memPtr, ushort value)
-        {
-            BclUnsafe.WriteUnaligned(memPtr, value);
-        }
+        private static void MEM_write16(void* memPtr, ushort value) => BclUnsafe.WriteUnaligned(memPtr, value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void MEM_write64(void* memPtr, ulong value)
-        {
-            BclUnsafe.WriteUnaligned(memPtr, value);
-        }
+        private static void MEM_write64(void* memPtr, ulong value) => BclUnsafe.WriteUnaligned(memPtr, value);
 
         /*=== Little endian r/w ===*/
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ushort MEM_readLE16(void* memPtr)
         {
-            var num = BclUnsafe.ReadUnaligned<ushort>(memPtr);
-
+            var val = BclUnsafe.ReadUnaligned<ushort>(memPtr);
             if (!BitConverter.IsLittleEndian)
             {
-                num = BinaryPrimitives.ReverseEndianness(num);
+                val = BinaryPrimitives.ReverseEndianness(val);
             }
-
-            return num;
+            return val;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -88,7 +68,6 @@ namespace ZstdSharp.Unsafe
             {
                 val = BinaryPrimitives.ReverseEndianness(val);
             }
-
             BclUnsafe.WriteUnaligned(memPtr, val);
         }
 
@@ -106,14 +85,12 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint MEM_readLE32(void* memPtr)
         {
-            var num = BclUnsafe.ReadUnaligned<uint>(memPtr);
-
+            var val = BclUnsafe.ReadUnaligned<uint>(memPtr);
             if (!BitConverter.IsLittleEndian)
             {
-                num = BinaryPrimitives.ReverseEndianness(num);
+                val = BinaryPrimitives.ReverseEndianness(val);
             }
-
-            return num;
+            return val;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -123,21 +100,18 @@ namespace ZstdSharp.Unsafe
             {
                 val32 = BinaryPrimitives.ReverseEndianness(val32);
             }
-
             BclUnsafe.WriteUnaligned(memPtr, val32);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong MEM_readLE64(void* memPtr)
         {
-            var num = BclUnsafe.ReadUnaligned<ulong>(memPtr);
-
+            var val = BclUnsafe.ReadUnaligned<ulong>(memPtr);
             if (!BitConverter.IsLittleEndian)
             {
-                num = BinaryPrimitives.ReverseEndianness(num);
+                val = BinaryPrimitives.ReverseEndianness(val);
             }
-
-            return num;
+            return val;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -147,24 +121,44 @@ namespace ZstdSharp.Unsafe
             {
                 val64 = BinaryPrimitives.ReverseEndianness(val64);
             }
-
             BclUnsafe.WriteUnaligned(memPtr, val64);
         }
 
+#if !NET8_0_OR_GREATER
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint MEM_readLEST(void* memPtr) => MEM_32bits ? MEM_readLE32(memPtr) : (nuint)MEM_readLE64(memPtr);
+        private static nuint ReverseEndiannessNative(nuint val) =>
+            MEM_32bits
+                ? BinaryPrimitives.ReverseEndianness((uint) val)
+                : (nuint) BinaryPrimitives.ReverseEndianness(val);
+#endif
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint MEM_readLEST(void* memPtr)
+        {
+            var val = BclUnsafe.ReadUnaligned<nuint>(memPtr);
+            if (!BitConverter.IsLittleEndian)
+            {
+#if NET8_0_OR_GREATER
+                val = BinaryPrimitives.ReverseEndianness(val);
+#else
+                val = ReverseEndiannessNative(val);
+#endif
+            }
+            return val;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void MEM_writeLEST(void* memPtr, nuint val)
         {
-            if (MEM_32bits)
+            if (!BitConverter.IsLittleEndian)
             {
-                MEM_writeLE32(memPtr, (uint)val);
+#if NET8_0_OR_GREATER
+                val = BinaryPrimitives.ReverseEndianness(val);
+#else
+                val = ReverseEndiannessNative(val);
+#endif
             }
-            else
-            {
-                MEM_writeLE64(memPtr, val);
-            }
+            BclUnsafe.WriteUnaligned(memPtr, val);
         }
     }
 }
