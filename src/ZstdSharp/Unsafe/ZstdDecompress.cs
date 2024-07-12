@@ -735,7 +735,7 @@ namespace ZstdSharp.Unsafe
         private static ZSTD_frameSizeInfo ZSTD_errorFrameSizeInfo(nuint ret)
         {
             ZSTD_frameSizeInfo frameSizeInfo;
-            SkipInit(out frameSizeInfo);
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out frameSizeInfo);
             frameSizeInfo.compressedSize = ret;
             frameSizeInfo.decompressedBound = unchecked(0UL - 2);
             return frameSizeInfo;

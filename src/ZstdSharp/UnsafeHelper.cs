@@ -126,12 +126,5 @@ namespace ZstdSharp
             return new ReadOnlySpan<byte>(buf1, intSize)
                 .SequenceCompareTo(new ReadOnlySpan<byte>(buf2, intSize));
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
-        public static void SkipInit<T>(out T value)
-        {
-            System.Runtime.CompilerServices.Unsafe.SkipInit(out value);
-        }
     }
 }

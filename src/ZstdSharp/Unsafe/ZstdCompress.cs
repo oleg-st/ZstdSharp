@@ -2893,7 +2893,7 @@ namespace ZstdSharp.Unsafe
             byte* llCodeTable = seqStorePtr->llCode;
             byte* mlCodeTable = seqStorePtr->mlCode;
             ZSTD_symbolEncodingTypeStats_t stats;
-            SkipInit(out stats);
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out stats);
             stats.lastCountSize = 0;
             stats.longOffsets = ZSTD_seqToCodes(seqStorePtr);
             assert(op <= oend);

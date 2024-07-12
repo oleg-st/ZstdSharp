@@ -1427,7 +1427,7 @@ namespace ZstdSharp.Unsafe
             if (nbSeq != 0)
             {
                 seqState_t seqState;
-                SkipInit(out seqState);
+                System.Runtime.CompilerServices.Unsafe.SkipInit(out seqState);
                 dctx->fseEntropy = 1;
                 {
                     uint i;
