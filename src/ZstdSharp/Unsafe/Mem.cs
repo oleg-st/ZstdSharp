@@ -12,9 +12,6 @@ namespace ZstdSharp.Unsafe
     {
         /*-**************************************************************
         *  Memory I/O API
-         * Can be rewritten with System.Runtime.CompilerServices.Unsafe
-         * ReadUnaligned / WriteUnaligned
-         * but unfortunately reduces inlining in .NET 5 or below
         *****************************************************************/
         /*=== Static platform detection ===*/
         private static bool MEM_32bits
