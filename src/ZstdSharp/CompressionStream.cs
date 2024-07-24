@@ -221,5 +221,11 @@ namespace ZstdSharp
             if (compressor == null)
                 throw new ObjectDisposedException(nameof(CompressionStream));
         }
+
+        public void SetPledgedSrcSize(ulong pledgedSrcSize)
+        {
+            EnsureNotDisposed();
+            compressor.SetPledgedSrcSize(pledgedSrcSize);
+        }
     }
 }

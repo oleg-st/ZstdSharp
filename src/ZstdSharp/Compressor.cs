@@ -142,5 +142,11 @@ namespace ZstdSharp
                 return Methods.ZSTD_compressStream2(cctx, outputPtr, inputPtr, directive).EnsureZstdSuccess();
             }
         }
+
+        public void SetPledgedSrcSize(ulong pledgedSrcSize)
+        {
+            using var cctx = handle.Acquire();
+            Methods.ZSTD_CCtx_setPledgedSrcSize(cctx, pledgedSrcSize).EnsureZstdSuccess();
+        }
     }
 }
