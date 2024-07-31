@@ -1046,7 +1046,7 @@ namespace ZstdSharp.Unsafe
                         /* Same idea as with rowEntries == 16 but doing AND with
                          * 0x55 = 0b01010101.
                          */
-                        (Vector128<ushort> chunk0, Vector128<ushort> chunk1) = AdvSimd.Arm64.LoadVector128x2AndUnzip((ushort*)src);
+                        (Vector128<ushort> chunk0, Vector128<ushort> chunk1) = AdvSimd.Arm64.Load2xVector128AndUnzip((ushort*)src);
                         Vector128<byte> dup = AdvSimd.DuplicateToVector128(tag);
                         Vector64<byte> t0 = AdvSimd.ShiftRightLogicalNarrowingLower(AdvSimd.CompareEqual(chunk0.As<ushort, byte>(), dup).As<byte, ushort>(), 6);
                         Vector64<byte> t1 = AdvSimd.ShiftRightLogicalNarrowingLower(AdvSimd.CompareEqual(chunk1.As<ushort, byte>(), dup).As<byte, ushort>(), 6);
@@ -1061,7 +1061,7 @@ namespace ZstdSharp.Unsafe
 #if NET9_0_OR_GREATER
                     if (AdvSimd.Arm64.IsSupported)
                     {
-                        (Vector128<byte> chunk0, Vector128<byte> chunk1, Vector128<byte> chunk2, Vector128<byte> chunk3) = AdvSimd.Arm64.LoadVector128x4AndUnzip(src);
+                        (Vector128<byte> chunk0, Vector128<byte> chunk1, Vector128<byte> chunk2, Vector128<byte> chunk3) = AdvSimd.Arm64.Load4xVector128AndUnzip(src);
                         Vector128<byte> dup = AdvSimd.DuplicateToVector128(tag);
                         Vector128<byte> cmp0 = AdvSimd.CompareEqual(chunk0, dup);
                         Vector128<byte> cmp1 = AdvSimd.CompareEqual(chunk1, dup);
