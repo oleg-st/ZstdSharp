@@ -175,5 +175,13 @@ namespace ZstdSharp.Test
             var decompressed = decompressor.Unwrap(output.ToArray());
             Assert.True(decompressed.SequenceEqual(File.ReadAllBytes(filename)));
         }
+
+        [Fact]
+        public void CompressorLevels()
+        {
+            Assert.Equal(Compressor.MinCompressionLevel, Methods.ZSTD_minCLevel());
+            Assert.Equal(Compressor.MaxCompressionLevel, Methods.ZSTD_maxCLevel());
+            Assert.Equal(Compressor.DefaultCompressionLevel, Methods.ZSTD_defaultCLevel());
+        }
     }
 }

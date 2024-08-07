@@ -5,9 +5,21 @@ namespace ZstdSharp
 {
     public unsafe class Compressor : IDisposable
     {
+        /// <summary>
+        /// Minimum negative compression level allowed
+        /// </summary>
         public static int MinCompressionLevel => Methods.ZSTD_minCLevel();
+
+        /// <summary>
+        /// Maximum compression level available
+        /// </summary>
         public static int MaxCompressionLevel => Methods.ZSTD_maxCLevel();
-        public const int DefaultCompressionLevel = 0;
+
+        /// <summary>
+        /// Default compression level
+        /// </summary>
+        /// <see cref="Methods.ZSTD_defaultCLevel"/>
+        public const int DefaultCompressionLevel = 3;
 
         private int level = DefaultCompressionLevel;
 
