@@ -1,10 +1,10 @@
 using static ZstdSharp.UnsafeHelper;
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 #if NETCOREAPP3_0_OR_GREATER
 using System.Runtime.Intrinsics.X86;
 #endif
-using System.Runtime.CompilerServices;
 #if NET5_0_OR_GREATER
 using System.Runtime.Intrinsics.Arm;
 #endif

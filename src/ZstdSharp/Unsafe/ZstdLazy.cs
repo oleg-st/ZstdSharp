@@ -1,14 +1,14 @@
 using static ZstdSharp.UnsafeHelper;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics;
+using System.Numerics;
+using System;
 #if NETCOREAPP3_0_OR_GREATER
+using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 #endif
-using System.Numerics;
 #if NET5_0_OR_GREATER
 using System.Runtime.Intrinsics.Arm;
 #endif
-using System;
 
 namespace ZstdSharp.Unsafe
 {
