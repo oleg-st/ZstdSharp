@@ -58,36 +58,37 @@ Best performance is achieved on `.NET`. `System.Runtime.Intrinsics` namespace is
 
 Comparision `zstd` (native) and `ZstdSharp`  
 ```
+BenchmarkDotNet v0.14.0, Windows 10 (10.0.19045.5011/22H2/2022Update)
 12th Gen Intel Core i7-12700, 1 CPU, 20 logical and 12 physical cores
-.NET SDK 8.0.205
-  [Host]   : .NET 8.0.5 (8.0.524.21615), X64 RyuJIT AVX2
-  .NET 8.0 : .NET 8.0.5 (8.0.524.21615), X64 RyuJIT AVX2
+.NET SDK 9.0.100
+  [Host]   : .NET 8.0.11 (8.0.1124.51707), X64 RyuJIT AVX2
+  .NET 9.0 : .NET 9.0.0 (9.0.24.52809), X64 RyuJIT AVX2
 ```
 
 Compression level 1
 | Method           | Mean      | Error     | StdDev    | Ratio |
 |----------------- |----------:|----------:|----------:|------:|
-| CompressNative   | 24.590 ms | 0.0499 ms | 0.0442 ms |  1.00 |
-| CompressSharp    | 29.681 ms | 0.0409 ms | 0.0362 ms |  1.21 |
+| CompressNative   | 24.596 ms | 0.0341 ms | 0.0285 ms |  1.00 |
+| CompressSharp    | 25.318 ms | 0.0329 ms | 0.0275 ms |  1.03 |
 |                  |           |           |           |       |
-| DecompressNative |  5.769 ms | 0.0217 ms | 0.0203 ms |  1.00 |
-| DecompressSharp  |  6.033 ms | 0.0206 ms | 0.0183 ms |  1.05 |
+| DecompressNative |  5.642 ms | 0.0145 ms | 0.0128 ms |  1.00 |
+| DecompressSharp  |  5.896 ms | 0.0053 ms | 0.0045 ms |  1.05 |
 
 Compression level 5
 | Method           | Mean      | Error     | StdDev    | Ratio |
 |----------------- |----------:|----------:|----------:|------:|
-| CompressNative   | 70.167 ms | 1.1738 ms | 0.9802 ms |  1.00 |
-| CompressSharp    | 83.226 ms | 0.8946 ms | 0.7931 ms |  1.19 |
+| CompressNative   | 69.903 ms | 0.3729 ms | 0.3306 ms |  1.00 |
+| CompressSharp    | 78.997 ms | 0.1981 ms | 0.1756 ms |  1.13 |
 |                  |           |           |           |       |
-| DecompressNative |  6.283 ms | 0.0317 ms | 0.0281 ms |  1.00 |
-| DecompressSharp  |  6.953 ms | 0.0233 ms | 0.0218 ms |  1.11 |
+| DecompressNative |  6.214 ms | 0.0154 ms | 0.0137 ms |  1.00 |
+| DecompressSharp  |  6.746 ms | 0.0083 ms | 0.0069 ms |  1.09 |
 
 Compression level 15
-| Method           | Mean         | Error      | StdDev     | Ratio |
-|----------------- |-------------:|-----------:|-----------:|------:|
-| CompressNative   | 2,313.422 ms | 12.1522 ms | 11.3671 ms |  1.00 |
-| CompressSharp    | 2,088.364 ms |  7.1917 ms |  6.3752 ms |  0.90 |
-|                  |              |            |            |       |
-| DecompressNative |     5.476 ms |  0.0470 ms |  0.0439 ms |  1.00 |
-| DecompressSharp  |     5.852 ms |  0.0463 ms |  0.0433 ms |  1.07 |
+| Method           | Mean         | Error      | StdDev    | Ratio |
+|----------------- |-------------:|-----------:|----------:|------:|
+| CompressNative   | 2,237.101 ms | 10.1419 ms | 9.4868 ms |  1.00 |
+| CompressSharp    | 2,008.744 ms |  6.2452 ms | 5.5362 ms |  0.90 |
+|                  |              |            |           |       |
+| DecompressNative |     5.385 ms |  0.0088 ms | 0.0074 ms |  1.00 |
+| DecompressSharp  |     5.687 ms |  0.0203 ms | 0.0180 ms |  1.06 |
 
