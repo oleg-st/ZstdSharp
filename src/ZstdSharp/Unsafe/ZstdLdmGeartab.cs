@@ -6,7 +6,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<ulong> Span_ZSTD_ldm_gearTab => new ulong[256]
         {
             0xf5b8f72c5f77775c,

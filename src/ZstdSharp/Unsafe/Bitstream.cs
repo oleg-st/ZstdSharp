@@ -10,7 +10,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_BIT_mask => new uint[32]
         {
             0,

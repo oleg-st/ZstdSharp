@@ -13,7 +13,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_repStartValue => new uint[3]
         {
             1,
@@ -73,7 +73,7 @@ namespace ZstdSharp.Unsafe
 
         private static readonly byte* LL_bits = GetArrayPointer(new byte[36] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
 #endif
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<short> Span_LL_defaultNorm => new short[36]
         {
             4,
@@ -244,7 +244,7 @@ namespace ZstdSharp.Unsafe
         private static readonly short* ML_defaultNorm = GetArrayPointer(new short[53] { 1, 4, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, (short)(-1), (short)(-1), (short)(-1), (short)(-1), (short)(-1), (short)(-1), (short)(-1) });
 #endif
         private const uint ML_defaultNormLog = 6;
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<short> Span_OF_defaultNorm => new short[29]
         {
             1,

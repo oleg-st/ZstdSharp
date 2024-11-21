@@ -7,7 +7,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_LL_base => new uint[36]
         {
             0,
@@ -52,7 +52,7 @@ namespace ZstdSharp.Unsafe
 
         private static readonly uint* LL_base = GetArrayPointer(new uint[36] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 40, 48, 64, 0x80, 0x100, 0x200, 0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000, 0x10000 });
 #endif
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_OF_base => new uint[32]
         {
             0,
@@ -134,7 +134,7 @@ namespace ZstdSharp.Unsafe
 
         private static readonly byte* OF_bits = GetArrayPointer(new byte[32] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 });
 #endif
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_ML_base => new uint[53]
         {
             3,
