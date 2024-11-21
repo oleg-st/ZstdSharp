@@ -70,11 +70,13 @@ namespace ZstdSharp
         public static T* GetArrayPointer<T>(T[] array) where T : unmanaged
         {
             var size = (uint)(sizeof(T) * array.Length);
-#if NET5_0_OR_GREATER
+#if NET9_0_OR_GREATER
             // This function is used to allocate memory for static data blocks.
             // We have to use AllocateTypeAssociatedMemory and link the memory's
             // lifetime to this assembly, in order to prevent memory leaks when
             // loading the assembly in an unloadable AssemblyLoadContext.
+            // While introduced in .NET 5, we call this only in .NET 9+, because
+            // it's not implemented in the Mono runtime until then.
             var destination = (T*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(UnsafeHelper), (int)size);
 #else
             var destination = (T*)malloc(size);
