@@ -446,7 +446,7 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_rtbTable => new uint[8]
         {
             0,

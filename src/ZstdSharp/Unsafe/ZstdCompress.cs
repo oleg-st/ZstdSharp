@@ -2015,7 +2015,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<ulong> Span_srcSizeTiers => new ulong[4]
         {
             16 * (1 << 10),

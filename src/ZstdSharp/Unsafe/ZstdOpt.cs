@@ -87,7 +87,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_downscaleStats(table, lastEltIndex, ZSTD_highbit32(factor), base_directive_e.base_1guaranteed);
         }
 
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_baseLLfreqs => new uint[36]
         {
             4,
@@ -132,7 +132,7 @@ namespace ZstdSharp.Unsafe
 
         private static readonly uint* baseLLfreqs = GetArrayPointer(new uint[36] { 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
 #endif
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_baseOFCfreqs => new uint[32]
         {
             6,

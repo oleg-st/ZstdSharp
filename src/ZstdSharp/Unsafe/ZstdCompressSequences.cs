@@ -7,7 +7,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_kInverseProbabilityLog256 => new uint[256]
         {
             0,

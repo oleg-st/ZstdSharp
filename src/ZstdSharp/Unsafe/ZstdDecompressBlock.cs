@@ -735,7 +735,7 @@ namespace ZstdSharp.Unsafe
             return (nuint)(ip - istart);
         }
 
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_dec32table => new uint[8]
         {
             0,
@@ -752,7 +752,7 @@ namespace ZstdSharp.Unsafe
 
         private static readonly uint* dec32table = GetArrayPointer(new uint[8] { 0, 1, 2, 1, 4, 4, 4, 4 });
 #endif
-#if NET8_0_OR_GREATER
+#if NET7_0_OR_GREATER
         private static ReadOnlySpan<int> Span_dec64table => new int[8]
         {
             8,
