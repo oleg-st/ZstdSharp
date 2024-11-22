@@ -175,7 +175,7 @@ namespace ZstdSharp.Unsafe
             @params = ZSTD_getParams(compressionLevel, averageSampleSize, dictBufferSize);
             esr.dict = ZSTD_createCDict_advanced(dictBuffer, dictBufferSize, ZSTD_dictLoadMethod_e.ZSTD_dlm_byRef, ZSTD_dictContentType_e.ZSTD_dct_rawContent, @params.cParams, ZSTD_defaultCMem);
             esr.zc = ZSTD_createCCtx();
-            esr.workPlace = malloc((ulong)(1 << 17));
+            esr.workPlace = malloc(1 << 17);
             if (esr.dict == null || esr.zc == null || esr.workPlace == null)
             {
                 eSize = unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
