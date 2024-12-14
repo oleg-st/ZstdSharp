@@ -130,21 +130,19 @@ namespace ZstdSharp.Unsafe
         private static HUF_CTableHeader HUF_readCTableHeader(nuint* ctable)
         {
             HUF_CTableHeader header;
-            memcpy(&header, ctable, (uint)sizeof(HUF_CTableHeader));
+            memcpy(&header, ctable, (uint)sizeof(nuint));
             return header;
         }
 
         private static void HUF_writeCTableHeader(nuint* ctable, uint tableLog, uint maxSymbolValue)
         {
             HUF_CTableHeader header;
-            header = new HUF_CTableHeader
-            {
-                tableLog = (byte)tableLog,
-                maxSymbolValue = (byte)maxSymbolValue
-            };
+            memset(&header, 0, (uint)sizeof(nuint));
             assert(tableLog < 256);
+            header.tableLog = (byte)tableLog;
             assert(maxSymbolValue < 256);
-            memcpy(ctable, &header, (uint)sizeof(HUF_CTableHeader));
+            header.maxSymbolValue = (byte)maxSymbolValue;
+            memcpy(ctable, &header, (uint)sizeof(nuint));
         }
 
         private static nuint HUF_writeCTable_wksp(void* dst, nuint maxDstSize, nuint* CTable, uint maxSymbolValue, uint huffLog, void* workspace, nuint workspaceSize)
