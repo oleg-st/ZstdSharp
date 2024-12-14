@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace Zstd.Extern
@@ -42,6 +43,39 @@ namespace Zstd.Extern
         public enum ZSTD_cParameter
         {
             ZSTD_c_compressionLevel = 100,
+        }
+
+        static ExternMethods()
+        {
+            // todo simple way to load different native libraries
+            var currentDirectory = Directory.GetCurrentDirectory();
+            try
+            {
+#if NETFRAMEWORK
+                var platform = Environment.Is64BitProcess ? "x64" : "x86";
+#else
+                var platform = RuntimeInformation.ProcessArchitecture switch
+                {
+                    Architecture.X86 => "x86",
+                    Architecture.X64 => "x64",
+                    Architecture.Arm => "arm",
+                    Architecture.Arm64 => "arm64",
+                    _ => throw new PlatformNotSupportedException(),
+                };
+#endif
+
+                if (Directory.Exists(platform))
+                {
+                    Directory.SetCurrentDirectory(platform);
+                }
+
+                // load library
+                ZSTD_versionNumber();
+            }
+            finally
+            {
+                Directory.SetCurrentDirectory(currentDirectory);
+            }
         }
     }
 }
