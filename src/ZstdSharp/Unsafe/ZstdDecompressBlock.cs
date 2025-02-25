@@ -106,18 +106,18 @@ namespace ZstdSharp.Unsafe
 
             {
                 byte* istart = (byte*)src;
-                symbolEncodingType_e litEncType = (symbolEncodingType_e)(istart[0] & 3);
+                SymbolEncodingType_e litEncType = (SymbolEncodingType_e)(istart[0] & 3);
                 nuint blockSizeMax = ZSTD_blockSizeMax(dctx);
                 switch (litEncType)
                 {
-                    case symbolEncodingType_e.set_repeat:
+                    case SymbolEncodingType_e.set_repeat:
                         if (dctx->litEntropy == 0)
                         {
                             return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted));
                         }
 
-                        goto case symbolEncodingType_e.set_compressed;
-                    case symbolEncodingType_e.set_compressed:
+                        goto case SymbolEncodingType_e.set_compressed;
+                    case SymbolEncodingType_e.set_compressed:
                         if (srcSize < 5)
                         {
                             return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
@@ -196,7 +196,7 @@ namespace ZstdSharp.Unsafe
                                 }
                             }
 
-                            if (litEncType == symbolEncodingType_e.set_repeat)
+                            if (litEncType == SymbolEncodingType_e.set_repeat)
                             {
                                 if (singleStream != 0)
                                 {
@@ -238,12 +238,12 @@ namespace ZstdSharp.Unsafe
                             dctx->litPtr = dctx->litBuffer;
                             dctx->litSize = litSize;
                             dctx->litEntropy = 1;
-                            if (litEncType == symbolEncodingType_e.set_compressed)
+                            if (litEncType == SymbolEncodingType_e.set_compressed)
                                 dctx->HUFptr = dctx->entropy.hufTable;
                             return litCSize + lhSize;
                         }
 
-                    case symbolEncodingType_e.set_basic:
+                    case SymbolEncodingType_e.set_basic:
                         {
                             nuint litSize, lhSize;
                             uint lhlCode = (uint)(istart[0] >> 2 & 3);
@@ -316,7 +316,7 @@ namespace ZstdSharp.Unsafe
                             return lhSize + litSize;
                         }
 
-                    case symbolEncodingType_e.set_rle:
+                    case SymbolEncodingType_e.set_rle:
                         {
                             uint lhlCode = (uint)(istart[0] >> 2 & 3);
                             nuint litSize, lhSize;
@@ -557,11 +557,11 @@ namespace ZstdSharp.Unsafe
         /*! ZSTD_buildSeqTable() :
          * @return : nb bytes read from src,
          *           or an error code if it fails */
-        private static nuint ZSTD_buildSeqTable(ZSTD_seqSymbol* DTableSpace, ZSTD_seqSymbol** DTablePtr, symbolEncodingType_e type, uint max, uint maxLog, void* src, nuint srcSize, uint* baseValue, byte* nbAdditionalBits, ZSTD_seqSymbol* defaultTable, uint flagRepeatTable, int ddictIsCold, int nbSeq, uint* wksp, nuint wkspSize, int bmi2)
+        private static nuint ZSTD_buildSeqTable(ZSTD_seqSymbol* DTableSpace, ZSTD_seqSymbol** DTablePtr, SymbolEncodingType_e type, uint max, uint maxLog, void* src, nuint srcSize, uint* baseValue, byte* nbAdditionalBits, ZSTD_seqSymbol* defaultTable, uint flagRepeatTable, int ddictIsCold, int nbSeq, uint* wksp, nuint wkspSize, int bmi2)
         {
             switch (type)
             {
-                case symbolEncodingType_e.set_rle:
+                case SymbolEncodingType_e.set_rle:
                     if (srcSize == 0)
                     {
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
@@ -581,10 +581,10 @@ namespace ZstdSharp.Unsafe
 
                     *DTablePtr = DTableSpace;
                     return 1;
-                case symbolEncodingType_e.set_basic:
+                case SymbolEncodingType_e.set_basic:
                     *DTablePtr = defaultTable;
                     return 0;
-                case symbolEncodingType_e.set_repeat:
+                case SymbolEncodingType_e.set_repeat:
                     if (flagRepeatTable == 0)
                     {
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
@@ -611,7 +611,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                     return 0;
-                case symbolEncodingType_e.set_compressed:
+                case SymbolEncodingType_e.set_compressed:
                     {
                         uint tableLog;
                         short* norm = stackalloc short[53];
@@ -697,9 +697,9 @@ namespace ZstdSharp.Unsafe
             }
 
             {
-                symbolEncodingType_e LLtype = (symbolEncodingType_e)(*ip >> 6);
-                symbolEncodingType_e OFtype = (symbolEncodingType_e)(*ip >> 4 & 3);
-                symbolEncodingType_e MLtype = (symbolEncodingType_e)(*ip >> 2 & 3);
+                SymbolEncodingType_e LLtype = (SymbolEncodingType_e)(*ip >> 6);
+                SymbolEncodingType_e OFtype = (SymbolEncodingType_e)(*ip >> 4 & 3);
+                SymbolEncodingType_e MLtype = (SymbolEncodingType_e)(*ip >> 2 & 3);
                 ip++;
                 {
                     nuint llhSize = ZSTD_buildSeqTable(&dctx->entropy.LLTable.e0, &dctx->LLTptr, LLtype, 35, 9, ip, (nuint)(iend - ip), LL_base, LL_bits, LL_defaultDTable, dctx->fseEntropy, dctx->ddictIsCold, nbSeq, dctx->workspace, sizeof(uint) * 640, ZSTD_DCtx_get_bmi2(dctx));

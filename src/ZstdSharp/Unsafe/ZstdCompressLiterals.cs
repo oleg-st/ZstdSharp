@@ -19,13 +19,13 @@ namespace ZstdSharp.Unsafe
             switch (flSize)
             {
                 case 1:
-                    ostart[0] = (byte)((uint)symbolEncodingType_e.set_basic + (srcSize << 3));
+                    ostart[0] = (byte)((uint)SymbolEncodingType_e.set_basic + (srcSize << 3));
                     break;
                 case 2:
-                    MEM_writeLE16(ostart, (ushort)((uint)symbolEncodingType_e.set_basic + (1 << 2) + (srcSize << 4)));
+                    MEM_writeLE16(ostart, (ushort)((uint)SymbolEncodingType_e.set_basic + (1 << 2) + (srcSize << 4)));
                     break;
                 case 3:
-                    MEM_writeLE32(ostart, (uint)((uint)symbolEncodingType_e.set_basic + (3 << 2) + (srcSize << 4)));
+                    MEM_writeLE32(ostart, (uint)((uint)SymbolEncodingType_e.set_basic + (3 << 2) + (srcSize << 4)));
                     break;
                 default:
                     assert(0 != 0);
@@ -66,13 +66,13 @@ namespace ZstdSharp.Unsafe
             switch (flSize)
             {
                 case 1:
-                    ostart[0] = (byte)((uint)symbolEncodingType_e.set_rle + (srcSize << 3));
+                    ostart[0] = (byte)((uint)SymbolEncodingType_e.set_rle + (srcSize << 3));
                     break;
                 case 2:
-                    MEM_writeLE16(ostart, (ushort)((uint)symbolEncodingType_e.set_rle + (1 << 2) + (srcSize << 4)));
+                    MEM_writeLE16(ostart, (ushort)((uint)SymbolEncodingType_e.set_rle + (1 << 2) + (srcSize << 4)));
                     break;
                 case 3:
-                    MEM_writeLE32(ostart, (uint)((uint)symbolEncodingType_e.set_rle + (3 << 2) + (srcSize << 4)));
+                    MEM_writeLE32(ostart, (uint)((uint)SymbolEncodingType_e.set_rle + (3 << 2) + (srcSize << 4)));
                     break;
                 default:
                     assert(0 != 0);
@@ -109,7 +109,7 @@ namespace ZstdSharp.Unsafe
             nuint lhSize = (nuint)(3 + (srcSize >= 1 * (1 << 10) ? 1 : 0) + (srcSize >= 16 * (1 << 10) ? 1 : 0));
             byte* ostart = (byte*)dst;
             uint singleStream = srcSize < 256 ? 1U : 0U;
-            symbolEncodingType_e hType = symbolEncodingType_e.set_compressed;
+            SymbolEncodingType_e hType = SymbolEncodingType_e.set_compressed;
             nuint cLitSize;
             memcpy(nextHuf, prevHuf, (uint)sizeof(ZSTD_hufCTables_t));
             if (disableLiteralCompression != 0)
@@ -131,7 +131,7 @@ namespace ZstdSharp.Unsafe
                 cLitSize = ((delegate* managed<void*, nuint, void*, nuint, uint, uint, void*, nuint, nuint*, HUF_repeat*, int, nuint>)huf_compress)(ostart + lhSize, dstCapacity - lhSize, src, srcSize, 255, 11, entropyWorkspace, entropyWorkspaceSize, &nextHuf->CTable.e0, &repeat, flags);
                 if (repeat != HUF_repeat.HUF_repeat_none)
                 {
-                    hType = symbolEncodingType_e.set_repeat;
+                    hType = SymbolEncodingType_e.set_repeat;
                 }
             }
 
@@ -153,7 +153,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            if (hType == symbolEncodingType_e.set_compressed)
+            if (hType == SymbolEncodingType_e.set_compressed)
             {
                 nextHuf->repeatMode = HUF_repeat.HUF_repeat_check;
             }

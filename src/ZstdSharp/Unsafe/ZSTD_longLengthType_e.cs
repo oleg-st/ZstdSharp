@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    /* Controls whether seqStore has a single "long" litLength or matchLength. See seqStore_t. */
+    /* Controls whether seqStore has a single "long" litLength or matchLength. See SeqStore_t. */
     public enum ZSTD_longLengthType_e
     {
         /* no longLengthType */

@@ -5,7 +5,7 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        private static void ZSTD_fillHashTableForCDict(ZSTD_matchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm)
+        private static void ZSTD_fillHashTableForCDict(ZSTD_MatchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
@@ -40,7 +40,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static void ZSTD_fillHashTableForCCtx(ZSTD_matchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm)
+        private static void ZSTD_fillHashTableForCCtx(ZSTD_MatchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
@@ -72,7 +72,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static void ZSTD_fillHashTable(ZSTD_matchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm, ZSTD_tableFillPurpose_e tfp)
+        private static void ZSTD_fillHashTable(ZSTD_MatchState_t* ms, void* end, ZSTD_dictTableLoadMethod_e dtlm, ZSTD_tableFillPurpose_e tfp)
         {
             if (tfp == ZSTD_tableFillPurpose_e.ZSTD_tfp_forCDict)
             {
@@ -82,6 +82,37 @@ namespace ZstdSharp.Unsafe
             {
                 ZSTD_fillHashTableForCCtx(ms, end, dtlm);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_match4Found_cmov(byte* currentPtr, byte* matchAddress, uint matchIdx, uint idxLowLimit)
+        {
+            /* currentIdx >= lowLimit is a (somewhat) unpredictable branch.
+             * However expression below compiles into conditional move.
+             */
+            byte* mvalAddr = ZSTD_selectAddr(matchIdx, idxLowLimit, matchAddress, dummy);
+            if (MEM_read32(currentPtr) != MEM_read32(mvalAddr))
+                return 0;
+            return matchIdx >= idxLowLimit ? 1 : 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_match4Found_branch(byte* currentPtr, byte* matchAddress, uint matchIdx, uint idxLowLimit)
+        {
+            /* using a branch instead of a cmov,
+             * because it's faster in scenarios where matchIdx >= idxLowLimit is generally true,
+             * aka almost all candidates are within range */
+            uint mval;
+            if (matchIdx >= idxLowLimit)
+            {
+                mval = MEM_read32(matchAddress);
+            }
+            else
+            {
+                mval = MEM_read32(currentPtr) ^ 1;
+            }
+
+            return MEM_read32(currentPtr) == mval ? 1 : 0;
         }
 
         /**
@@ -132,13 +163,13 @@ namespace ZstdSharp.Unsafe
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static nuint ZSTD_compressBlock_fast_noDict_generic(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, uint mls, uint hasStep)
+        private static nuint ZSTD_compressBlock_fast_noDict_generic(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize, uint mls, int useCmov)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
             uint hlog = cParams->hashLog;
-            /* support stepSize of 0 */
-            nuint stepSize = hasStep != 0 ? cParams->targetLength + (uint)(cParams->targetLength == 0 ? 1 : 0) + 1 : 2;
+            /* min 2 */
+            nuint stepSize = cParams->targetLength + (uint)(cParams->targetLength == 0 ? 1 : 0) + 1;
             byte* @base = ms->window.@base;
             byte* istart = (byte*)src;
             uint endIndex = (uint)((nuint)(istart - @base) + srcSize);
@@ -160,9 +191,7 @@ namespace ZstdSharp.Unsafe
             /* hash for ip1 */
             nuint hash1;
             /* match idx for ip0 */
-            uint idx;
-            /* src value at match idx */
-            uint mval;
+            uint matchIdx;
             uint offcode;
             byte* match0;
             nuint mLength;
@@ -173,6 +202,7 @@ namespace ZstdSharp.Unsafe
             nuint step;
             byte* nextStep;
             const nuint kStepIncr = 1 << 8 - 1;
+            void* matchFound = useCmov != 0 ? (delegate* managed<byte*, byte*, uint, uint, int>)(&ZSTD_match4Found_cmov) : (delegate* managed<byte*, byte*, uint, uint, int>)(&ZSTD_match4Found_branch);
             ip0 += ip0 == prefixStart ? 1 : 0;
             {
                 uint curr = (uint)(ip0 - @base);
@@ -204,7 +234,7 @@ namespace ZstdSharp.Unsafe
 
             hash0 = ZSTD_hashPtr(ip0, hlog, mls);
             hash1 = ZSTD_hashPtr(ip1, hlog, mls);
-            idx = hashTable[hash0];
+            matchIdx = hashTable[hash0];
             do
             {
                 /* load repcode match for ip[2]*/
@@ -226,22 +256,13 @@ namespace ZstdSharp.Unsafe
                     goto _match;
                 }
 
-                if (idx >= prefixStartIndex)
-                {
-                    mval = MEM_read32(@base + idx);
-                }
-                else
-                {
-                    mval = MEM_read32(ip0) ^ 1;
-                }
-
-                if (MEM_read32(ip0) == mval)
+                if (((delegate* managed<byte*, byte*, uint, uint, int>)matchFound)(ip0, @base + matchIdx, matchIdx, prefixStartIndex) != 0)
                 {
                     hashTable[hash1] = (uint)(ip1 - @base);
                     goto _offset;
                 }
 
-                idx = hashTable[hash1];
+                matchIdx = hashTable[hash1];
                 hash0 = hash1;
                 hash1 = ZSTD_hashPtr(ip2, hlog, mls);
                 ip0 = ip1;
@@ -249,16 +270,7 @@ namespace ZstdSharp.Unsafe
                 ip2 = ip3;
                 current0 = (uint)(ip0 - @base);
                 hashTable[hash0] = current0;
-                if (idx >= prefixStartIndex)
-                {
-                    mval = MEM_read32(@base + idx);
-                }
-                else
-                {
-                    mval = MEM_read32(ip0) ^ 1;
-                }
-
-                if (MEM_read32(ip0) == mval)
+                if (((delegate* managed<byte*, byte*, uint, uint, int>)matchFound)(ip0, @base + matchIdx, matchIdx, prefixStartIndex) != 0)
                 {
                     if (step <= 4)
                     {
@@ -268,7 +280,7 @@ namespace ZstdSharp.Unsafe
                     goto _offset;
                 }
 
-                idx = hashTable[hash1];
+                matchIdx = hashTable[hash1];
                 hash0 = hash1;
                 hash1 = ZSTD_hashPtr(ip2, hlog, mls);
                 ip0 = ip1;
@@ -296,7 +308,7 @@ namespace ZstdSharp.Unsafe
             rep[1] = rep_offset2 != 0 ? rep_offset2 : offsetSaved2;
             return (nuint)(iend - anchor);
         _offset:
-            match0 = @base + idx;
+            match0 = @base + matchIdx;
             rep_offset2 = rep_offset1;
             rep_offset1 = (uint)(ip0 - match0);
             assert(rep_offset1 > 0);
@@ -346,53 +358,55 @@ namespace ZstdSharp.Unsafe
             goto _start;
         }
 
-        private static nuint ZSTD_compressBlock_fast_noDict_4_1(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_noDict_4_1(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 4, 1);
         }
 
-        private static nuint ZSTD_compressBlock_fast_noDict_5_1(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_noDict_5_1(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 5, 1);
         }
 
-        private static nuint ZSTD_compressBlock_fast_noDict_6_1(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_noDict_6_1(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 6, 1);
         }
 
-        private static nuint ZSTD_compressBlock_fast_noDict_7_1(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_noDict_7_1(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 7, 1);
         }
 
-        private static nuint ZSTD_compressBlock_fast_noDict_4_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_noDict_4_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 4, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_noDict_5_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_noDict_5_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 5, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_noDict_6_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_noDict_6_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 6, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_noDict_7_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_noDict_7_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_noDict_generic(ms, seqStore, rep, src, srcSize, 7, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
-            uint mls = ms->cParams.minMatch;
+            uint mml = ms->cParams.minMatch;
+            /* use cmov when "candidate in range" branch is likely unpredictable */
+            int useCmov = ms->cParams.windowLog < 19 ? 1 : 0;
             assert(ms->dictMatchState == null);
-            if (ms->cParams.targetLength > 1)
+            if (useCmov != 0)
             {
-                switch (mls)
+                switch (mml)
                 {
                     default:
                     case 4:
@@ -407,7 +421,7 @@ namespace ZstdSharp.Unsafe
             }
             else
             {
-                switch (mls)
+                switch (mml)
                 {
                     default:
                     case 4:
@@ -423,7 +437,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint ZSTD_compressBlock_fast_dictMatchState_generic(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, uint mls, uint hasStep)
+        private static nuint ZSTD_compressBlock_fast_dictMatchState_generic(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize, uint mls, uint hasStep)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
@@ -441,7 +455,7 @@ namespace ZstdSharp.Unsafe
             byte* iend = istart + srcSize;
             byte* ilimit = iend - 8;
             uint offset_1 = rep[0], offset_2 = rep[1];
-            ZSTD_matchState_t* dms = ms->dictMatchState;
+            ZSTD_MatchState_t* dms = ms->dictMatchState;
             ZSTD_compressionParameters* dictCParams = &dms->cParams;
             uint* dictHashTable = dms->hashTable;
             uint dictStartIndex = dms->window.dictLimit;
@@ -500,7 +514,7 @@ namespace ZstdSharp.Unsafe
                     nuint hash1 = ZSTD_hashPtr(ip1, hlog, mls);
                     nuint dictHashAndTag1 = ZSTD_hashPtr(ip1, dictHBits, mls);
                     hashTable[hash0] = curr;
-                    if (prefixStartIndex - 1 - repIndex >= 3 && MEM_read32(repMatch) == MEM_read32(ip0 + 1))
+                    if (ZSTD_index_overlap_check(prefixStartIndex, repIndex) != 0 && MEM_read32(repMatch) == MEM_read32(ip0 + 1))
                     {
                         byte* repMatchEnd = repIndex < prefixStartIndex ? dictEnd : iend;
                         mLength = ZSTD_count_2segments(ip0 + 1 + 4, repMatch + 4, iend, repMatchEnd, prefixStart) + 4;
@@ -538,9 +552,9 @@ namespace ZstdSharp.Unsafe
                         }
                     }
 
-                    if (matchIndex > prefixStartIndex && MEM_read32(match) == MEM_read32(ip0))
+                    if (ZSTD_match4Found_cmov(ip0, match, matchIndex, prefixStartIndex) != 0)
                     {
-                        /* found a regular match */
+                        /* found a regular match of size >= 4 */
                         uint offset = (uint)(ip0 - match);
                         mLength = ZSTD_count(ip0 + 4, match + 4, iend) + 4;
                         while (ip0 > anchor && match > prefixStart && ip0[-1] == match[-1])
@@ -587,7 +601,7 @@ namespace ZstdSharp.Unsafe
                         uint current2 = (uint)(ip0 - @base);
                         uint repIndex2 = current2 - offset_2;
                         byte* repMatch2 = repIndex2 < prefixStartIndex ? dictBase - dictIndexDelta + repIndex2 : @base + repIndex2;
-                        if (prefixStartIndex - 1 - repIndex2 >= 3 && MEM_read32(repMatch2) == MEM_read32(ip0))
+                        if (ZSTD_index_overlap_check(prefixStartIndex, repIndex2) != 0 && MEM_read32(repMatch2) == MEM_read32(ip0))
                         {
                             byte* repEnd2 = repIndex2 < prefixStartIndex ? dictEnd : iend;
                             nuint repLength2 = ZSTD_count_2segments(ip0 + 4, repMatch2 + 4, iend, repEnd2, prefixStart) + 4;
@@ -618,27 +632,27 @@ namespace ZstdSharp.Unsafe
             return (nuint)(iend - anchor);
         }
 
-        private static nuint ZSTD_compressBlock_fast_dictMatchState_4_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_dictMatchState_4_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_dictMatchState_generic(ms, seqStore, rep, src, srcSize, 4, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_dictMatchState_5_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_dictMatchState_5_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_dictMatchState_generic(ms, seqStore, rep, src, srcSize, 5, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_dictMatchState_6_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_dictMatchState_6_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_dictMatchState_generic(ms, seqStore, rep, src, srcSize, 6, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_dictMatchState_7_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_dictMatchState_7_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_dictMatchState_generic(ms, seqStore, rep, src, srcSize, 7, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_dictMatchState(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
             assert(ms->dictMatchState != null);
@@ -656,7 +670,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static nuint ZSTD_compressBlock_fast_extDict_generic(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, uint mls, uint hasStep)
+        private static nuint ZSTD_compressBlock_fast_extDict_generic(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize, uint mls, uint hasStep)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
@@ -860,7 +874,7 @@ namespace ZstdSharp.Unsafe
                 {
                     uint repIndex2 = (uint)(ip0 - @base) - offset_2;
                     byte* repMatch2 = repIndex2 < prefixStartIndex ? dictBase + repIndex2 : @base + repIndex2;
-                    if (prefixStartIndex - 1 - repIndex2 >= 3 && offset_2 > 0 && MEM_read32(repMatch2) == MEM_read32(ip0))
+                    if ((ZSTD_index_overlap_check(prefixStartIndex, repIndex2) & (offset_2 > 0 ? 1 : 0)) != 0 && MEM_read32(repMatch2) == MEM_read32(ip0))
                     {
                         byte* repEnd2 = repIndex2 < prefixStartIndex ? dictEnd : iend;
                         nuint repLength2 = ZSTD_count_2segments(ip0 + 4, repMatch2 + 4, iend, repEnd2, prefixStart) + 4;
@@ -887,27 +901,27 @@ namespace ZstdSharp.Unsafe
             goto _start;
         }
 
-        private static nuint ZSTD_compressBlock_fast_extDict_4_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_extDict_4_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_extDict_generic(ms, seqStore, rep, src, srcSize, 4, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_extDict_5_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_extDict_5_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_extDict_generic(ms, seqStore, rep, src, srcSize, 5, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_extDict_6_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_extDict_6_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_extDict_generic(ms, seqStore, rep, src, srcSize, 6, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_extDict_7_0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_extDict_7_0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_fast_extDict_generic(ms, seqStore, rep, src, srcSize, 7, 0);
         }
 
-        private static nuint ZSTD_compressBlock_fast_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_fast_extDict(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint mls = ms->cParams.minMatch;
             assert(ms->dictMatchState == null);

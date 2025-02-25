@@ -159,19 +159,39 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_ldm_adjustParameters(ldmParams_t* @params, ZSTD_compressionParameters* cParams)
         {
             @params->windowLog = cParams->windowLog;
-            if (@params->bucketSizeLog == 0)
-                @params->bucketSizeLog = 3;
-            if (@params->minMatchLength == 0)
-                @params->minMatchLength = 64;
-            if (@params->hashLog == 0)
-            {
-                @params->hashLog = 6 > @params->windowLog - 7 ? 6 : @params->windowLog - 7;
-                assert(@params->hashLog <= (uint)((sizeof(nuint) == 4 ? 30 : 31) < 30 ? sizeof(nuint) == 4 ? 30 : 31 : 30));
-            }
-
             if (@params->hashRateLog == 0)
             {
-                @params->hashRateLog = @params->windowLog < @params->hashLog ? 0 : @params->windowLog - @params->hashLog;
+                if (@params->hashLog > 0)
+                {
+                    assert(@params->hashLog <= (uint)((sizeof(nuint) == 4 ? 30 : 31) < 30 ? sizeof(nuint) == 4 ? 30 : 31 : 30));
+                    if (@params->windowLog > @params->hashLog)
+                    {
+                        @params->hashRateLog = @params->windowLog - @params->hashLog;
+                    }
+                }
+                else
+                {
+                    assert(1 <= (int)cParams->strategy && (int)cParams->strategy <= 9);
+                    @params->hashRateLog = (uint)(7 - (int)cParams->strategy / 3);
+                }
+            }
+
+            if (@params->hashLog == 0)
+            {
+                @params->hashLog = @params->windowLog - @params->hashRateLog <= 6 ? 6 : @params->windowLog - @params->hashRateLog <= (uint)((sizeof(nuint) == 4 ? 30 : 31) < 30 ? sizeof(nuint) == 4 ? 30 : 31 : 30) ? @params->windowLog - @params->hashRateLog : (uint)((sizeof(nuint) == 4 ? 30 : 31) < 30 ? sizeof(nuint) == 4 ? 30 : 31 : 30);
+            }
+
+            if (@params->minMatchLength == 0)
+            {
+                @params->minMatchLength = 64;
+                if (cParams->strategy >= ZSTD_strategy.ZSTD_btultra)
+                    @params->minMatchLength /= 2;
+            }
+
+            if (@params->bucketSizeLog == 0)
+            {
+                assert(1 <= (int)cParams->strategy && (int)cParams->strategy <= 9);
+                @params->bucketSizeLog = (uint)cParams->strategy <= 4 ? 4 : (uint)cParams->strategy <= 8 ? (uint)cParams->strategy : 8;
             }
 
             @params->bucketSizeLog = @params->bucketSizeLog < @params->hashLog ? @params->bucketSizeLog : @params->hashLog;
@@ -201,19 +221,19 @@ namespace ZstdSharp.Unsafe
 
         /** ZSTD_ldm_getBucket() :
          *  Returns a pointer to the start of the bucket associated with hash. */
-        private static ldmEntry_t* ZSTD_ldm_getBucket(ldmState_t* ldmState, nuint hash, ldmParams_t ldmParams)
+        private static ldmEntry_t* ZSTD_ldm_getBucket(ldmState_t* ldmState, nuint hash, uint bucketSizeLog)
         {
-            return ldmState->hashTable + (hash << (int)ldmParams.bucketSizeLog);
+            return ldmState->hashTable + (hash << (int)bucketSizeLog);
         }
 
         /** ZSTD_ldm_insertEntry() :
          *  Insert the entry with corresponding hash into the hash table */
-        private static void ZSTD_ldm_insertEntry(ldmState_t* ldmState, nuint hash, ldmEntry_t entry, ldmParams_t ldmParams)
+        private static void ZSTD_ldm_insertEntry(ldmState_t* ldmState, nuint hash, ldmEntry_t entry, uint bucketSizeLog)
         {
             byte* pOffset = ldmState->bucketOffsets + hash;
             uint offset = *pOffset;
-            *(ZSTD_ldm_getBucket(ldmState, hash, ldmParams) + offset) = entry;
-            *pOffset = (byte)(offset + 1 & (1U << (int)ldmParams.bucketSizeLog) - 1);
+            *(ZSTD_ldm_getBucket(ldmState, hash, bucketSizeLog) + offset) = entry;
+            *pOffset = (byte)(offset + 1 & (1U << (int)bucketSizeLog) - 1);
         }
 
         /** ZSTD_ldm_countBackwardsMatch() :
@@ -257,7 +277,7 @@ namespace ZstdSharp.Unsafe
          *
          *  The tables for the other strategies are filled within their
          *  block compressors. */
-        private static nuint ZSTD_ldm_fillFastTables(ZSTD_matchState_t* ms, void* end)
+        private static nuint ZSTD_ldm_fillFastTables(ZSTD_MatchState_t* ms, void* end)
         {
             byte* iend = (byte*)end;
             switch (ms->cParams.strategy)
@@ -287,7 +307,8 @@ namespace ZstdSharp.Unsafe
         private static void ZSTD_ldm_fillHashTable(ldmState_t* ldmState, byte* ip, byte* iend, ldmParams_t* @params)
         {
             uint minMatchLength = @params->minMatchLength;
-            uint hBits = @params->hashLog - @params->bucketSizeLog;
+            uint bucketSizeLog = @params->bucketSizeLog;
+            uint hBits = @params->hashLog - bucketSizeLog;
             byte* @base = ldmState->window.@base;
             byte* istart = ip;
             ldmRollingHashState_t hashState;
@@ -310,7 +331,7 @@ namespace ZstdSharp.Unsafe
                         ldmEntry_t entry;
                         entry.offset = (uint)(split - @base);
                         entry.checksum = (uint)(xxhash >> 32);
-                        ZSTD_ldm_insertEntry(ldmState, hash, entry, *@params);
+                        ZSTD_ldm_insertEntry(ldmState, hash, entry, @params->bucketSizeLog);
                     }
                 }
 
@@ -323,7 +344,7 @@ namespace ZstdSharp.Unsafe
          *  Sets cctx->nextToUpdate to a position corresponding closer to anchor
          *  if it is far way
          *  (after a long match, only update tables a limited amount). */
-        private static void ZSTD_ldm_limitTableUpdate(ZSTD_matchState_t* ms, byte* anchor)
+        private static void ZSTD_ldm_limitTableUpdate(ZSTD_MatchState_t* ms, byte* anchor)
         {
             uint curr = (uint)(anchor - ms->window.@base);
             if (curr > ms->nextToUpdate + 1024)
@@ -332,7 +353,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static nuint ZSTD_ldm_generateSequences_internal(ldmState_t* ldmState, rawSeqStore_t* rawSeqStore, ldmParams_t* @params, void* src, nuint srcSize)
+        private static nuint ZSTD_ldm_generateSequences_internal(ldmState_t* ldmState, RawSeqStore_t* rawSeqStore, ldmParams_t* @params, void* src, nuint srcSize)
         {
             /* LDM parameters */
             int extDict = (int)ZSTD_window_hasExtDict(ldmState->window);
@@ -379,7 +400,7 @@ namespace ZstdSharp.Unsafe
                     candidates[n].split = split;
                     candidates[n].hash = hash;
                     candidates[n].checksum = (uint)(xxhash >> 32);
-                    candidates[n].bucket = ZSTD_ldm_getBucket(ldmState, hash, *@params);
+                    candidates[n].bucket = ZSTD_ldm_getBucket(ldmState, hash, @params->bucketSizeLog);
 #if NETCOREAPP3_0_OR_GREATER
                     if (System.Runtime.Intrinsics.X86.Sse.IsSupported)
                     {
@@ -403,7 +424,7 @@ namespace ZstdSharp.Unsafe
                     newEntry.checksum = checksum;
                     if (split < anchor)
                     {
-                        ZSTD_ldm_insertEntry(ldmState, hash, newEntry, *@params);
+                        ZSTD_ldm_insertEntry(ldmState, hash, newEntry, @params->bucketSizeLog);
                         continue;
                     }
 
@@ -453,7 +474,7 @@ namespace ZstdSharp.Unsafe
 
                     if (bestEntry == null)
                     {
-                        ZSTD_ldm_insertEntry(ldmState, hash, newEntry, *@params);
+                        ZSTD_ldm_insertEntry(ldmState, hash, newEntry, @params->bucketSizeLog);
                         continue;
                     }
 
@@ -469,7 +490,7 @@ namespace ZstdSharp.Unsafe
                         rawSeqStore->size++;
                     }
 
-                    ZSTD_ldm_insertEntry(ldmState, hash, newEntry, *@params);
+                    ZSTD_ldm_insertEntry(ldmState, hash, newEntry, @params->bucketSizeLog);
                     anchor = split + forwardMatchLength;
                     if (anchor > ip + hashed)
                     {
@@ -513,7 +534,7 @@ namespace ZstdSharp.Unsafe
          * NOTE: This function returns an error if it runs out of space to store
          *       sequences.
          */
-        private static nuint ZSTD_ldm_generateSequences(ldmState_t* ldmState, rawSeqStore_t* sequences, ldmParams_t* @params, void* src, nuint srcSize)
+        private static nuint ZSTD_ldm_generateSequences(ldmState_t* ldmState, RawSeqStore_t* sequences, ldmParams_t* @params, void* src, nuint srcSize)
         {
             uint maxDist = 1U << (int)@params->windowLog;
             byte* istart = (byte*)src;
@@ -522,7 +543,7 @@ namespace ZstdSharp.Unsafe
             nuint nbChunks = srcSize / kMaxChunkSize + (nuint)(srcSize % kMaxChunkSize != 0 ? 1 : 0);
             nuint chunk;
             nuint leftoverSize = 0;
-            assert(unchecked((uint)-1) - ((3U << 29) + (1U << (sizeof(nuint) == 4 ? 30 : 31))) >= kMaxChunkSize);
+            assert(unchecked((uint)-1) - (MEM_64bits ? 3500U * (1 << 20) : 2000U * (1 << 20)) >= kMaxChunkSize);
             assert(ldmState->window.nextSrc >= (byte*)src + srcSize);
             assert(sequences->pos <= sequences->size);
             assert(sequences->size <= sequences->capacity);
@@ -569,7 +590,7 @@ namespace ZstdSharp.Unsafe
          * Avoids emitting matches less than `minMatch` bytes.
          * Must be called for data that is not passed to ZSTD_ldm_blockCompress().
          */
-        private static void ZSTD_ldm_skipSequences(rawSeqStore_t* rawSeqStore, nuint srcSize, uint minMatch)
+        private static void ZSTD_ldm_skipSequences(RawSeqStore_t* rawSeqStore, nuint srcSize, uint minMatch)
         {
             while (srcSize > 0 && rawSeqStore->pos < rawSeqStore->size)
             {
@@ -611,7 +632,7 @@ namespace ZstdSharp.Unsafe
          * Returns the current sequence to handle, or if the rest of the block should
          * be literals, it returns a sequence with offset == 0.
          */
-        private static rawSeq maybeSplitSequence(rawSeqStore_t* rawSeqStore, uint remaining, uint minMatch)
+        private static rawSeq maybeSplitSequence(RawSeqStore_t* rawSeqStore, uint remaining, uint minMatch)
         {
             rawSeq sequence = rawSeqStore->seq[rawSeqStore->pos];
             assert(sequence.offset > 0);
@@ -643,7 +664,7 @@ namespace ZstdSharp.Unsafe
          * Not to be used in conjunction with ZSTD_ldm_skipSequences().
          * Must be called for data with is not passed to ZSTD_ldm_blockCompress().
          */
-        private static void ZSTD_ldm_skipRawSeqStoreBytes(rawSeqStore_t* rawSeqStore, nuint nbBytes)
+        private static void ZSTD_ldm_skipRawSeqStoreBytes(RawSeqStore_t* rawSeqStore, nuint nbBytes)
         {
             uint currPos = (uint)(rawSeqStore->posInSequence + nbBytes);
             while (currPos != 0 && rawSeqStore->pos < rawSeqStore->size)
@@ -685,11 +706,11 @@ namespace ZstdSharp.Unsafe
          * two. We handle that case correctly, and update `rawSeqStore` appropriately.
          * NOTE: This function does not return any errors.
          */
-        private static nuint ZSTD_ldm_blockCompress(rawSeqStore_t* rawSeqStore, ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, ZSTD_paramSwitch_e useRowMatchFinder, void* src, nuint srcSize)
+        private static nuint ZSTD_ldm_blockCompress(RawSeqStore_t* rawSeqStore, ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, ZSTD_paramSwitch_e useRowMatchFinder, void* src, nuint srcSize)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint minMatch = cParams->minMatch;
-            ZSTD_blockCompressor blockCompressor = ZSTD_selectBlockCompressor(cParams->strategy, useRowMatchFinder, ZSTD_matchState_dictMode(ms));
+            ZSTD_BlockCompressor_f blockCompressor = ZSTD_selectBlockCompressor(cParams->strategy, useRowMatchFinder, ZSTD_matchState_dictMode(ms));
             /* Input bounds */
             byte* istart = (byte*)src;
             byte* iend = istart + srcSize;

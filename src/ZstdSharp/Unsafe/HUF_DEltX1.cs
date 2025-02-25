@@ -7,7 +7,6 @@ namespace ZstdSharp.Unsafe
     {
         /* single-symbol decoding */
         public byte nbBits;
-        /* single-symbol decoding */
         public byte @byte;
     }
 }

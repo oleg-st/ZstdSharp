@@ -1,5 +1,8 @@
 namespace ZstdSharp.Unsafe
 {
+    /*-********************************************
+     *  bitStream decoding API (read backward)
+     **********************************************/
     public unsafe struct BIT_DStream_t
     {
         public nuint bitContainer;

@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public enum ZSTD_cParamMode_e
+    public enum ZSTD_CParamMode_e
     {
         /* Compression with ZSTD_noDict or ZSTD_extDict.
          * In this mode we use both the srcSize and the dictSize

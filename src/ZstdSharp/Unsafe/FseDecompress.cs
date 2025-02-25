@@ -152,6 +152,11 @@ namespace ZstdSharp.Unsafe
 
             FSE_initDState(&state1, &bitD, dt);
             FSE_initDState(&state2, &bitD, dt);
+            if (BIT_reloadDStream(&bitD) == BIT_DStream_status.BIT_DStream_overflow)
+            {
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+            }
+
             for (; BIT_reloadDStream(&bitD) == BIT_DStream_status.BIT_DStream_unfinished && op < olimit; op += 4)
             {
                 op[0] = fast != 0 ? FSE_decodeSymbolFast(&state1, &bitD) : FSE_decodeSymbol(&state1, &bitD);

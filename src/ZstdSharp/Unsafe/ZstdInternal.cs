@@ -381,31 +381,5 @@ namespace ZstdSharp.Unsafe
 
             return length;
         }
-
-        /**
-         * Returns the ZSTD_sequenceLength for the given sequences. It handles the decoding of long sequences
-         * indicated by longLengthPos and longLengthType, and adds MINMATCH back to matchLength.
-         */
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ZSTD_sequenceLength ZSTD_getSequenceLength(seqStore_t* seqStore, seqDef_s* seq)
-        {
-            ZSTD_sequenceLength seqLen;
-            seqLen.litLength = seq->litLength;
-            seqLen.matchLength = (uint)(seq->mlBase + 3);
-            if (seqStore->longLengthPos == (uint)(seq - seqStore->sequencesStart))
-            {
-                if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_literalLength)
-                {
-                    seqLen.litLength += 0x10000;
-                }
-
-                if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_matchLength)
-                {
-                    seqLen.matchLength += 0x10000;
-                }
-            }
-
-            return seqLen;
-        }
     }
 }

@@ -1,9 +1,9 @@
 namespace ZstdSharp.Unsafe
 {
-    /*-*******************************************
-     *  Private declarations
-     *********************************************/
-    public struct seqDef_s
+    /***********************************************
+     *  Sequences *
+     ***********************************************/
+    public struct SeqDef_s
     {
         /* offBase == Offset + ZSTD_REP_NUM, or repcode 1,2,3 */
         public uint offBase;

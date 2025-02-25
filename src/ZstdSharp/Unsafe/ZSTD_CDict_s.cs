@@ -12,7 +12,7 @@ namespace ZstdSharp.Unsafe
         /* entropy workspace of HUF_WORKSPACE_SIZE bytes */
         public uint* entropyWorkspace;
         public ZSTD_cwksp workspace;
-        public ZSTD_matchState_t matchState;
+        public ZSTD_MatchState_t matchState;
         public ZSTD_compressedBlockState_t cBlockState;
         public ZSTD_customMem customMem;
         public uint dictID;

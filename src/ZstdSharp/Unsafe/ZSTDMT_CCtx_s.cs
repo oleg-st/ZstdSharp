@@ -12,10 +12,10 @@ namespace ZstdSharp.Unsafe
         public nuint targetPrefixSize;
         /* 1 => one job is already prepared, but pool has shortage of workers. Don't create a new job. */
         public int jobReady;
-        public inBuff_t inBuff;
-        public roundBuff_t roundBuff;
-        public serialState_t serial;
-        public rsyncState_t rsync;
+        public InBuff_t inBuff;
+        public RoundBuff_t roundBuff;
+        public SerialState serial;
+        public RSyncState_t rsync;
         public uint jobIDMask;
         public uint doneJobID;
         public uint nextJobID;

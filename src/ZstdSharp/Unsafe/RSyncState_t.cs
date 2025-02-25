@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public struct rsyncState_t
+    public struct RSyncState_t
     {
         public ulong hash;
         public ulong hitMask;

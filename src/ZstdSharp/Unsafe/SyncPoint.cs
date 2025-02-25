@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public struct syncPoint_t
+    public struct SyncPoint
     {
         /* The number of bytes to load from the input. */
         public nuint toLoad;

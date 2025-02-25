@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public unsafe struct rawSeqStore_t
+    public unsafe struct RawSeqStore_t
     {
         /* The start of the sequences */
         public rawSeq* seq;
@@ -13,7 +13,7 @@ namespace ZstdSharp.Unsafe
         public nuint size;
         /* The capacity starting from `seq` pointer */
         public nuint capacity;
-        public rawSeqStore_t(rawSeq* seq, nuint pos, nuint posInSequence, nuint size, nuint capacity)
+        public RawSeqStore_t(rawSeq* seq, nuint pos, nuint posInSequence, nuint size, nuint capacity)
         {
             this.seq = seq;
             this.pos = pos;

@@ -30,7 +30,7 @@ namespace ZstdSharp.Unsafe
          *
          * Note: This field is optional. ZSTD_generateSequences() will calculate the value of
          * 'rep', but repeat offsets do not necessarily need to be calculated from an external
-         * sequence provider's perspective. For example, ZSTD_compressSequences() does not
+         * sequence provider perspective. For example, ZSTD_compressSequences() does not
          * use this 'rep' field at all (as of now).
          */
         public uint rep;

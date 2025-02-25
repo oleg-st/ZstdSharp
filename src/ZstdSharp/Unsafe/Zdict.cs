@@ -39,7 +39,7 @@ namespace ZstdSharp.Unsafe
 
             if (cSize != 0)
             {
-                seqStore_t* seqStorePtr = ZSTD_getSeqStore(esr.zc);
+                SeqStore_t* seqStorePtr = ZSTD_getSeqStore(esr.zc);
                 {
                     byte* bytePtr;
                     for (bytePtr = seqStorePtr->litStart; bytePtr < seqStorePtr->lit; bytePtr++)
@@ -72,7 +72,7 @@ namespace ZstdSharp.Unsafe
 
                     if (nbSeq >= 2)
                     {
-                        seqDef_s* seq = seqStorePtr->sequencesStart;
+                        SeqDef_s* seq = seqStorePtr->sequencesStart;
                         uint offset1 = seq[0].offBase - 3;
                         uint offset2 = seq[1].offBase - 3;
                         if (offset1 >= 1024)
@@ -357,7 +357,7 @@ namespace ZstdSharp.Unsafe
          * is presumed that the most profitable content is at the end of the dictionary,
          * since that is the cheapest to reference.
          *
-         * `maxDictSize` must be >= max(dictContentSize, ZSTD_DICTSIZE_MIN).
+         * `maxDictSize` must be >= max(dictContentSize, ZDICT_DICTSIZE_MIN).
          *
          * @return: size of dictionary stored into `dstDictBuffer` (<= `maxDictSize`),
          *          or an error code, which can be tested by ZDICT_isError().

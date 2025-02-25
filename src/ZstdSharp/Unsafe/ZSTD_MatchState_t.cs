@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public unsafe struct ZSTD_matchState_t
+    public unsafe struct ZSTD_MatchState_t
     {
         /* State for window round buffer management */
         public ZSTD_window_t window;
@@ -30,16 +30,16 @@ namespace ZstdSharp.Unsafe
         public uint* hashTable3;
         public uint* chainTable;
         /* Non-zero if we should force non-contiguous load for the next window update. */
-        public uint forceNonContiguous;
+        public int forceNonContiguous;
         /* Indicates whether this matchState is using the
          * dedicated dictionary search structure.
          */
         public int dedicatedDictSearch;
         /* optimal parser state */
         public optState_t opt;
-        public ZSTD_matchState_t* dictMatchState;
+        public ZSTD_MatchState_t* dictMatchState;
         public ZSTD_compressionParameters cParams;
-        public rawSeqStore_t* ldmSeqStore;
+        public RawSeqStore_t* ldmSeqStore;
         /* Controls prefetching in some dictMatchState matchfinders.
          * This behavior is controlled from the cctx ms.
          * This parameter has no effect in the cdict ms. */

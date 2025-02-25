@@ -10,7 +10,7 @@ namespace ZstdSharp.Unsafe
      *  This metadata is populated in ZSTD_buildBlockEntropyStats_literals() */
     public unsafe struct ZSTD_hufCTablesMetadata_t
     {
-        public symbolEncodingType_e hType;
+        public SymbolEncodingType_e hType;
         public fixed byte hufDesBuffer[128];
         public nuint hufDesSize;
     }

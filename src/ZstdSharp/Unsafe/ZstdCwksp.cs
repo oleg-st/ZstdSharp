@@ -27,7 +27,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_cwksp_align(nuint size, nuint align)
         {
             nuint mask = align - 1;
-            assert((align & mask) == 0);
+            assert(ZSTD_isPower2(align) != 0);
             return size + mask & ~mask;
         }
 
@@ -41,7 +41,7 @@ namespace ZstdSharp.Unsafe
          * to figure out how much space you need for the matchState tables. Everything
          * else is though.
          *
-         * Do not use for sizing aligned buffers. Instead, use ZSTD_cwksp_aligned_alloc_size().
+         * Do not use for sizing aligned buffers. Instead, use ZSTD_cwksp_aligned64_alloc_size().
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint ZSTD_cwksp_alloc_size(nuint size)
@@ -51,14 +51,20 @@ namespace ZstdSharp.Unsafe
             return size;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint ZSTD_cwksp_aligned_alloc_size(nuint size, nuint alignment)
+        {
+            return ZSTD_cwksp_alloc_size(ZSTD_cwksp_align(size, alignment));
+        }
+
         /**
          * Returns an adjusted alloc size that is the nearest larger multiple of 64 bytes.
          * Used to determine the number of bytes required for a given "aligned".
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint ZSTD_cwksp_aligned_alloc_size(nuint size)
+        private static nuint ZSTD_cwksp_aligned64_alloc_size(nuint size)
         {
-            return ZSTD_cwksp_alloc_size(ZSTD_cwksp_align(size, 64));
+            return ZSTD_cwksp_aligned_alloc_size(size, 64);
         }
 
         /**
@@ -84,7 +90,7 @@ namespace ZstdSharp.Unsafe
         {
             nuint alignBytesMask = alignBytes - 1;
             nuint bytes = alignBytes - ((nuint)ptr & alignBytesMask) & alignBytesMask;
-            assert((alignBytes & alignBytesMask) == 0);
+            assert(ZSTD_isPower2(alignBytes) != 0);
             assert(bytes < alignBytes);
             return bytes;
         }
@@ -96,7 +102,10 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* ZSTD_cwksp_initialAllocStart(ZSTD_cwksp* ws)
         {
-            return (void*)((nuint)ws->workspaceEnd & unchecked((nuint)~(64 - 1)));
+            sbyte* endPtr = (sbyte*)ws->workspaceEnd;
+            assert(ZSTD_isPower2(64) != 0);
+            endPtr = endPtr - (nuint)endPtr % 64;
+            return endPtr;
         }
 
         /**
@@ -230,7 +239,7 @@ namespace ZstdSharp.Unsafe
          * Reserves and returns memory sized on and aligned on ZSTD_CWKSP_ALIGNMENT_BYTES (64 bytes).
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void* ZSTD_cwksp_reserve_aligned(ZSTD_cwksp* ws, nuint bytes)
+        private static void* ZSTD_cwksp_reserve_aligned64(ZSTD_cwksp* ws, nuint bytes)
         {
             void* ptr = ZSTD_cwksp_reserve_internal(ws, ZSTD_cwksp_align(bytes, 64), ZSTD_cwksp_alloc_phase_e.ZSTD_cwksp_alloc_aligned);
             assert(((nuint)ptr & 64 - 1) == 0);
@@ -298,6 +307,24 @@ namespace ZstdSharp.Unsafe
             ws->tableEnd = end;
             ws->tableValidEnd = end;
             return alloc;
+        }
+
+        /**
+         * with alignment control
+         * Note : should happen only once, at workspace first initialization
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* ZSTD_cwksp_reserve_object_aligned(ZSTD_cwksp* ws, nuint byteSize, nuint alignment)
+        {
+            nuint mask = alignment - 1;
+            nuint surplus = alignment > (nuint)sizeof(void*) ? alignment - (nuint)sizeof(void*) : 0;
+            void* start = ZSTD_cwksp_reserve_object(ws, byteSize + surplus);
+            if (start == null)
+                return null;
+            if (surplus == 0)
+                return start;
+            assert(ZSTD_isPower2(alignment) != 0);
+            return (void*)((nuint)start + surplus & ~mask);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

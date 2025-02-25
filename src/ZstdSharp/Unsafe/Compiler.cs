@@ -4,8 +4,16 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
+        /* @return 1 if @u is a 2^n value, 0 otherwise
+         * useful to check a value is valid for alignment restrictions */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_isPower2(nuint u)
+        {
+            return (u & u - 1) == 0 ? 1 : 0;
+        }
+
         /**
-         * Helper function to perform a wrapped pointer difference without trigging
+         * Helper function to perform a wrapped pointer difference without triggering
          * UBSAN.
          *
          * @returns lhs - rhs with wrapping

@@ -4,6 +4,6 @@ namespace ZstdSharp.Unsafe
     {
         public ZSTD_compressedBlockState_t* prevCBlock;
         public ZSTD_compressedBlockState_t* nextCBlock;
-        public ZSTD_matchState_t matchState;
+        public ZSTD_MatchState_t matchState;
     }
 }

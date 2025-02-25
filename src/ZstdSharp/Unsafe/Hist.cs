@@ -13,6 +13,24 @@ namespace ZstdSharp.Unsafe
         /*-**************************************************************
          *  Histogram functions
          ****************************************************************/
+        private static void HIST_add(uint* count, void* src, nuint srcSize)
+        {
+            byte* ip = (byte*)src;
+            byte* end = ip + srcSize;
+            while (ip < end)
+            {
+                count[*ip++]++;
+            }
+        }
+
+        /*! HIST_count_simple() :
+         *  Same as HIST_countFast(), this function is unsafe,
+         *  and will segfault if any value within `src` is `> *maxSymbolValuePtr`.
+         *  It is also a bit slower for large inputs.
+         *  However, it does not need any additional memory (not even on stack).
+         * @return : count of the most frequent symbol.
+         *  Note this function doesn't produce any error (i.e. it must succeed).
+         */
         private static uint HIST_count_simple(uint* count, uint* maxSymbolValuePtr, void* src, nuint srcSize)
         {
             byte* ip = (byte*)src;

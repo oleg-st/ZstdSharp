@@ -10,6 +10,7 @@ namespace ZstdSharp.Unsafe
         /* if == ZSTD_skippableFrame, frameContentSize is the size of skippable content */
         public ZSTD_frameType_e frameType;
         public uint headerSize;
+        /* for ZSTD_skippableFrame, contains the skippable magic variant [0-15] */
         public uint dictID;
         public uint checksumFlag;
         public uint _reserved1;

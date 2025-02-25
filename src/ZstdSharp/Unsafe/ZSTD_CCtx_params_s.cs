@@ -34,8 +34,20 @@ namespace ZstdSharp.Unsafe
         /* Sequence compression API */
         public ZSTD_sequenceFormat_e blockDelimiters;
         public int validateSequences;
-        /* Block splitting */
-        public ZSTD_paramSwitch_e useBlockSplitter;
+        /* Block splitting
+         * @postBlockSplitter executes split analysis after sequences are produced,
+         * it's more accurate but consumes more resources.
+         * @preBlockSplitter_level splits before knowing sequences,
+         * it's more approximative but also cheaper.
+         * Valid @preBlockSplitter_level values range from 0 to 6 (included).
+         * 0 means auto, 1 means do not split,
+         * then levels are sorted in increasing cpu budget, from 2 (fastest) to 6 (slowest).
+         * Highest @preBlockSplitter_level combines well with @postBlockSplitter.
+         */
+        public ZSTD_paramSwitch_e postBlockSplitter;
+        public int preBlockSplitter_level;
+        /* Adjust the max block size*/
+        public nuint maxBlockSize;
         /* Param for deciding whether to use row-based matchfinder */
         public ZSTD_paramSwitch_e useRowMatchFinder;
         /* Always load a dictionary in ext-dict mode (not prefix mode)? */
@@ -52,8 +64,6 @@ namespace ZstdSharp.Unsafe
          * It is not possible to set these parameters individually through the public API. */
         public void* extSeqProdState;
         public void* extSeqProdFunc;
-        /* Adjust the max block size*/
-        public nuint maxBlockSize;
         /* Controls repcode search in external sequence parsing */
         public ZSTD_paramSwitch_e searchForExternalRepcodes;
     }

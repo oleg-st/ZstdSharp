@@ -1143,7 +1143,7 @@ namespace ZstdSharp.Unsafe
          * and occupies the same space as a table of HUF_WORKSPACE_SIZE_U64 unsigned */
         private static nuint HUF_compress_internal(void* dst, nuint dstSize, void* src, nuint srcSize, uint maxSymbolValue, uint huffLog, HUF_nbStreams_e nbStreams, void* workSpace, nuint wkspSize, nuint* oldHufTable, HUF_repeat* repeat, int flags)
         {
-            HUF_compress_tables_t* table = (HUF_compress_tables_t*)HUF_alignUpWorkspace(workSpace, &wkspSize, (nuint)sizeof(nuint));
+            HUF_compress_tables_t* table = (HUF_compress_tables_t*)HUF_alignUpWorkspace(workSpace, &wkspSize, sizeof(ulong));
             byte* ostart = (byte*)dst;
             byte* oend = ostart + dstSize;
             byte* op = ostart;

@@ -67,7 +67,7 @@ namespace ZstdSharp.Unsafe
          * Special: value 0 means "use default strategy". */
         ZSTD_c_strategy = 107,
         /* v1.5.6+
-         * Attempts to fit compressed block size into approximatively targetCBlockSize.
+         * Attempts to fit compressed block size into approximately targetCBlockSize.
          * Bound by ZSTD_TARGETCBLOCKSIZE_MIN and ZSTD_TARGETCBLOCKSIZE_MAX.
          * Note that it's not a guarantee, just a convergence target (default:0).
          * No target when targetCBlockSize == 0.
@@ -164,7 +164,8 @@ namespace ZstdSharp.Unsafe
          * ZSTD_c_stableOutBuffer
          * ZSTD_c_blockDelimiters
          * ZSTD_c_validateSequences
-         * ZSTD_c_useBlockSplitter
+         * ZSTD_c_blockSplitterLevel
+         * ZSTD_c_splitAfterSequences
          * ZSTD_c_useRowMatchFinder
          * ZSTD_c_prefetchCDictTables
          * ZSTD_c_enableSeqProducerFallback
@@ -174,127 +175,24 @@ namespace ZstdSharp.Unsafe
          *        also, the enums values themselves are unstable and can still change.
          */
         ZSTD_c_experimentalParam1 = 500,
-        /* note : additional experimental parameters are also available
-         * within the experimental section of the API.
-         * At the time of this writing, they include :
-         * ZSTD_c_rsyncable
-         * ZSTD_c_format
-         * ZSTD_c_forceMaxWindow
-         * ZSTD_c_forceAttachDict
-         * ZSTD_c_literalCompressionMode
-         * ZSTD_c_srcSizeHint
-         * ZSTD_c_enableDedicatedDictSearch
-         * ZSTD_c_stableInBuffer
-         * ZSTD_c_stableOutBuffer
-         * ZSTD_c_blockDelimiters
-         * ZSTD_c_validateSequences
-         * ZSTD_c_useBlockSplitter
-         * ZSTD_c_useRowMatchFinder
-         * ZSTD_c_prefetchCDictTables
-         * ZSTD_c_enableSeqProducerFallback
-         * ZSTD_c_maxBlockSize
-         * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
-         * note : never ever use experimentalParam? names directly;
-         *        also, the enums values themselves are unstable and can still change.
-         */
         ZSTD_c_experimentalParam2 = 10,
-        /* note : additional experimental parameters are also available
-         * within the experimental section of the API.
-         * At the time of this writing, they include :
-         * ZSTD_c_rsyncable
-         * ZSTD_c_format
-         * ZSTD_c_forceMaxWindow
-         * ZSTD_c_forceAttachDict
-         * ZSTD_c_literalCompressionMode
-         * ZSTD_c_srcSizeHint
-         * ZSTD_c_enableDedicatedDictSearch
-         * ZSTD_c_stableInBuffer
-         * ZSTD_c_stableOutBuffer
-         * ZSTD_c_blockDelimiters
-         * ZSTD_c_validateSequences
-         * ZSTD_c_useBlockSplitter
-         * ZSTD_c_useRowMatchFinder
-         * ZSTD_c_prefetchCDictTables
-         * ZSTD_c_enableSeqProducerFallback
-         * ZSTD_c_maxBlockSize
-         * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
-         * note : never ever use experimentalParam? names directly;
-         *        also, the enums values themselves are unstable and can still change.
-         */
         ZSTD_c_experimentalParam3 = 1000,
-        /* note : additional experimental parameters are also available
-         * within the experimental section of the API.
-         * At the time of this writing, they include :
-         * ZSTD_c_rsyncable
-         * ZSTD_c_format
-         * ZSTD_c_forceMaxWindow
-         * ZSTD_c_forceAttachDict
-         * ZSTD_c_literalCompressionMode
-         * ZSTD_c_srcSizeHint
-         * ZSTD_c_enableDedicatedDictSearch
-         * ZSTD_c_stableInBuffer
-         * ZSTD_c_stableOutBuffer
-         * ZSTD_c_blockDelimiters
-         * ZSTD_c_validateSequences
-         * ZSTD_c_useBlockSplitter
-         * ZSTD_c_useRowMatchFinder
-         * ZSTD_c_prefetchCDictTables
-         * ZSTD_c_enableSeqProducerFallback
-         * ZSTD_c_maxBlockSize
-         * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
-         * note : never ever use experimentalParam? names directly;
-         *        also, the enums values themselves are unstable and can still change.
-         */
         ZSTD_c_experimentalParam4 = 1001,
-        /* note : additional experimental parameters are also available
-         * within the experimental section of the API.
-         * At the time of this writing, they include :
-         * ZSTD_c_rsyncable
-         * ZSTD_c_format
-         * ZSTD_c_forceMaxWindow
-         * ZSTD_c_forceAttachDict
-         * ZSTD_c_literalCompressionMode
-         * ZSTD_c_srcSizeHint
-         * ZSTD_c_enableDedicatedDictSearch
-         * ZSTD_c_stableInBuffer
-         * ZSTD_c_stableOutBuffer
-         * ZSTD_c_blockDelimiters
-         * ZSTD_c_validateSequences
-         * ZSTD_c_useBlockSplitter
-         * ZSTD_c_useRowMatchFinder
-         * ZSTD_c_prefetchCDictTables
-         * ZSTD_c_enableSeqProducerFallback
-         * ZSTD_c_maxBlockSize
-         * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
-         * note : never ever use experimentalParam? names directly;
-         *        also, the enums values themselves are unstable and can still change.
-         */
         ZSTD_c_experimentalParam5 = 1002,
         /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam7 = 1004,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam8 = 1005,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam9 = 1006,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam10 = 1007,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam11 = 1008,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam12 = 1009,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam13 = 1010,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam14 = 1011,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam15 = 1012,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam16 = 1013,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam17 = 1014,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
         ZSTD_c_experimentalParam18 = 1015,
-        /* was ZSTD_c_experimentalParam6=1003; is now ZSTD_c_targetCBlockSize */
-        ZSTD_c_experimentalParam19 = 1016
+        ZSTD_c_experimentalParam19 = 1016,
+        ZSTD_c_experimentalParam20 = 1017
     }
 }

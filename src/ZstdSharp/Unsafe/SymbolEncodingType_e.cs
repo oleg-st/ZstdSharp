@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public enum symbolEncodingType_e
+    public enum SymbolEncodingType_e
     {
         set_basic,
         set_rle,

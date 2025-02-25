@@ -144,15 +144,15 @@ namespace ZstdSharp.Unsafe
             return ZSTDMT_sizeof_bufferPool(seqPool);
         }
 
-        private static rawSeqStore_t bufferToSeq(buffer_s buffer)
+        private static RawSeqStore_t bufferToSeq(buffer_s buffer)
         {
-            rawSeqStore_t seq = kNullRawSeqStore;
+            RawSeqStore_t seq = kNullRawSeqStore;
             seq.seq = (rawSeq*)buffer.start;
             seq.capacity = buffer.capacity / (nuint)sizeof(rawSeq);
             return seq;
         }
 
-        private static buffer_s seqToBuffer(rawSeqStore_t seq)
+        private static buffer_s seqToBuffer(RawSeqStore_t seq)
         {
             buffer_s buffer;
             buffer.start = seq.seq;
@@ -160,7 +160,7 @@ namespace ZstdSharp.Unsafe
             return buffer;
         }
 
-        private static rawSeqStore_t ZSTDMT_getSeq(ZSTDMT_bufferPool_s* seqPool)
+        private static RawSeqStore_t ZSTDMT_getSeq(ZSTDMT_bufferPool_s* seqPool)
         {
             if (seqPool->bufferSize == 0)
             {
@@ -170,7 +170,7 @@ namespace ZstdSharp.Unsafe
             return bufferToSeq(ZSTDMT_getBuffer(seqPool));
         }
 
-        private static void ZSTDMT_releaseSeq(ZSTDMT_bufferPool_s* seqPool, rawSeqStore_t seq)
+        private static void ZSTDMT_releaseSeq(ZSTDMT_bufferPool_s* seqPool, RawSeqStore_t seq)
         {
             ZSTDMT_releaseBuffer(seqPool, seqToBuffer(seq));
         }
@@ -311,7 +311,7 @@ namespace ZstdSharp.Unsafe
             SynchronizationWrapper.Exit(&pool->poolMutex);
         }
 
-        private static int ZSTDMT_serialState_reset(serialState_t* serialState, ZSTDMT_bufferPool_s* seqPool, ZSTD_CCtx_params_s @params, nuint jobSize, void* dict, nuint dictSize, ZSTD_dictContentType_e dictContentType)
+        private static int ZSTDMT_serialState_reset(SerialState* serialState, ZSTDMT_bufferPool_s* seqPool, ZSTD_CCtx_params_s @params, nuint jobSize, void* dict, nuint dictSize, ZSTD_dictContentType_e dictContentType)
         {
             if (@params.ldmParams.enableLdm == ZSTD_paramSwitch_e.ZSTD_ps_enable)
             {
@@ -373,10 +373,10 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
-        private static int ZSTDMT_serialState_init(serialState_t* serialState)
+        private static int ZSTDMT_serialState_init(SerialState* serialState)
         {
             int initError = 0;
-            *serialState = new serialState_t();
+            *serialState = new SerialState();
             SynchronizationWrapper.Init(&serialState->mutex);
             initError |= 0;
             initError |= 0;
@@ -386,7 +386,7 @@ namespace ZstdSharp.Unsafe
             return initError;
         }
 
-        private static void ZSTDMT_serialState_free(serialState_t* serialState)
+        private static void ZSTDMT_serialState_free(SerialState* serialState)
         {
             ZSTD_customMem cMem = serialState->@params.customMem;
             SynchronizationWrapper.Free(&serialState->mutex);
@@ -395,7 +395,7 @@ namespace ZstdSharp.Unsafe
             ZSTD_customFree(serialState->ldmState.bucketOffsets, cMem);
         }
 
-        private static void ZSTDMT_serialState_update(serialState_t* serialState, ZSTD_CCtx_s* jobCCtx, rawSeqStore_t seqStore, range_t src, uint jobID)
+        private static void ZSTDMT_serialState_genSequences(SerialState* serialState, RawSeqStore_t* seqStore, Range src, uint jobID)
         {
             SynchronizationWrapper.Enter(&serialState->mutex);
             while (serialState->nextJobID < jobID)
@@ -408,10 +408,10 @@ namespace ZstdSharp.Unsafe
                 if (serialState->@params.ldmParams.enableLdm == ZSTD_paramSwitch_e.ZSTD_ps_enable)
                 {
                     nuint error;
-                    assert(seqStore.seq != null && seqStore.pos == 0 && seqStore.size == 0 && seqStore.capacity > 0);
+                    assert(seqStore->seq != null && seqStore->pos == 0 && seqStore->size == 0 && seqStore->capacity > 0);
                     assert(src.size <= serialState->@params.jobSize);
                     ZSTD_window_update(&serialState->ldmState.window, src.start, src.size, 0);
-                    error = ZSTD_ldm_generateSequences(&serialState->ldmState, &seqStore, &serialState->@params.ldmParams, src.start, src.size);
+                    error = ZSTD_ldm_generateSequences(&serialState->ldmState, seqStore, &serialState->@params.ldmParams, src.start, src.size);
                     assert(!ERR_isError(error));
                     SynchronizationWrapper.Enter(&serialState->ldmWindowMutex);
                     serialState->ldmWindow = serialState->ldmState.window;
@@ -426,14 +426,19 @@ namespace ZstdSharp.Unsafe
             serialState->nextJobID++;
             SynchronizationWrapper.PulseAll(&serialState->mutex);
             SynchronizationWrapper.Exit(&serialState->mutex);
-            if (seqStore.size > 0)
+        }
+
+        private static void ZSTDMT_serialState_applySequences(SerialState* serialState, ZSTD_CCtx_s* jobCCtx, RawSeqStore_t* seqStore)
+        {
+            if (seqStore->size > 0)
             {
-                ZSTD_referenceExternalSequences(jobCCtx, seqStore.seq, seqStore.size);
                 assert(serialState->@params.ldmParams.enableLdm == ZSTD_paramSwitch_e.ZSTD_ps_enable);
+                assert(jobCCtx != null);
+                ZSTD_referenceExternalSequences(jobCCtx, seqStore->seq, seqStore->size);
             }
         }
 
-        private static void ZSTDMT_serialState_ensureFinished(serialState_t* serialState, uint jobID, nuint cSize)
+        private static void ZSTDMT_serialState_ensureFinished(SerialState* serialState, uint jobID, nuint cSize)
         {
             SynchronizationWrapper.Enter(&serialState->mutex);
             if (serialState->nextJobID <= jobID)
@@ -450,7 +455,7 @@ namespace ZstdSharp.Unsafe
             SynchronizationWrapper.Exit(&serialState->mutex);
         }
 
-        private static readonly range_t kNullRange = new range_t(start: null, size: 0);
+        private static readonly Range kNullRange = new Range(start: null, size: 0);
         /* ZSTDMT_compressionJob() is a POOL_function type */
         private static void ZSTDMT_compressionJob(void* jobDescription)
         {
@@ -458,7 +463,7 @@ namespace ZstdSharp.Unsafe
             /* do not modify job->params ! copy it, modify the copy */
             ZSTD_CCtx_params_s jobParams = job->@params;
             ZSTD_CCtx_s* cctx = ZSTDMT_getCCtx(job->cctxPool);
-            rawSeqStore_t rawSeqStore = ZSTDMT_getSeq(job->seqPool);
+            RawSeqStore_t rawSeqStore = ZSTDMT_getSeq(job->seqPool);
             buffer_s dstBuff = job->dstBuff;
             nuint lastCBlockSize = 0;
             if (cctx == null)
@@ -495,6 +500,7 @@ namespace ZstdSharp.Unsafe
                 jobParams.fParams.checksumFlag = 0;
             jobParams.ldmParams.enableLdm = ZSTD_paramSwitch_e.ZSTD_ps_disable;
             jobParams.nbWorkers = 0;
+            ZSTDMT_serialState_genSequences(job->serial, &rawSeqStore, job->src, job->jobID);
             if (job->cdict != null)
             {
                 nuint initError = ZSTD_compressBegin_advanced_internal(cctx, null, 0, ZSTD_dictContentType_e.ZSTD_dct_auto, ZSTD_dictTableLoadMethod_e.ZSTD_dtlm_fast, job->cdict, &jobParams, job->fullFrameSize);
@@ -545,7 +551,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            ZSTDMT_serialState_update(job->serial, cctx, rawSeqStore, job->src, job->jobID);
+            ZSTDMT_serialState_applySequences(job->serial, cctx, &rawSeqStore);
             if (job->firstJob == 0)
             {
                 nuint hSize = ZSTD_compressContinue_public(cctx, dstBuff.start, dstBuff.capacity, job->src.start, 0);
@@ -634,7 +640,7 @@ namespace ZstdSharp.Unsafe
             SynchronizationWrapper.Exit(&job->job_mutex);
         }
 
-        private static readonly roundBuff_t kNullRoundBuff = new roundBuff_t(buffer: null, capacity: 0, pos: 0);
+        private static readonly RoundBuff_t kNullRoundBuff = new RoundBuff_t(buffer: null, capacity: 0, pos: 0);
         private static void ZSTDMT_freeJobsTable(ZSTDMT_jobDescription* jobTable, uint nbJobs, ZSTD_customMem cMem)
         {
             uint jobNb;
@@ -855,7 +861,7 @@ namespace ZstdSharp.Unsafe
             int compressionLevel = cctxParams->compressionLevel;
             mtctx->@params.compressionLevel = compressionLevel;
             {
-                ZSTD_compressionParameters cParams = ZSTD_getCParamsFromCCtxParams(cctxParams, unchecked(0UL - 1), 0, ZSTD_cParamMode_e.ZSTD_cpm_noAttachDict);
+                ZSTD_compressionParameters cParams = ZSTD_getCParamsFromCCtxParams(cctxParams, unchecked(0UL - 1), 0, ZSTD_CParamMode_e.ZSTD_cpm_noAttachDict);
                 cParams.windowLog = saved_wlog;
                 mtctx->@params.cParams = cParams;
             }
@@ -1032,9 +1038,9 @@ namespace ZstdSharp.Unsafe
 
             mtctx->@params = @params;
             mtctx->frameContentSize = pledgedSrcSize;
+            ZSTD_freeCDict(mtctx->cdictLocal);
             if (dict != null)
             {
-                ZSTD_freeCDict(mtctx->cdictLocal);
                 mtctx->cdictLocal = ZSTD_createCDict_advanced(dict, dictSize, ZSTD_dictLoadMethod_e.ZSTD_dlm_byCopy, dictContentType, @params.cParams, mtctx->cMem);
                 mtctx->cdict = mtctx->cdictLocal;
                 if (mtctx->cdictLocal == null)
@@ -1042,7 +1048,6 @@ namespace ZstdSharp.Unsafe
             }
             else
             {
-                ZSTD_freeCDict(mtctx->cdictLocal);
                 mtctx->cdictLocal = null;
                 mtctx->cdict = cdict;
             }
@@ -1110,6 +1115,29 @@ namespace ZstdSharp.Unsafe
             mtctx->allJobsCompleted = 0;
             mtctx->consumed = 0;
             mtctx->produced = 0;
+            ZSTD_freeCDict(mtctx->cdictLocal);
+            mtctx->cdictLocal = null;
+            mtctx->cdict = null;
+            if (dict != null)
+            {
+                if (dictContentType == ZSTD_dictContentType_e.ZSTD_dct_rawContent)
+                {
+                    mtctx->inBuff.prefix.start = (byte*)dict;
+                    mtctx->inBuff.prefix.size = dictSize;
+                }
+                else
+                {
+                    mtctx->cdictLocal = ZSTD_createCDict_advanced(dict, dictSize, ZSTD_dictLoadMethod_e.ZSTD_dlm_byRef, dictContentType, @params.cParams, mtctx->cMem);
+                    mtctx->cdict = mtctx->cdictLocal;
+                    if (mtctx->cdictLocal == null)
+                        return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                }
+            }
+            else
+            {
+                mtctx->cdict = cdict;
+            }
+
             if (ZSTDMT_serialState_reset(&mtctx->serial, mtctx->seqPool, @params, mtctx->targetSectionSize, dict, dictSize, dictContentType) != 0)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
             return 0;
@@ -1310,11 +1338,16 @@ namespace ZstdSharp.Unsafe
          * If the data of the first job is broken up into two segments, we cover both
          * sections.
          */
-        private static range_t ZSTDMT_getInputDataInUse(ZSTDMT_CCtx_s* mtctx)
+        private static Range ZSTDMT_getInputDataInUse(ZSTDMT_CCtx_s* mtctx)
         {
             uint firstJobID = mtctx->doneJobID;
             uint lastJobID = mtctx->nextJobID;
             uint jobID;
+            /* no need to check during first round */
+            nuint roundBuffCapacity = mtctx->roundBuff.capacity;
+            nuint nbJobs1stRoundMin = roundBuffCapacity / mtctx->targetSectionSize;
+            if (lastJobID < nbJobs1stRoundMin)
+                return kNullRange;
             for (jobID = firstJobID; jobID < lastJobID; ++jobID)
             {
                 uint wJobID = jobID & mtctx->jobIDMask;
@@ -1324,7 +1357,7 @@ namespace ZstdSharp.Unsafe
                 SynchronizationWrapper.Exit(&mtctx->jobs[wJobID].job_mutex);
                 if (consumed < mtctx->jobs[wJobID].src.size)
                 {
-                    range_t range = mtctx->jobs[wJobID].prefix;
+                    Range range = mtctx->jobs[wJobID].prefix;
                     if (range.size == 0)
                     {
                         range = mtctx->jobs[wJobID].src;
@@ -1341,7 +1374,7 @@ namespace ZstdSharp.Unsafe
         /**
          * Returns non-zero iff buffer and range overlap.
          */
-        private static int ZSTDMT_isOverlapped(buffer_s buffer, range_t range)
+        private static int ZSTDMT_isOverlapped(buffer_s buffer, Range range)
         {
             byte* bufferStart = (byte*)buffer.start;
             byte* rangeStart = (byte*)range.start;
@@ -1358,8 +1391,8 @@ namespace ZstdSharp.Unsafe
 
         private static int ZSTDMT_doesOverlapWindow(buffer_s buffer, ZSTD_window_t window)
         {
-            range_t extDict;
-            range_t prefix;
+            Range extDict;
+            Range prefix;
             extDict.start = window.dictBase + window.lowLimit;
             extDict.size = window.dictLimit - window.lowLimit;
             prefix.start = window.@base + window.dictLimit;
@@ -1389,13 +1422,13 @@ namespace ZstdSharp.Unsafe
          */
         private static int ZSTDMT_tryGetInputRange(ZSTDMT_CCtx_s* mtctx)
         {
-            range_t inUse = ZSTDMT_getInputDataInUse(mtctx);
+            Range inUse = ZSTDMT_getInputDataInUse(mtctx);
             nuint spaceLeft = mtctx->roundBuff.capacity - mtctx->roundBuff.pos;
-            nuint target = mtctx->targetSectionSize;
+            nuint spaceNeeded = mtctx->targetSectionSize;
             buffer_s buffer;
             assert(mtctx->inBuff.buffer.start == null);
-            assert(mtctx->roundBuff.capacity >= target);
-            if (spaceLeft < target)
+            assert(mtctx->roundBuff.capacity >= spaceNeeded);
+            if (spaceLeft < spaceNeeded)
             {
                 /* ZSTD_invalidateRepCodes() doesn't work for extDict variants.
                  * Simply copy the prefix to the beginning in that case.
@@ -1416,7 +1449,7 @@ namespace ZstdSharp.Unsafe
             }
 
             buffer.start = mtctx->roundBuff.buffer + mtctx->roundBuff.pos;
-            buffer.capacity = target;
+            buffer.capacity = spaceNeeded;
             if (ZSTDMT_isOverlapped(buffer, inUse) != 0)
             {
                 return 0;
@@ -1436,12 +1469,12 @@ namespace ZstdSharp.Unsafe
          * Otherwise, we will load as many bytes as possible and instruct the caller
          * to continue as normal.
          */
-        private static syncPoint_t findSynchronizationPoint(ZSTDMT_CCtx_s* mtctx, ZSTD_inBuffer_s input)
+        private static SyncPoint findSynchronizationPoint(ZSTDMT_CCtx_s* mtctx, ZSTD_inBuffer_s input)
         {
             byte* istart = (byte*)input.src + input.pos;
             ulong primePower = mtctx->rsync.primePower;
             ulong hitMask = mtctx->rsync.hitMask;
-            syncPoint_t syncPoint;
+            SyncPoint syncPoint;
             ulong hash;
             byte* prev;
             nuint pos;
@@ -1539,7 +1572,7 @@ namespace ZstdSharp.Unsafe
 
                 if (mtctx->inBuff.buffer.start != null)
                 {
-                    syncPoint_t syncPoint = findSynchronizationPoint(mtctx, *input);
+                    SyncPoint syncPoint = findSynchronizationPoint(mtctx, *input);
                     if (syncPoint.flush != 0 && endOp == ZSTD_EndDirective.ZSTD_e_continue)
                     {
                         endOp = ZSTD_EndDirective.ZSTD_e_flush;

@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public struct ZSTD_sequencePosition
+    public struct ZSTD_SequencePosition
     {
         /* Index in array of ZSTD_Sequence */
         public uint idx;

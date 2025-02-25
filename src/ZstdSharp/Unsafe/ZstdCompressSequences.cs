@@ -387,17 +387,17 @@ namespace ZstdSharp.Unsafe
             return cost >> 8;
         }
 
-        private static symbolEncodingType_e ZSTD_selectEncodingType(FSE_repeat* repeatMode, uint* count, uint max, nuint mostFrequent, nuint nbSeq, uint FSELog, uint* prevCTable, short* defaultNorm, uint defaultNormLog, ZSTD_defaultPolicy_e isDefaultAllowed, ZSTD_strategy strategy)
+        private static SymbolEncodingType_e ZSTD_selectEncodingType(FSE_repeat* repeatMode, uint* count, uint max, nuint mostFrequent, nuint nbSeq, uint FSELog, uint* prevCTable, short* defaultNorm, uint defaultNormLog, ZSTD_DefaultPolicy_e isDefaultAllowed, ZSTD_strategy strategy)
         {
             if (mostFrequent == nbSeq)
             {
                 *repeatMode = FSE_repeat.FSE_repeat_none;
                 if (isDefaultAllowed != default && nbSeq <= 2)
                 {
-                    return symbolEncodingType_e.set_basic;
+                    return SymbolEncodingType_e.set_basic;
                 }
 
-                return symbolEncodingType_e.set_rle;
+                return SymbolEncodingType_e.set_rle;
             }
 
             if (strategy < ZSTD_strategy.ZSTD_lazy)
@@ -405,7 +405,7 @@ namespace ZstdSharp.Unsafe
                 if (isDefaultAllowed != default)
                 {
                     const nuint staticFse_nbSeq_max = 1000;
-                    nuint mult = (nuint)(10 - (int)strategy);
+                    nuint mult = (nuint)(10 - strategy);
                     const nuint baseLog = 3;
                     /* 28-36 for offset, 56-72 for lengths */
                     nuint dynamicFse_nbSeq_min = ((nuint)1 << (int)defaultNormLog) * mult >> (int)baseLog;
@@ -413,13 +413,13 @@ namespace ZstdSharp.Unsafe
                     assert(mult <= 9 && mult >= 7);
                     if (*repeatMode == FSE_repeat.FSE_repeat_valid && nbSeq < staticFse_nbSeq_max)
                     {
-                        return symbolEncodingType_e.set_repeat;
+                        return SymbolEncodingType_e.set_repeat;
                     }
 
                     if (nbSeq < dynamicFse_nbSeq_min || mostFrequent < nbSeq >> (int)(defaultNormLog - 1))
                     {
                         *repeatMode = FSE_repeat.FSE_repeat_none;
-                        return symbolEncodingType_e.set_basic;
+                        return SymbolEncodingType_e.set_basic;
                     }
                 }
             }
@@ -443,29 +443,29 @@ namespace ZstdSharp.Unsafe
                 {
                     assert(isDefaultAllowed != default);
                     *repeatMode = FSE_repeat.FSE_repeat_none;
-                    return symbolEncodingType_e.set_basic;
+                    return SymbolEncodingType_e.set_basic;
                 }
 
                 if (repeatCost <= compressedCost)
                 {
                     assert(!ERR_isError(repeatCost));
-                    return symbolEncodingType_e.set_repeat;
+                    return SymbolEncodingType_e.set_repeat;
                 }
 
                 assert(compressedCost < basicCost && compressedCost < repeatCost);
             }
 
             *repeatMode = FSE_repeat.FSE_repeat_check;
-            return symbolEncodingType_e.set_compressed;
+            return SymbolEncodingType_e.set_compressed;
         }
 
-        private static nuint ZSTD_buildCTable(void* dst, nuint dstCapacity, uint* nextCTable, uint FSELog, symbolEncodingType_e type, uint* count, uint max, byte* codeTable, nuint nbSeq, short* defaultNorm, uint defaultNormLog, uint defaultMax, uint* prevCTable, nuint prevCTableSize, void* entropyWorkspace, nuint entropyWorkspaceSize)
+        private static nuint ZSTD_buildCTable(void* dst, nuint dstCapacity, uint* nextCTable, uint FSELog, SymbolEncodingType_e type, uint* count, uint max, byte* codeTable, nuint nbSeq, short* defaultNorm, uint defaultNormLog, uint defaultMax, uint* prevCTable, nuint prevCTableSize, void* entropyWorkspace, nuint entropyWorkspaceSize)
         {
             byte* op = (byte*)dst;
             byte* oend = op + dstCapacity;
             switch (type)
             {
-                case symbolEncodingType_e.set_rle:
+                case SymbolEncodingType_e.set_rle:
                     {
                         nuint err_code = FSE_buildCTable_rle(nextCTable, (byte)max);
                         if (ERR_isError(err_code))
@@ -481,10 +481,10 @@ namespace ZstdSharp.Unsafe
 
                     *op = codeTable[0];
                     return 1;
-                case symbolEncodingType_e.set_repeat:
+                case SymbolEncodingType_e.set_repeat:
                     memcpy(nextCTable, prevCTable, (uint)prevCTableSize);
                     return 0;
-                case symbolEncodingType_e.set_basic:
+                case SymbolEncodingType_e.set_basic:
                     {
                         /* note : could be pre-calculated */
                         nuint err_code = FSE_buildCTable_wksp(nextCTable, defaultNorm, defaultMax, defaultNormLog, entropyWorkspace, entropyWorkspaceSize);
@@ -495,7 +495,7 @@ namespace ZstdSharp.Unsafe
                     }
 
                     return 0;
-                case symbolEncodingType_e.set_compressed:
+                case SymbolEncodingType_e.set_compressed:
                     {
                         ZSTD_BuildCTableWksp* wksp = (ZSTD_BuildCTableWksp*)entropyWorkspace;
                         nuint nbSeq_1 = nbSeq;
@@ -546,7 +546,7 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static nuint ZSTD_encodeSequences_body(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, seqDef_s* sequences, nuint nbSeq, int longOffsets)
+        private static nuint ZSTD_encodeSequences_body(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, SeqDef_s* sequences, nuint nbSeq, int longOffsets)
         {
             BIT_CStream_t blockStream;
             FSE_CState_t stateMatchLength;
@@ -641,12 +641,12 @@ namespace ZstdSharp.Unsafe
             }
         }
 
-        private static nuint ZSTD_encodeSequences_default(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, seqDef_s* sequences, nuint nbSeq, int longOffsets)
+        private static nuint ZSTD_encodeSequences_default(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, SeqDef_s* sequences, nuint nbSeq, int longOffsets)
         {
             return ZSTD_encodeSequences_body(dst, dstCapacity, CTable_MatchLength, mlCodeTable, CTable_OffsetBits, ofCodeTable, CTable_LitLength, llCodeTable, sequences, nbSeq, longOffsets);
         }
 
-        private static nuint ZSTD_encodeSequences(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, seqDef_s* sequences, nuint nbSeq, int longOffsets, int bmi2)
+        private static nuint ZSTD_encodeSequences(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, SeqDef_s* sequences, nuint nbSeq, int longOffsets, int bmi2)
         {
             return ZSTD_encodeSequences_default(dst, dstCapacity, CTable_MatchLength, mlCodeTable, CTable_OffsetBits, ofCodeTable, CTable_LitLength, llCodeTable, sequences, nbSeq, longOffsets);
         }

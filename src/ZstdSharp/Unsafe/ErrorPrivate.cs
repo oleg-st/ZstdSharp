@@ -70,6 +70,8 @@ namespace ZstdSharp.Unsafe
                     return "Unsupported max Symbol Value : too large";
                 case ZSTD_ErrorCode.ZSTD_error_maxSymbolValue_tooSmall:
                     return "Specified maxSymbolValue is too small";
+                case ZSTD_ErrorCode.ZSTD_error_cannotProduce_uncompressedBlock:
+                    return "This mode cannot generate an uncompressed block";
                 case ZSTD_ErrorCode.ZSTD_error_stabilityCondition_notRespected:
                     return "pledged buffer stability condition is not respected";
                 case ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted:

@@ -423,7 +423,7 @@ namespace ZstdSharp.Unsafe
 
         /* Update hashTable3 up to ip (excluded)
         Assumption : always within prefix (i.e. not within extDict) */
-        private static uint ZSTD_insertAndFindFirstIndexHash3(ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip)
+        private static uint ZSTD_insertAndFindFirstIndexHash3(ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip)
         {
             uint* hashTable3 = ms->hashTable3;
             uint hashLog3 = ms->hashLog3;
@@ -449,7 +449,7 @@ namespace ZstdSharp.Unsafe
          * @param ip assumed <= iend-8 .
          * @param target The target of ZSTD_updateTree_internal() - we are filling to this position
          * @return : nb of positions added */
-        private static uint ZSTD_insertBt1(ZSTD_matchState_t* ms, byte* ip, byte* iend, uint target, uint mls, int extDict)
+        private static uint ZSTD_insertBt1(ZSTD_MatchState_t* ms, byte* ip, byte* iend, uint target, uint mls, int extDict)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint* hashTable = ms->hashTable;
@@ -554,7 +554,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ZSTD_updateTree_internal(ZSTD_matchState_t* ms, byte* ip, byte* iend, uint mls, ZSTD_dictMode_e dictMode)
+        private static void ZSTD_updateTree_internal(ZSTD_MatchState_t* ms, byte* ip, byte* iend, uint mls, ZSTD_dictMode_e dictMode)
         {
             byte* @base = ms->window.@base;
             uint target = (uint)(ip - @base);
@@ -572,13 +572,13 @@ namespace ZstdSharp.Unsafe
         }
 
         /* used in ZSTD_loadDictionaryContent() */
-        private static void ZSTD_updateTree(ZSTD_matchState_t* ms, byte* ip, byte* iend)
+        private static void ZSTD_updateTree(ZSTD_MatchState_t* ms, byte* ip, byte* iend)
         {
             ZSTD_updateTree_internal(ms, ip, iend, ms->cParams.minMatch, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_insertBtAndGetAllMatches(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iLimit, ZSTD_dictMode_e dictMode, uint* rep, uint ll0, uint lengthToBeat, uint mls)
+        private static uint ZSTD_insertBtAndGetAllMatches(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iLimit, ZSTD_dictMode_e dictMode, uint* rep, uint ll0, uint lengthToBeat, uint mls)
         {
             ZSTD_compressionParameters* cParams = &ms->cParams;
             uint sufficient_len = cParams->targetLength < (1 << 12) - 1 ? cParams->targetLength : (1 << 12) - 1;
@@ -608,7 +608,7 @@ namespace ZstdSharp.Unsafe
             uint dummy32;
             uint mnum = 0;
             uint nbCompares = 1U << (int)cParams->searchLog;
-            ZSTD_matchState_t* dms = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? ms->dictMatchState : null;
+            ZSTD_MatchState_t* dms = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? ms->dictMatchState : null;
             ZSTD_compressionParameters* dmsCParams = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? &dms->cParams : null;
             byte* dmsBase = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? dms->window.@base : null;
             byte* dmsEnd = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? dms->window.nextSrc : null;
@@ -641,12 +641,12 @@ namespace ZstdSharp.Unsafe
                     {
                         byte* repMatch = dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState ? dmsBase + repIndex - dmsIndexDelta : dictBase + repIndex;
                         assert(curr >= windowLow);
-                        if (dictMode == ZSTD_dictMode_e.ZSTD_extDict && repOffset - 1 < curr - windowLow && dictLimit - 1 - repIndex >= 3 && ZSTD_readMINMATCH(ip, minMatch) == ZSTD_readMINMATCH(repMatch, minMatch))
+                        if (dictMode == ZSTD_dictMode_e.ZSTD_extDict && ((repOffset - 1 < curr - windowLow ? 1 : 0) & ZSTD_index_overlap_check(dictLimit, repIndex)) != 0 && ZSTD_readMINMATCH(ip, minMatch) == ZSTD_readMINMATCH(repMatch, minMatch))
                         {
                             repLen = (uint)ZSTD_count_2segments(ip + minMatch, repMatch + minMatch, iLimit, dictEnd, prefixStart) + minMatch;
                         }
 
-                        if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && repOffset - 1 < curr - (dmsLowLimit + dmsIndexDelta) && dictLimit - 1 - repIndex >= 3 && ZSTD_readMINMATCH(ip, minMatch) == ZSTD_readMINMATCH(repMatch, minMatch))
+                        if (dictMode == ZSTD_dictMode_e.ZSTD_dictMatchState && ((repOffset - 1 < curr - (dmsLowLimit + dmsIndexDelta) ? 1 : 0) & ZSTD_index_overlap_check(dictLimit, repIndex)) != 0 && ZSTD_readMINMATCH(ip, minMatch) == ZSTD_readMINMATCH(repMatch, minMatch))
                         {
                             repLen = (uint)ZSTD_count_2segments(ip + minMatch, repMatch + minMatch, iLimit, dmsEnd, prefixStart) + minMatch;
                         }
@@ -833,7 +833,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_btGetAllMatches_internal(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat, ZSTD_dictMode_e dictMode, uint mls)
+        private static uint ZSTD_btGetAllMatches_internal(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat, ZSTD_dictMode_e dictMode, uint mls)
         {
             assert((ms->cParams.minMatch <= 3 ? 3 : ms->cParams.minMatch <= 6 ? ms->cParams.minMatch : 6) == mls);
             if (ip < ms->window.@base + ms->nextToUpdate)
@@ -842,62 +842,62 @@ namespace ZstdSharp.Unsafe
             return ZSTD_insertBtAndGetAllMatches(matches, ms, nextToUpdate3, ip, iHighLimit, dictMode, rep, ll0, lengthToBeat, mls);
         }
 
-        private static uint ZSTD_btGetAllMatches_noDict_3(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_noDict_3(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_noDict, 3);
         }
 
-        private static uint ZSTD_btGetAllMatches_noDict_4(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_noDict_4(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_noDict, 4);
         }
 
-        private static uint ZSTD_btGetAllMatches_noDict_5(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_noDict_5(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_noDict, 5);
         }
 
-        private static uint ZSTD_btGetAllMatches_noDict_6(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_noDict_6(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_noDict, 6);
         }
 
-        private static uint ZSTD_btGetAllMatches_extDict_3(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_extDict_3(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_extDict, 3);
         }
 
-        private static uint ZSTD_btGetAllMatches_extDict_4(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_extDict_4(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_extDict, 4);
         }
 
-        private static uint ZSTD_btGetAllMatches_extDict_5(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_extDict_5(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_extDict, 5);
         }
 
-        private static uint ZSTD_btGetAllMatches_extDict_6(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_extDict_6(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_extDict, 6);
         }
 
-        private static uint ZSTD_btGetAllMatches_dictMatchState_3(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_dictMatchState_3(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_dictMatchState, 3);
         }
 
-        private static uint ZSTD_btGetAllMatches_dictMatchState_4(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_dictMatchState_4(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_dictMatchState, 4);
         }
 
-        private static uint ZSTD_btGetAllMatches_dictMatchState_5(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_dictMatchState_5(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_dictMatchState, 5);
         }
 
-        private static uint ZSTD_btGetAllMatches_dictMatchState_6(ZSTD_match_t* matches, ZSTD_matchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
+        private static uint ZSTD_btGetAllMatches_dictMatchState_6(ZSTD_match_t* matches, ZSTD_MatchState_t* ms, uint* nextToUpdate3, byte* ip, byte* iHighLimit, uint* rep, uint ll0, uint lengthToBeat)
         {
             return ZSTD_btGetAllMatches_internal(matches, ms, nextToUpdate3, ip, iHighLimit, rep, ll0, lengthToBeat, ZSTD_dictMode_e.ZSTD_dictMatchState, 6);
         }
@@ -926,7 +926,7 @@ namespace ZstdSharp.Unsafe
                 ZSTD_btGetAllMatches_dictMatchState_6
             }
         };
-        private static ZSTD_getAllMatchesFn ZSTD_selectBtGetAllMatches(ZSTD_matchState_t* ms, ZSTD_dictMode_e dictMode)
+        private static ZSTD_getAllMatchesFn ZSTD_selectBtGetAllMatches(ZSTD_MatchState_t* ms, ZSTD_dictMode_e dictMode)
         {
             uint mls = ms->cParams.minMatch <= 3 ? 3 : ms->cParams.minMatch <= 6 ? ms->cParams.minMatch : 6;
             assert((uint)dictMode < 3);
@@ -938,7 +938,7 @@ namespace ZstdSharp.Unsafe
          * Moves forward in @rawSeqStore by @nbBytes,
          * which will update the fields 'pos' and 'posInSequence'.
          */
-        private static void ZSTD_optLdm_skipRawSeqStoreBytes(rawSeqStore_t* rawSeqStore, nuint nbBytes)
+        private static void ZSTD_optLdm_skipRawSeqStoreBytes(RawSeqStore_t* rawSeqStore, nuint nbBytes)
         {
             uint currPos = (uint)(rawSeqStore->posInSequence + nbBytes);
             while (currPos != 0 && rawSeqStore->pos < rawSeqStore->size)
@@ -1011,12 +1011,12 @@ namespace ZstdSharp.Unsafe
          * based on it's 'matchStartPosInBlock' and 'matchEndPosInBlock',
          * into 'matches'. Maintains the correct ordering of 'matches'.
          */
-        private static void ZSTD_optLdm_maybeAddMatch(ZSTD_match_t* matches, uint* nbMatches, ZSTD_optLdm_t* optLdm, uint currPosInBlock)
+        private static void ZSTD_optLdm_maybeAddMatch(ZSTD_match_t* matches, uint* nbMatches, ZSTD_optLdm_t* optLdm, uint currPosInBlock, uint minMatch)
         {
             uint posDiff = currPosInBlock - optLdm->startPosInBlock;
             /* Note: ZSTD_match_t actually contains offBase and matchLength (before subtracting MINMATCH) */
             uint candidateMatchLength = optLdm->endPosInBlock - optLdm->startPosInBlock - posDiff;
-            if (currPosInBlock < optLdm->startPosInBlock || currPosInBlock >= optLdm->endPosInBlock || candidateMatchLength < 3)
+            if (currPosInBlock < optLdm->startPosInBlock || currPosInBlock >= optLdm->endPosInBlock || candidateMatchLength < minMatch)
             {
                 return;
             }
@@ -1034,7 +1034,7 @@ namespace ZstdSharp.Unsafe
         /* ZSTD_optLdm_processMatchCandidate():
          * Wrapper function to update ldm seq store and call ldm functions as necessary.
          */
-        private static void ZSTD_optLdm_processMatchCandidate(ZSTD_optLdm_t* optLdm, ZSTD_match_t* matches, uint* nbMatches, uint currPosInBlock, uint remainingBytes)
+        private static void ZSTD_optLdm_processMatchCandidate(ZSTD_optLdm_t* optLdm, ZSTD_match_t* matches, uint* nbMatches, uint currPosInBlock, uint remainingBytes, uint minMatch)
         {
             if (optLdm->seqStore.size == 0 || optLdm->seqStore.pos >= optLdm->seqStore.size)
             {
@@ -1056,11 +1056,11 @@ namespace ZstdSharp.Unsafe
                 ZSTD_opt_getNextMatchAndUpdateSeqStore(optLdm, currPosInBlock, remainingBytes);
             }
 
-            ZSTD_optLdm_maybeAddMatch(matches, nbMatches, optLdm, currPosInBlock);
+            ZSTD_optLdm_maybeAddMatch(matches, nbMatches, optLdm, currPosInBlock, minMatch);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint ZSTD_compressBlock_opt_generic(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, int optLevel, ZSTD_dictMode_e dictMode)
+        private static nuint ZSTD_compressBlock_opt_generic(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize, int optLevel, ZSTD_dictMode_e dictMode)
         {
             optState_t* optStatePtr = &ms->opt;
             byte* istart = (byte*)src;
@@ -1093,7 +1093,7 @@ namespace ZstdSharp.Unsafe
                     uint litlen = (uint)(ip - anchor);
                     uint ll0 = litlen == 0 ? 1U : 0U;
                     uint nbMatches = getAllMatches(matches, ms, &nextToUpdate3, ip, iend, rep, ll0, minMatch);
-                    ZSTD_optLdm_processMatchCandidate(&optLdm, matches, &nbMatches, (uint)(ip - istart), (uint)(iend - ip));
+                    ZSTD_optLdm_processMatchCandidate(&optLdm, matches, &nbMatches, (uint)(ip - istart), (uint)(iend - ip), minMatch);
                     if (nbMatches == 0)
                     {
                         ip++;
@@ -1210,7 +1210,7 @@ namespace ZstdSharp.Unsafe
                         int basePrice = previousPrice + (int)ZSTD_litLengthPrice(0, optStatePtr, optLevel);
                         uint nbMatches = getAllMatches(matches, ms, &nextToUpdate3, inr, iend, opt[cur].rep, ll0, minMatch);
                         uint matchNb;
-                        ZSTD_optLdm_processMatchCandidate(&optLdm, matches, &nbMatches, (uint)(inr - istart), (uint)(iend - inr));
+                        ZSTD_optLdm_processMatchCandidate(&optLdm, matches, &nbMatches, (uint)(inr - istart), (uint)(iend - inr), minMatch);
                         if (nbMatches == 0)
                         {
                             continue;
@@ -1355,17 +1355,17 @@ namespace ZstdSharp.Unsafe
             return (nuint)(iend - anchor);
         }
 
-        private static nuint ZSTD_compressBlock_opt0(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, ZSTD_dictMode_e dictMode)
+        private static nuint ZSTD_compressBlock_opt0(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize, ZSTD_dictMode_e dictMode)
         {
             return ZSTD_compressBlock_opt_generic(ms, seqStore, rep, src, srcSize, 0, dictMode);
         }
 
-        private static nuint ZSTD_compressBlock_opt2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize, ZSTD_dictMode_e dictMode)
+        private static nuint ZSTD_compressBlock_opt2(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize, ZSTD_dictMode_e dictMode)
         {
             return ZSTD_compressBlock_opt_generic(ms, seqStore, rep, src, srcSize, 2, dictMode);
         }
 
-        private static nuint ZSTD_compressBlock_btopt(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btopt(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_noDict);
         }
@@ -1375,7 +1375,7 @@ namespace ZstdSharp.Unsafe
          * only works on first block, with no dictionary and no ldm.
          * this function cannot error out, its narrow contract must be respected.
          */
-        private static void ZSTD_initStats_ultra(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static void ZSTD_initStats_ultra(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             /* updated rep codes will sink here */
             uint* tmpRep = stackalloc uint[3];
@@ -1392,7 +1392,7 @@ namespace ZstdSharp.Unsafe
             ms->nextToUpdate = ms->window.dictLimit;
         }
 
-        private static nuint ZSTD_compressBlock_btultra(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btultra(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_noDict);
         }
@@ -1400,7 +1400,7 @@ namespace ZstdSharp.Unsafe
         /* note : no btultra2 variant for extDict nor dictMatchState,
          * because btultra2 is not meant to work with dictionaries
          * and is only specific for the first block (no prefix) */
-        private static nuint ZSTD_compressBlock_btultra2(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btultra2(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             uint curr = (uint)((byte*)src - ms->window.@base);
             assert(srcSize <= 1 << 17);
@@ -1412,22 +1412,22 @@ namespace ZstdSharp.Unsafe
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_noDict);
         }
 
-        private static nuint ZSTD_compressBlock_btopt_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btopt_dictMatchState(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        private static nuint ZSTD_compressBlock_btopt_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btopt_extDict(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_extDict);
         }
 
-        private static nuint ZSTD_compressBlock_btultra_dictMatchState(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btultra_dictMatchState(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_dictMatchState);
         }
 
-        private static nuint ZSTD_compressBlock_btultra_extDict(ZSTD_matchState_t* ms, seqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
+        private static nuint ZSTD_compressBlock_btultra_extDict(ZSTD_MatchState_t* ms, SeqStore_t* seqStore, uint* rep, void* src, nuint srcSize)
         {
             return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMode_e.ZSTD_extDict);
         }

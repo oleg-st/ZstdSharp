@@ -34,6 +34,7 @@ namespace ZstdSharp.Unsafe
         ZSTD_error_tableLog_tooLarge = 44,
         ZSTD_error_maxSymbolValue_tooLarge = 46,
         ZSTD_error_maxSymbolValue_tooSmall = 48,
+        ZSTD_error_cannotProduce_uncompressedBlock = 49,
         ZSTD_error_stabilityCondition_notRespected = 50,
         ZSTD_error_stage_wrong = 60,
         ZSTD_error_init_missing = 62,
@@ -46,15 +47,10 @@ namespace ZstdSharp.Unsafe
         ZSTD_error_noForwardProgress_inputEmpty = 82,
         /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_frameIndex_tooLarge = 100,
-        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_seekableIO = 102,
-        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_dstBuffer_wrong = 104,
-        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_srcBuffer_wrong = 105,
-        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_sequenceProducer_failed = 106,
-        /* following error codes are __NOT STABLE__, they can be removed or changed in future versions */
         ZSTD_error_externalSequences_invalid = 107,
         /* never EVER use this value directly, it can change in future versions! Use ZSTD_isError() instead */
         ZSTD_error_maxCode = 120

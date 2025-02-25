@@ -1,10 +1,10 @@
 namespace ZstdSharp.Unsafe
 {
-    public unsafe struct seqStore_t
+    public unsafe struct SeqStore_t
     {
-        public seqDef_s* sequencesStart;
+        public SeqDef_s* sequencesStart;
         /* ptr to end of sequences */
-        public seqDef_s* sequences;
+        public SeqDef_s* sequences;
         public byte* litStart;
         /* ptr to end of literals */
         public byte* lit;

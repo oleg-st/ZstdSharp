@@ -17,13 +17,13 @@ namespace ZstdSharp.Unsafe
         /* Thread-safe - used by mtctx and (all) workers */
         public ZSTDMT_bufferPool_s* seqPool;
         /* Thread-safe - used by mtctx and (all) workers */
-        public serialState_t* serial;
+        public SerialState* serial;
         /* set by worker (or mtctx), then read by worker & mtctx, then modified by mtctx => no barrier */
         public buffer_s dstBuff;
         /* set by mtctx, then read by worker & mtctx => no barrier */
-        public range_t prefix;
+        public Range prefix;
         /* set by mtctx, then read by worker & mtctx => no barrier */
-        public range_t src;
+        public Range src;
         /* set by mtctx, then read by worker => no barrier */
         public uint jobID;
         /* set by mtctx, then read by worker => no barrier */

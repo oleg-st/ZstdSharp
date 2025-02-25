@@ -15,7 +15,7 @@ namespace ZstdSharp.Unsafe
         public nuint dictContentSize;
         /* manages buffer for dynamic allocations */
         public ZSTD_cwksp workspace;
-        public nuint blockSize;
+        public nuint blockSizeMax;
         /* this way, 0 (default) == unknown */
         public ulong pledgedSrcSizePlusOne;
         public ulong consumedSrcSize;
@@ -28,17 +28,18 @@ namespace ZstdSharp.Unsafe
         public int isFirstBlock;
         public int initialized;
         /* sequences storage ptrs */
-        public seqStore_t seqStore;
+        public SeqStore_t seqStore;
         /* long distance matching state */
         public ldmState_t ldmState;
         /* Storage for the ldm output sequences */
         public rawSeq* ldmSequences;
         public nuint maxNbLdmSequences;
         /* Mutable reference to external sequences */
-        public rawSeqStore_t externSeqStore;
+        public RawSeqStore_t externSeqStore;
         public ZSTD_blockState_t blockState;
-        /* entropy workspace of ENTROPY_WORKSPACE_SIZE bytes */
-        public uint* entropyWorkspace;
+        /* used as substitute of stack space - must be aligned for S64 type */
+        public void* tmpWorkspace;
+        public nuint tmpWkspSize;
         /* Whether we are streaming or not */
         public ZSTD_buffered_policy_e bufferedPolicy;
         /* streaming */

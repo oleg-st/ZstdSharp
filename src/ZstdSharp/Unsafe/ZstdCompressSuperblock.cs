@@ -31,21 +31,21 @@ namespace ZstdSharp.Unsafe
             byte* oend = ostart + dstSize;
             byte* op = ostart + lhSize;
             uint singleStream = lhSize == 3 ? 1U : 0U;
-            symbolEncodingType_e hType = writeEntropy != 0 ? hufMetadata->hType : symbolEncodingType_e.set_repeat;
+            SymbolEncodingType_e hType = writeEntropy != 0 ? hufMetadata->hType : SymbolEncodingType_e.set_repeat;
             nuint cLitSize = 0;
             *entropyWritten = 0;
-            if (litSize == 0 || hufMetadata->hType == symbolEncodingType_e.set_basic)
+            if (litSize == 0 || hufMetadata->hType == SymbolEncodingType_e.set_basic)
             {
                 return ZSTD_noCompressLiterals(dst, dstSize, literals, litSize);
             }
-            else if (hufMetadata->hType == symbolEncodingType_e.set_rle)
+            else if (hufMetadata->hType == SymbolEncodingType_e.set_rle)
             {
                 return ZSTD_compressRleLiteralsBlock(dst, dstSize, literals, litSize);
             }
 
             assert(litSize > 0);
-            assert(hufMetadata->hType == symbolEncodingType_e.set_compressed || hufMetadata->hType == symbolEncodingType_e.set_repeat);
-            if (writeEntropy != 0 && hufMetadata->hType == symbolEncodingType_e.set_compressed)
+            assert(hufMetadata->hType == SymbolEncodingType_e.set_compressed || hufMetadata->hType == SymbolEncodingType_e.set_repeat);
+            if (writeEntropy != 0 && hufMetadata->hType == SymbolEncodingType_e.set_compressed)
             {
                 memcpy(op, hufMetadata->hufDesBuffer, (uint)hufMetadata->hufDesSize);
                 op += hufMetadata->hufDesSize;
@@ -107,14 +107,14 @@ namespace ZstdSharp.Unsafe
             return (nuint)(op - ostart);
         }
 
-        private static nuint ZSTD_seqDecompressedSize(seqStore_t* seqStore, seqDef_s* sequences, nuint nbSeqs, nuint litSize, int lastSubBlock)
+        private static nuint ZSTD_seqDecompressedSize(SeqStore_t* seqStore, SeqDef_s* sequences, nuint nbSeqs, nuint litSize, int lastSubBlock)
         {
             nuint matchLengthSum = 0;
             nuint litLengthSum = 0;
             nuint n;
             for (n = 0; n < nbSeqs; n++)
             {
-                ZSTD_sequenceLength seqLen = ZSTD_getSequenceLength(seqStore, sequences + n);
+                ZSTD_SequenceLength seqLen = ZSTD_getSequenceLength(seqStore, sequences + n);
                 litLengthSum += seqLen.litLength;
                 matchLengthSum += seqLen.matchLength;
             }
@@ -136,7 +136,7 @@ namespace ZstdSharp.Unsafe
          *  @return : compressed size of sequences section of a sub-block
          *            Or 0 if it is unable to compress
          *            Or error code. */
-        private static nuint ZSTD_compressSubBlock_sequences(ZSTD_fseCTables_t* fseTables, ZSTD_fseCTablesMetadata_t* fseMetadata, seqDef_s* sequences, nuint nbSeq, byte* llCode, byte* mlCode, byte* ofCode, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, int bmi2, int writeEntropy, int* entropyWritten)
+        private static nuint ZSTD_compressSubBlock_sequences(ZSTD_fseCTables_t* fseTables, ZSTD_fseCTablesMetadata_t* fseMetadata, SeqDef_s* sequences, nuint nbSeq, byte* llCode, byte* mlCode, byte* ofCode, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, int bmi2, int writeEntropy, int* entropyWritten)
         {
             int longOffsets = cctxParams->cParams.windowLog > (uint)(MEM_32bits ? 25 : 57) ? 1 : 0;
             byte* ostart = (byte*)dst;
@@ -181,7 +181,7 @@ namespace ZstdSharp.Unsafe
             }
             else
             {
-                uint repeat = (uint)symbolEncodingType_e.set_repeat;
+                uint repeat = (uint)SymbolEncodingType_e.set_repeat;
                 *seqHead = (byte)((repeat << 6) + (repeat << 4) + (repeat << 2));
             }
 
@@ -216,7 +216,7 @@ namespace ZstdSharp.Unsafe
          *  Compresses a single sub-block.
          *  @return : compressed size of the sub-block
          *            Or 0 if it failed to compress. */
-        private static nuint ZSTD_compressSubBlock(ZSTD_entropyCTables_t* entropy, ZSTD_entropyCTablesMetadata_t* entropyMetadata, seqDef_s* sequences, nuint nbSeq, byte* literals, nuint litSize, byte* llCode, byte* mlCode, byte* ofCode, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, int bmi2, int writeLitEntropy, int writeSeqEntropy, int* litEntropyWritten, int* seqEntropyWritten, uint lastBlock)
+        private static nuint ZSTD_compressSubBlock(ZSTD_entropyCTables_t* entropy, ZSTD_entropyCTablesMetadata_t* entropyMetadata, SeqDef_s* sequences, nuint nbSeq, byte* literals, nuint litSize, byte* llCode, byte* mlCode, byte* ofCode, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, int bmi2, int writeLitEntropy, int writeSeqEntropy, int* litEntropyWritten, int* seqEntropyWritten, uint lastBlock)
         {
             byte* ostart = (byte*)dst;
             byte* oend = ostart + dstCapacity;
@@ -266,11 +266,11 @@ namespace ZstdSharp.Unsafe
             uint maxSymbolValue = 255;
             /* Use hard coded size of 3 bytes */
             nuint literalSectionHeaderSize = 3;
-            if (hufMetadata->hType == symbolEncodingType_e.set_basic)
+            if (hufMetadata->hType == SymbolEncodingType_e.set_basic)
                 return litSize;
-            else if (hufMetadata->hType == symbolEncodingType_e.set_rle)
+            else if (hufMetadata->hType == SymbolEncodingType_e.set_rle)
                 return 1;
-            else if (hufMetadata->hType == symbolEncodingType_e.set_compressed || hufMetadata->hType == symbolEncodingType_e.set_repeat)
+            else if (hufMetadata->hType == SymbolEncodingType_e.set_compressed || hufMetadata->hType == SymbolEncodingType_e.set_repeat)
             {
                 nuint largest = HIST_count_wksp(countWksp, &maxSymbolValue, literals, litSize, workspace, wkspSize);
                 if (ERR_isError(largest))
@@ -287,7 +287,7 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
-        private static nuint ZSTD_estimateSubBlockSize_symbolType(symbolEncodingType_e type, byte* codeTable, uint maxCode, nuint nbSeq, uint* fseCTable, byte* additionalBits, short* defaultNorm, uint defaultNormLog, uint defaultMax, void* workspace, nuint wkspSize)
+        private static nuint ZSTD_estimateSubBlockSize_symbolType(SymbolEncodingType_e type, byte* codeTable, uint maxCode, nuint nbSeq, uint* fseCTable, byte* additionalBits, short* defaultNorm, uint defaultNormLog, uint defaultMax, void* workspace, nuint wkspSize)
         {
             uint* countWksp = (uint*)workspace;
             byte* ctp = codeTable;
@@ -296,16 +296,16 @@ namespace ZstdSharp.Unsafe
             nuint cSymbolTypeSizeEstimateInBits = 0;
             uint max = maxCode;
             HIST_countFast_wksp(countWksp, &max, codeTable, nbSeq, workspace, wkspSize);
-            if (type == symbolEncodingType_e.set_basic)
+            if (type == SymbolEncodingType_e.set_basic)
             {
                 assert(max <= defaultMax);
                 cSymbolTypeSizeEstimateInBits = max <= defaultMax ? ZSTD_crossEntropyCost(defaultNorm, defaultNormLog, countWksp, max) : unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC));
             }
-            else if (type == symbolEncodingType_e.set_rle)
+            else if (type == SymbolEncodingType_e.set_rle)
             {
                 cSymbolTypeSizeEstimateInBits = 0;
             }
-            else if (type == symbolEncodingType_e.set_compressed || type == symbolEncodingType_e.set_repeat)
+            else if (type == SymbolEncodingType_e.set_compressed || type == SymbolEncodingType_e.set_repeat)
             {
                 cSymbolTypeSizeEstimateInBits = ZSTD_fseBitCost(fseCTable, countWksp, max);
             }
@@ -350,16 +350,16 @@ namespace ZstdSharp.Unsafe
 
         private static int ZSTD_needSequenceEntropyTables(ZSTD_fseCTablesMetadata_t* fseMetadata)
         {
-            if (fseMetadata->llType == symbolEncodingType_e.set_compressed || fseMetadata->llType == symbolEncodingType_e.set_rle)
+            if (fseMetadata->llType == SymbolEncodingType_e.set_compressed || fseMetadata->llType == SymbolEncodingType_e.set_rle)
                 return 1;
-            if (fseMetadata->mlType == symbolEncodingType_e.set_compressed || fseMetadata->mlType == symbolEncodingType_e.set_rle)
+            if (fseMetadata->mlType == SymbolEncodingType_e.set_compressed || fseMetadata->mlType == SymbolEncodingType_e.set_rle)
                 return 1;
-            if (fseMetadata->ofType == symbolEncodingType_e.set_compressed || fseMetadata->ofType == symbolEncodingType_e.set_rle)
+            if (fseMetadata->ofType == SymbolEncodingType_e.set_compressed || fseMetadata->ofType == SymbolEncodingType_e.set_rle)
                 return 1;
             return 0;
         }
 
-        private static nuint countLiterals(seqStore_t* seqStore, seqDef_s* sp, nuint seqCount)
+        private static nuint countLiterals(SeqStore_t* seqStore, SeqDef_s* sp, nuint seqCount)
         {
             nuint n, total = 0;
             assert(sp != null);
@@ -371,7 +371,7 @@ namespace ZstdSharp.Unsafe
             return total;
         }
 
-        private static nuint sizeBlockSequences(seqDef_s* sp, nuint nbSeqs, nuint targetBudget, nuint avgLitCost, nuint avgSeqCost, int firstSubBlock)
+        private static nuint sizeBlockSequences(SeqDef_s* sp, nuint nbSeqs, nuint targetBudget, nuint avgLitCost, nuint avgSeqCost, int firstSubBlock)
         {
             nuint n, budget = 0, inSize = 0;
             /* generous estimate */
@@ -401,12 +401,12 @@ namespace ZstdSharp.Unsafe
          *  Sub-blocks are all compressed, except the last one when beneficial.
          *  @return : compressed size of the super block (which features multiple ZSTD blocks)
          *            or 0 if it failed to compress. */
-        private static nuint ZSTD_compressSubBlock_multi(seqStore_t* seqStorePtr, ZSTD_compressedBlockState_t* prevCBlock, ZSTD_compressedBlockState_t* nextCBlock, ZSTD_entropyCTablesMetadata_t* entropyMetadata, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, void* src, nuint srcSize, int bmi2, uint lastBlock, void* workspace, nuint wkspSize)
+        private static nuint ZSTD_compressSubBlock_multi(SeqStore_t* seqStorePtr, ZSTD_compressedBlockState_t* prevCBlock, ZSTD_compressedBlockState_t* nextCBlock, ZSTD_entropyCTablesMetadata_t* entropyMetadata, ZSTD_CCtx_params_s* cctxParams, void* dst, nuint dstCapacity, void* src, nuint srcSize, int bmi2, uint lastBlock, void* workspace, nuint wkspSize)
         {
-            seqDef_s* sstart = seqStorePtr->sequencesStart;
-            seqDef_s* send = seqStorePtr->sequences;
+            SeqDef_s* sstart = seqStorePtr->sequencesStart;
+            SeqDef_s* send = seqStorePtr->sequences;
             /* tracks progresses within seqStorePtr->sequences */
-            seqDef_s* sp = sstart;
+            SeqDef_s* sp = sstart;
             nuint nbSeqs = (nuint)(send - sstart);
             byte* lstart = seqStorePtr->litStart;
             byte* lend = seqStorePtr->lit;
@@ -423,7 +423,7 @@ namespace ZstdSharp.Unsafe
             /* enforce minimum size, to reduce undesirable side effects */
             const nuint minTarget = 1340;
             nuint targetCBlockSize = minTarget > cctxParams->targetCBlockSize ? minTarget : cctxParams->targetCBlockSize;
-            int writeLitEntropy = entropyMetadata->hufMetadata.hType == symbolEncodingType_e.set_compressed ? 1 : 0;
+            int writeLitEntropy = entropyMetadata->hufMetadata.hType == SymbolEncodingType_e.set_compressed ? 1 : 0;
             int writeSeqEntropy = 1;
             if (nbSeqs > 0)
             {
@@ -550,7 +550,7 @@ namespace ZstdSharp.Unsafe
                 op += cSize;
                 if (sp < send)
                 {
-                    seqDef_s* seq;
+                    SeqDef_s* seq;
                     repcodes_s rep;
                     memcpy(&rep, prevCBlock->rep, (uint)sizeof(repcodes_s));
                     for (seq = sstart; seq < sp; ++seq)
@@ -572,14 +572,14 @@ namespace ZstdSharp.Unsafe
         {
             ZSTD_entropyCTablesMetadata_t entropyMetadata;
             {
-                nuint err_code = ZSTD_buildBlockEntropyStats(&zc->seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, &entropyMetadata, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * (52 + 2));
+                nuint err_code = ZSTD_buildBlockEntropyStats(&zc->seqStore, &zc->blockState.prevCBlock->entropy, &zc->blockState.nextCBlock->entropy, &zc->appliedParams, &entropyMetadata, zc->tmpWorkspace, zc->tmpWkspSize);
                 if (ERR_isError(err_code))
                 {
                     return err_code;
                 }
             }
 
-            return ZSTD_compressSubBlock_multi(&zc->seqStore, zc->blockState.prevCBlock, zc->blockState.nextCBlock, &entropyMetadata, &zc->appliedParams, dst, dstCapacity, src, srcSize, zc->bmi2, lastBlock, zc->entropyWorkspace, (8 << 10) + 512 + sizeof(uint) * (52 + 2));
+            return ZSTD_compressSubBlock_multi(&zc->seqStore, zc->blockState.prevCBlock, zc->blockState.nextCBlock, &entropyMetadata, &zc->appliedParams, dst, dstCapacity, src, srcSize, zc->bmi2, lastBlock, zc->tmpWorkspace, zc->tmpWkspSize);
         }
     }
 }

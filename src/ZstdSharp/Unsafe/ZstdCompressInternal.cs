@@ -7,7 +7,33 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        private static readonly rawSeqStore_t kNullRawSeqStore = new rawSeqStore_t(seq: null, pos: 0, posInSequence: 0, size: 0, capacity: 0);
+        /**
+         * Returns the ZSTD_SequenceLength for the given sequences. It handles the decoding of long sequences
+         * indicated by longLengthPos and longLengthType, and adds MINMATCH back to matchLength.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ZSTD_SequenceLength ZSTD_getSequenceLength(SeqStore_t* seqStore, SeqDef_s* seq)
+        {
+            ZSTD_SequenceLength seqLen;
+            seqLen.litLength = seq->litLength;
+            seqLen.matchLength = (uint)(seq->mlBase + 3);
+            if (seqStore->longLengthPos == (uint)(seq - seqStore->sequencesStart))
+            {
+                if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_literalLength)
+                {
+                    seqLen.litLength += 0x10000;
+                }
+
+                if (seqStore->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_matchLength)
+                {
+                    seqLen.matchLength += 0x10000;
+                }
+            }
+
+            return seqLen;
+        }
+
+        private static readonly RawSeqStore_t kNullRawSeqStore = new RawSeqStore_t(seq: null, pos: 0, posInSequence: 0, size: 0, capacity: 0);
 #if NET7_0_OR_GREATER
         private static ReadOnlySpan<byte> Span_LL_Code => new byte[64]
         {
@@ -251,6 +277,15 @@ namespace ZstdSharp.Unsafe
             return 1;
         }
 
+        /* ZSTD_selectAddr:
+         * @return index >= lowLimit ? candidate : backup,
+         * tries to force branchless codegen. */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte* ZSTD_selectAddr(uint index, uint lowLimit, byte* candidate, byte* backup)
+        {
+            return index >= lowLimit ? candidate : backup;
+        }
+
         /* ZSTD_noCompressBlock() :
          * Writes uncompressed block to dst buffer from given src.
          * Returns the size of the block */
@@ -331,15 +366,52 @@ namespace ZstdSharp.Unsafe
                 *op++ = *ip++;
         }
 
+        /*! ZSTD_storeSeqOnly() :
+         *  Store a sequence (litlen, litPtr, offBase and matchLength) into SeqStore_t.
+         *  Literals themselves are not copied, but @litPtr is updated.
+         *  @offBase : Users should employ macros REPCODE_TO_OFFBASE() and OFFSET_TO_OFFBASE().
+         *  @matchLength : must be >= MINMATCH
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ZSTD_storeSeqOnly(SeqStore_t* seqStorePtr, nuint litLength, uint offBase, nuint matchLength)
+        {
+            assert((nuint)(seqStorePtr->sequences - seqStorePtr->sequencesStart) < seqStorePtr->maxNbSeq);
+            assert(litLength <= 1 << 17);
+            if (litLength > 0xFFFF)
+            {
+                assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
+                seqStorePtr->longLengthType = ZSTD_longLengthType_e.ZSTD_llt_literalLength;
+                seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
+            }
+
+            seqStorePtr->sequences[0].litLength = (ushort)litLength;
+            seqStorePtr->sequences[0].offBase = offBase;
+            assert(matchLength <= 1 << 17);
+            assert(matchLength >= 3);
+            {
+                nuint mlBase = matchLength - 3;
+                if (mlBase > 0xFFFF)
+                {
+                    assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
+                    seqStorePtr->longLengthType = ZSTD_longLengthType_e.ZSTD_llt_matchLength;
+                    seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
+                }
+
+                seqStorePtr->sequences[0].mlBase = (ushort)mlBase;
+            }
+
+            seqStorePtr->sequences++;
+        }
+
         /*! ZSTD_storeSeq() :
-         *  Store a sequence (litlen, litPtr, offBase and matchLength) into seqStore_t.
+         *  Store a sequence (litlen, litPtr, offBase and matchLength) into SeqStore_t.
          *  @offBase : Users should employ macros REPCODE_TO_OFFBASE() and OFFSET_TO_OFFBASE().
          *  @matchLength : must be >= MINMATCH
          *  Allowed to over-read literals up to litLimit.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static void ZSTD_storeSeq(seqStore_t* seqStorePtr, nuint litLength, byte* literals, byte* litLimit, uint offBase, nuint matchLength)
+        private static void ZSTD_storeSeq(SeqStore_t* seqStorePtr, nuint litLength, byte* literals, byte* litLimit, uint offBase, nuint matchLength)
         {
             byte* litLimit_w = litLimit - 32;
             byte* litEnd = literals + litLength;
@@ -361,29 +433,7 @@ namespace ZstdSharp.Unsafe
             }
 
             seqStorePtr->lit += litLength;
-            if (litLength > 0xFFFF)
-            {
-                assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
-                seqStorePtr->longLengthType = ZSTD_longLengthType_e.ZSTD_llt_literalLength;
-                seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
-            }
-
-            seqStorePtr->sequences[0].litLength = (ushort)litLength;
-            seqStorePtr->sequences[0].offBase = offBase;
-            assert(matchLength >= 3);
-            {
-                nuint mlBase = matchLength - 3;
-                if (mlBase > 0xFFFF)
-                {
-                    assert(seqStorePtr->longLengthType == ZSTD_longLengthType_e.ZSTD_llt_none);
-                    seqStorePtr->longLengthType = ZSTD_longLengthType_e.ZSTD_llt_matchLength;
-                    seqStorePtr->longLengthPos = (uint)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
-                }
-
-                seqStorePtr->sequences[0].mlBase = (ushort)mlBase;
-            }
-
-            seqStorePtr->sequences++;
+            ZSTD_storeSeqOnly(seqStorePtr, litLength, offBase, matchLength);
         }
 
         /* ZSTD_updateRep() :
@@ -737,7 +787,7 @@ namespace ZstdSharp.Unsafe
          * passed to the compressor.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ZSTD_dictMode_e ZSTD_matchState_dictMode(ZSTD_matchState_t* ms)
+        private static ZSTD_dictMode_e ZSTD_matchState_dictMode(ZSTD_MatchState_t* ms)
         {
             return ZSTD_window_hasExtDict(ms->window) != 0 ? ZSTD_dictMode_e.ZSTD_extDict : ms->dictMatchState != null ? ms->dictMatchState->dedicatedDictSearch != 0 ? ZSTD_dictMode_e.ZSTD_dedicatedDictSearch : ZSTD_dictMode_e.ZSTD_dictMatchState : ZSTD_dictMode_e.ZSTD_noDict;
         }
@@ -777,7 +827,7 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_window_needOverflowCorrection(ZSTD_window_t window, uint cycleLog, uint maxDist, uint loadedDictEnd, void* src, void* srcEnd)
         {
             uint curr = (uint)((byte*)srcEnd - window.@base);
-            return curr > (3U << 29) + (1U << (sizeof(nuint) == 4 ? 30 : 31)) ? 1U : 0U;
+            return curr > (MEM_64bits ? 3500U * (1 << 20) : 2000U * (1 << 20)) ? 1U : 0U;
         }
 
         /**
@@ -878,7 +928,7 @@ namespace ZstdSharp.Unsafe
          * forceWindow and dictMatchState are therefore incompatible.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ZSTD_window_enforceMaxDist(ZSTD_window_t* window, void* blockEnd, uint maxDist, uint* loadedDictEndPtr, ZSTD_matchState_t** dictMatchStatePtr)
+        private static void ZSTD_window_enforceMaxDist(ZSTD_window_t* window, void* blockEnd, uint maxDist, uint* loadedDictEndPtr, ZSTD_MatchState_t** dictMatchStatePtr)
         {
             uint blockEndIdx = (uint)((byte*)blockEnd - window->@base);
             uint loadedDictEnd = loadedDictEndPtr != null ? *loadedDictEndPtr : 0;
@@ -906,7 +956,7 @@ namespace ZstdSharp.Unsafe
          *              loadedDictEnd uses same referential as window->base
          *              maxDist is the window size */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ZSTD_checkDictValidity(ZSTD_window_t* window, void* blockEnd, uint maxDist, uint* loadedDictEndPtr, ZSTD_matchState_t** dictMatchStatePtr)
+        private static void ZSTD_checkDictValidity(ZSTD_window_t* window, void* blockEnd, uint maxDist, uint* loadedDictEndPtr, ZSTD_MatchState_t** dictMatchStatePtr)
         {
             assert(loadedDictEndPtr != null);
             assert(dictMatchStatePtr != null);
@@ -980,8 +1030,9 @@ namespace ZstdSharp.Unsafe
             window->nextSrc = ip + srcSize;
             if (ip + srcSize > window->dictBase + window->lowLimit && ip < window->dictBase + window->dictLimit)
             {
-                nint highInputIdx = (nint)(ip + srcSize - window->dictBase);
-                uint lowLimitMax = highInputIdx > (nint)window->dictLimit ? window->dictLimit : (uint)highInputIdx;
+                nuint highInputIdx = (nuint)(ip + srcSize - window->dictBase);
+                uint lowLimitMax = highInputIdx > window->dictLimit ? window->dictLimit : (uint)highInputIdx;
+                assert(highInputIdx < 0xffffffff);
                 window->lowLimit = lowLimitMax;
             }
 
@@ -992,7 +1043,7 @@ namespace ZstdSharp.Unsafe
          * Returns the lowest allowed match index. It may either be in the ext-dict or the prefix.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_getLowestMatchIndex(ZSTD_matchState_t* ms, uint curr, uint windowLog)
+        private static uint ZSTD_getLowestMatchIndex(ZSTD_MatchState_t* ms, uint curr, uint windowLog)
         {
             uint maxDistance = 1U << (int)windowLog;
             uint lowestValid = ms->window.lowLimit;
@@ -1010,7 +1061,7 @@ namespace ZstdSharp.Unsafe
          * Returns the lowest allowed match index in the prefix.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ZSTD_getLowestPrefixIndex(ZSTD_matchState_t* ms, uint curr, uint windowLog)
+        private static uint ZSTD_getLowestPrefixIndex(ZSTD_MatchState_t* ms, uint curr, uint windowLog)
         {
             uint maxDistance = 1U << (int)windowLog;
             uint lowestValid = ms->window.dictLimit;
@@ -1021,6 +1072,16 @@ namespace ZstdSharp.Unsafe
              */
             uint matchLowest = isDictionary != 0 ? lowestValid : withinWindow;
             return matchLowest;
+        }
+
+        /* index_safety_check:
+         * intentional underflow : ensure repIndex isn't overlapping dict + prefix
+         * @return 1 if values are not overlapping,
+         * 0 otherwise */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_index_overlap_check(uint prefixLowestIndex, uint repIndex)
+        {
+            return prefixLowestIndex - 1 - repIndex >= 3 ? 1 : 0;
         }
 
         /* Helper function for ZSTD_fillHashTable and ZSTD_fillDoubleHashTable.

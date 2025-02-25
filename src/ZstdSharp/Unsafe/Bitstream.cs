@@ -158,7 +158,7 @@ namespace ZstdSharp.Unsafe
             BIT_flushBits(bitC);
             if (bitC->ptr >= bitC->endPtr)
                 return 0;
-            return (nuint)(bitC->ptr - bitC->startPtr + (bitC->bitPos > 0 ? 1 : 0));
+            return (nuint)(bitC->ptr - bitC->startPtr) + (nuint)(bitC->bitPos > 0 ? 1 : 0);
         }
 
         /*-********************************************************

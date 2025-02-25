@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public unsafe struct serialState_t
+    public unsafe struct SerialState
     {
         /* All variables in the struct are protected by mutex. */
         public void* mutex;

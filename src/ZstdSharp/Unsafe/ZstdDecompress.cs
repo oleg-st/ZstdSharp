@@ -441,8 +441,10 @@ namespace ZstdSharp.Unsafe
                         return 8;
                     *zfhPtr = new ZSTD_frameHeader
                     {
-                        frameContentSize = MEM_readLE32((sbyte*)src + 4),
-                        frameType = ZSTD_frameType_e.ZSTD_skippableFrame
+                        frameType = ZSTD_frameType_e.ZSTD_skippableFrame,
+                        dictID = MEM_readLE32(src) - 0x184D2A50,
+                        headerSize = 8,
+                        frameContentSize = MEM_readLE32((sbyte*)src + 4)
                     };
                     return 0;
                 }
@@ -813,7 +815,7 @@ namespace ZstdSharp.Unsafe
 
         /** ZSTD_decompressBound() :
          *  compatible with legacy mode
-         *  `src` must point to the start of a ZSTD frame or a skippeable frame
+         *  `src` must point to the start of a ZSTD frame or a skippable frame
          *  `srcSize` must be at least as large as the frame contained
          *  @return : the maximum decompressed size of the compressed source
          */
@@ -946,7 +948,7 @@ namespace ZstdSharp.Unsafe
             return regenSize;
         }
 
-        private static void ZSTD_DCtx_trace_end(ZSTD_DCtx_s* dctx, ulong uncompressedSize, ulong compressedSize, uint streaming)
+        private static void ZSTD_DCtx_trace_end(ZSTD_DCtx_s* dctx, ulong uncompressedSize, ulong compressedSize, int streaming)
         {
         }
 
@@ -1210,11 +1212,14 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! ZSTD_decompress() :
-         *  `compressedSize` : must be the _exact_ size of some number of compressed and/or skippable frames.
-         *  `dstCapacity` is an upper bound of originalSize to regenerate.
-         *  If user cannot imply a maximum upper bound, it's better to use streaming mode to decompress data.
-         *  @return : the number of bytes decompressed into `dst` (<= `dstCapacity`),
-         *            or an errorCode if it fails (which can be tested using ZSTD_isError()). */
+         * `compressedSize` : must be the _exact_ size of some number of compressed and/or skippable frames.
+         *  Multiple compressed frames can be decompressed at once with this method.
+         *  The result will be the concatenation of all decompressed frames, back to back.
+         * `dstCapacity` is an upper bound of originalSize to regenerate.
+         *  First frame's decompressed size can be extracted using ZSTD_getFrameContentSize().
+         *  If maximum upper bound isn't known, prefer using streaming mode to decompress data.
+         * @return : the number of bytes decompressed into `dst` (<= `dstCapacity`),
+         *           or an errorCode if it fails (which can be tested using ZSTD_isError()). */
         public static nuint ZSTD_decompress(void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
             nuint regenSize;
@@ -2476,9 +2481,10 @@ namespace ZstdSharp.Unsafe
          * Function will update both input and output `pos` fields exposing current state via these fields:
          * - `input.pos < input.size`, some input remaining and caller should provide remaining input
          *   on the next call.
-         * - `output.pos < output.size`, decoder finished and flushed all remaining buffers.
-         * - `output.pos == output.size`, potentially uncflushed data present in the internal buffers,
-         *   call ZSTD_decompressStream() again to flush remaining data to output.
+         * - `output.pos < output.size`, decoder flushed internal output buffer.
+         * - `output.pos == output.size`, unflushed data potentially present in the internal buffers,
+         *   check ZSTD_decompressStream() @return value,
+         *   if > 0, invoke it again to flush remaining data to output.
          * Note : with no additional input, amount of data flushed <= ZSTD_BLOCKSIZE_MAX.
          *
          * @return : 0 when a frame is completely decoded and fully flushed,
@@ -2502,6 +2508,7 @@ namespace ZstdSharp.Unsafe
             sbyte* oend = output->size != 0 ? dst + output->size : dst;
             sbyte* op = ostart;
             uint someMoreWork = 1;
+            assert(zds != null);
             if (input->pos > input->size)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));

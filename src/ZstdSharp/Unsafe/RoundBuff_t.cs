@@ -1,6 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
-    public unsafe struct roundBuff_t
+    public unsafe struct RoundBuff_t
     {
         /* The round input buffer. All jobs get references
          * to pieces of the buffer. ZSTDMT_tryGetInputRange()
@@ -16,7 +16,7 @@ namespace ZstdSharp.Unsafe
          * pos <= capacity.
          */
         public nuint pos;
-        public roundBuff_t(byte* buffer, nuint capacity, nuint pos)
+        public RoundBuff_t(byte* buffer, nuint capacity, nuint pos)
         {
             this.buffer = buffer;
             this.capacity = capacity;
