@@ -566,66 +566,73 @@ namespace ZstdSharp.Unsafe
             byte* iend = istart + srcSize;
             byte* ip = iend;
             BIT_CStream_t bitC;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out bitC);
             FSE_CState_t CState1, CState2;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out CState1);
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out CState2);
             if (srcSize <= 2)
                 return 0;
             {
-                nuint initError = BIT_initCStream(&bitC, dst, dstSize);
+                nuint initError = BIT_initCStream(ref bitC, dst, dstSize);
                 if (ERR_isError(initError))
                     return 0;
             }
 
+            nuint bitC_bitContainer = bitC.bitContainer;
+            uint bitC_bitPos = bitC.bitPos;
+            sbyte* bitC_ptr = bitC.ptr;
+            sbyte* bitC_endPtr = bitC.endPtr;
             if ((srcSize & 1) != 0)
             {
-                FSE_initCState2(&CState1, ct, *--ip);
-                FSE_initCState2(&CState2, ct, *--ip);
-                FSE_encodeSymbol(&bitC, &CState1, *--ip);
+                FSE_initCState2(ref CState1, ct, *--ip);
+                FSE_initCState2(ref CState2, ct, *--ip);
+                FSE_encodeSymbol(ref bitC_bitContainer, ref bitC_bitPos, ref CState1, *--ip);
                 if (fast != 0)
-                    BIT_flushBitsFast(&bitC);
+                    BIT_flushBitsFast(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr);
                 else
-                    BIT_flushBits(&bitC);
+                    BIT_flushBits(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr);
             }
             else
             {
-                FSE_initCState2(&CState2, ct, *--ip);
-                FSE_initCState2(&CState1, ct, *--ip);
+                FSE_initCState2(ref CState2, ct, *--ip);
+                FSE_initCState2(ref CState1, ct, *--ip);
             }
 
             srcSize -= 2;
             if (sizeof(nuint) * 8 > (14 - 2) * 4 + 7 && (srcSize & 2) != 0)
             {
-                FSE_encodeSymbol(&bitC, &CState2, *--ip);
-                FSE_encodeSymbol(&bitC, &CState1, *--ip);
+                FSE_encodeSymbol(ref bitC_bitContainer, ref bitC_bitPos, ref CState2, *--ip);
+                FSE_encodeSymbol(ref bitC_bitContainer, ref bitC_bitPos, ref CState1, *--ip);
                 if (fast != 0)
-                    BIT_flushBitsFast(&bitC);
+                    BIT_flushBitsFast(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr);
                 else
-                    BIT_flushBits(&bitC);
+                    BIT_flushBits(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr);
             }
 
             while (ip > istart)
             {
-                FSE_encodeSymbol(&bitC, &CState2, *--ip);
+                FSE_encodeSymbol(ref bitC_bitContainer, ref bitC_bitPos, ref CState2, *--ip);
                 if (sizeof(nuint) * 8 < (14 - 2) * 2 + 7)
                     if (fast != 0)
-                        BIT_flushBitsFast(&bitC);
+                        BIT_flushBitsFast(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr);
                     else
-                        BIT_flushBits(&bitC);
-                FSE_encodeSymbol(&bitC, &CState1, *--ip);
+                        BIT_flushBits(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr);
+                FSE_encodeSymbol(ref bitC_bitContainer, ref bitC_bitPos, ref CState1, *--ip);
                 if (sizeof(nuint) * 8 > (14 - 2) * 4 + 7)
                 {
-                    FSE_encodeSymbol(&bitC, &CState2, *--ip);
-                    FSE_encodeSymbol(&bitC, &CState1, *--ip);
+                    FSE_encodeSymbol(ref bitC_bitContainer, ref bitC_bitPos, ref CState2, *--ip);
+                    FSE_encodeSymbol(ref bitC_bitContainer, ref bitC_bitPos, ref CState1, *--ip);
                 }
 
                 if (fast != 0)
-                    BIT_flushBitsFast(&bitC);
+                    BIT_flushBitsFast(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr);
                 else
-                    BIT_flushBits(&bitC);
+                    BIT_flushBits(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr);
             }
 
-            FSE_flushCState(&bitC, &CState2);
-            FSE_flushCState(&bitC, &CState1);
-            return BIT_closeCStream(&bitC);
+            FSE_flushCState(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr, ref CState2);
+            FSE_flushCState(ref bitC_bitContainer, ref bitC_bitPos, ref bitC_ptr, bitC_endPtr, ref CState1);
+            return BIT_closeCStream(ref bitC_bitContainer, ref bitC_bitPos, bitC_ptr, bitC_endPtr, bitC.startPtr);
         }
 
         /*! FSE_compress_usingCTable():

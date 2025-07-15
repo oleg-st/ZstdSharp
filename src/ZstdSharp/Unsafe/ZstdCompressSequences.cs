@@ -549,41 +549,49 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_encodeSequences_body(void* dst, nuint dstCapacity, uint* CTable_MatchLength, byte* mlCodeTable, uint* CTable_OffsetBits, byte* ofCodeTable, uint* CTable_LitLength, byte* llCodeTable, SeqDef_s* sequences, nuint nbSeq, int longOffsets)
         {
             BIT_CStream_t blockStream;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out blockStream);
             FSE_CState_t stateMatchLength;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out stateMatchLength);
             FSE_CState_t stateOffsetBits;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out stateOffsetBits);
             FSE_CState_t stateLitLength;
-            if (ERR_isError(BIT_initCStream(&blockStream, dst, dstCapacity)))
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out stateLitLength);
+            if (ERR_isError(BIT_initCStream(ref blockStream, dst, dstCapacity)))
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
             }
 
-            FSE_initCState2(&stateMatchLength, CTable_MatchLength, mlCodeTable[nbSeq - 1]);
-            FSE_initCState2(&stateOffsetBits, CTable_OffsetBits, ofCodeTable[nbSeq - 1]);
-            FSE_initCState2(&stateLitLength, CTable_LitLength, llCodeTable[nbSeq - 1]);
-            BIT_addBits(&blockStream, sequences[nbSeq - 1].litLength, LL_bits[llCodeTable[nbSeq - 1]]);
+            nuint blockStream_bitContainer = blockStream.bitContainer;
+            uint blockStream_bitPos = blockStream.bitPos;
+            sbyte* blockStream_ptr = blockStream.ptr;
+            sbyte* blockStream_endPtr = blockStream.endPtr;
+            FSE_initCState2(ref stateMatchLength, CTable_MatchLength, mlCodeTable[nbSeq - 1]);
+            FSE_initCState2(ref stateOffsetBits, CTable_OffsetBits, ofCodeTable[nbSeq - 1]);
+            FSE_initCState2(ref stateLitLength, CTable_LitLength, llCodeTable[nbSeq - 1]);
+            BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[nbSeq - 1].litLength, LL_bits[llCodeTable[nbSeq - 1]]);
             if (MEM_32bits)
-                BIT_flushBits(&blockStream);
-            BIT_addBits(&blockStream, sequences[nbSeq - 1].mlBase, ML_bits[mlCodeTable[nbSeq - 1]]);
+                BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
+            BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[nbSeq - 1].mlBase, ML_bits[mlCodeTable[nbSeq - 1]]);
             if (MEM_32bits)
-                BIT_flushBits(&blockStream);
+                BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
             if (longOffsets != 0)
             {
                 uint ofBits = ofCodeTable[nbSeq - 1];
                 uint extraBits = ofBits - (ofBits < (uint)(MEM_32bits ? 25 : 57) - 1 ? ofBits : (uint)(MEM_32bits ? 25 : 57) - 1);
                 if (extraBits != 0)
                 {
-                    BIT_addBits(&blockStream, sequences[nbSeq - 1].offBase, extraBits);
-                    BIT_flushBits(&blockStream);
+                    BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[nbSeq - 1].offBase, extraBits);
+                    BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
                 }
 
-                BIT_addBits(&blockStream, sequences[nbSeq - 1].offBase >> (int)extraBits, ofBits - extraBits);
+                BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[nbSeq - 1].offBase >> (int)extraBits, ofBits - extraBits);
             }
             else
             {
-                BIT_addBits(&blockStream, sequences[nbSeq - 1].offBase, ofCodeTable[nbSeq - 1]);
+                BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[nbSeq - 1].offBase, ofCodeTable[nbSeq - 1]);
             }
 
-            BIT_flushBits(&blockStream);
+            BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
             {
                 nuint n;
                 for (n = nbSeq - 2; n < nbSeq; n--)
@@ -594,44 +602,44 @@ namespace ZstdSharp.Unsafe
                     uint llBits = LL_bits[llCode];
                     uint ofBits = ofCode;
                     uint mlBits = ML_bits[mlCode];
-                    FSE_encodeSymbol(&blockStream, &stateOffsetBits, ofCode);
-                    FSE_encodeSymbol(&blockStream, &stateMatchLength, mlCode);
+                    FSE_encodeSymbol(ref blockStream_bitContainer, ref blockStream_bitPos, ref stateOffsetBits, ofCode);
+                    FSE_encodeSymbol(ref blockStream_bitContainer, ref blockStream_bitPos, ref stateMatchLength, mlCode);
                     if (MEM_32bits)
-                        BIT_flushBits(&blockStream);
-                    FSE_encodeSymbol(&blockStream, &stateLitLength, llCode);
+                        BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
+                    FSE_encodeSymbol(ref blockStream_bitContainer, ref blockStream_bitPos, ref stateLitLength, llCode);
                     if (MEM_32bits || ofBits + mlBits + llBits >= 64 - 7 - (9 + 9 + 8))
-                        BIT_flushBits(&blockStream);
-                    BIT_addBits(&blockStream, sequences[n].litLength, llBits);
+                        BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
+                    BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[n].litLength, llBits);
                     if (MEM_32bits && llBits + mlBits > 24)
-                        BIT_flushBits(&blockStream);
-                    BIT_addBits(&blockStream, sequences[n].mlBase, mlBits);
+                        BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
+                    BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[n].mlBase, mlBits);
                     if (MEM_32bits || ofBits + mlBits + llBits > 56)
-                        BIT_flushBits(&blockStream);
+                        BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
                     if (longOffsets != 0)
                     {
                         uint extraBits = ofBits - (ofBits < (uint)(MEM_32bits ? 25 : 57) - 1 ? ofBits : (uint)(MEM_32bits ? 25 : 57) - 1);
                         if (extraBits != 0)
                         {
-                            BIT_addBits(&blockStream, sequences[n].offBase, extraBits);
-                            BIT_flushBits(&blockStream);
+                            BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[n].offBase, extraBits);
+                            BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
                         }
 
-                        BIT_addBits(&blockStream, sequences[n].offBase >> (int)extraBits, ofBits - extraBits);
+                        BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[n].offBase >> (int)extraBits, ofBits - extraBits);
                     }
                     else
                     {
-                        BIT_addBits(&blockStream, sequences[n].offBase, ofBits);
+                        BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[n].offBase, ofBits);
                     }
 
-                    BIT_flushBits(&blockStream);
+                    BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
                 }
             }
 
-            FSE_flushCState(&blockStream, &stateMatchLength);
-            FSE_flushCState(&blockStream, &stateOffsetBits);
-            FSE_flushCState(&blockStream, &stateLitLength);
+            FSE_flushCState(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr, ref stateMatchLength);
+            FSE_flushCState(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr, ref stateOffsetBits);
+            FSE_flushCState(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr, ref stateLitLength);
             {
-                nuint streamSize = BIT_closeCStream(&blockStream);
+                nuint streamSize = BIT_closeCStream(ref blockStream_bitContainer, ref blockStream_bitPos, blockStream_ptr, blockStream_endPtr, blockStream.startPtr);
                 if (streamSize == 0)
                 {
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));

@@ -141,60 +141,70 @@ namespace ZstdSharp.Unsafe
             byte* omax = op + maxDstSize;
             byte* olimit = omax - 3;
             BIT_DStream_t bitD;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out bitD);
             FSE_DState_t state1;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out state1);
             FSE_DState_t state2;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out state2);
             {
                 /* Init */
-                nuint _var_err__ = BIT_initDStream(&bitD, cSrc, cSrcSize);
+                nuint _var_err__ = BIT_initDStream(ref bitD, cSrc, cSrcSize);
                 if (ERR_isError(_var_err__))
                     return _var_err__;
             }
 
-            FSE_initDState(&state1, &bitD, dt);
-            FSE_initDState(&state2, &bitD, dt);
-            if (BIT_reloadDStream(&bitD) == BIT_DStream_status.BIT_DStream_overflow)
+            FSE_initDState(ref state1, ref bitD, dt);
+            FSE_initDState(ref state2, ref bitD, dt);
+
+            var bitD_bitContainer = bitD.bitContainer;
+            var bitD_bitsConsumed = bitD.bitsConsumed;
+            var bitD_ptr = bitD.ptr;
+            var bitD_start = bitD.start;
+            var bitD_limitPtr = bitD.limitPtr;
+
+            if (BIT_reloadDStream(ref bitD_bitContainer, ref bitD_bitsConsumed, ref bitD_ptr, bitD_start, bitD_limitPtr) == BIT_DStream_status.BIT_DStream_overflow)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             }
 
-            for (; BIT_reloadDStream(&bitD) == BIT_DStream_status.BIT_DStream_unfinished && op < olimit; op += 4)
+            for (; BIT_reloadDStream(ref bitD_bitContainer, ref bitD_bitsConsumed, ref bitD_ptr, bitD_start, bitD_limitPtr) == BIT_DStream_status.BIT_DStream_unfinished && op < olimit; op += 4)
             {
-                op[0] = fast != 0 ? FSE_decodeSymbolFast(&state1, &bitD) : FSE_decodeSymbol(&state1, &bitD);
+                op[0] = fast != 0 ? FSE_decodeSymbolFast(ref state1, bitD_bitContainer, ref bitD_bitsConsumed) : FSE_decodeSymbol(ref state1, bitD_bitContainer, ref bitD_bitsConsumed);
                 if ((14 - 2) * 2 + 7 > sizeof(nuint) * 8)
-                    BIT_reloadDStream(&bitD);
-                op[1] = fast != 0 ? FSE_decodeSymbolFast(&state2, &bitD) : FSE_decodeSymbol(&state2, &bitD);
+                    BIT_reloadDStream(ref bitD_bitContainer, ref bitD_bitsConsumed, ref bitD_ptr, bitD_start, bitD_limitPtr);
+                op[1] = fast != 0 ? FSE_decodeSymbolFast(ref state2, bitD_bitContainer, ref bitD_bitsConsumed) : FSE_decodeSymbol(ref state2, bitD_bitContainer, ref bitD_bitsConsumed);
                 if ((14 - 2) * 4 + 7 > sizeof(nuint) * 8)
                 {
-                    if (BIT_reloadDStream(&bitD) > BIT_DStream_status.BIT_DStream_unfinished)
+                    if (BIT_reloadDStream(ref bitD_bitContainer, ref bitD_bitsConsumed, ref bitD_ptr, bitD_start, bitD_limitPtr) > BIT_DStream_status.BIT_DStream_unfinished)
                     {
                         op += 2;
                         break;
                     }
                 }
 
-                op[2] = fast != 0 ? FSE_decodeSymbolFast(&state1, &bitD) : FSE_decodeSymbol(&state1, &bitD);
+                op[2] = fast != 0 ? FSE_decodeSymbolFast(ref state1, bitD_bitContainer, ref bitD_bitsConsumed) : FSE_decodeSymbol(ref state1, bitD_bitContainer, ref bitD_bitsConsumed);
                 if ((14 - 2) * 2 + 7 > sizeof(nuint) * 8)
-                    BIT_reloadDStream(&bitD);
-                op[3] = fast != 0 ? FSE_decodeSymbolFast(&state2, &bitD) : FSE_decodeSymbol(&state2, &bitD);
+                    BIT_reloadDStream(ref bitD_bitContainer, ref bitD_bitsConsumed, ref bitD_ptr, bitD_start, bitD_limitPtr);
+                op[3] = fast != 0 ? FSE_decodeSymbolFast(ref state2, bitD_bitContainer, ref bitD_bitsConsumed) : FSE_decodeSymbol(ref state2, bitD_bitContainer, ref bitD_bitsConsumed);
             }
 
             while (true)
             {
                 if (op > omax - 2)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-                *op++ = fast != 0 ? FSE_decodeSymbolFast(&state1, &bitD) : FSE_decodeSymbol(&state1, &bitD);
-                if (BIT_reloadDStream(&bitD) == BIT_DStream_status.BIT_DStream_overflow)
+                *op++ = fast != 0 ? FSE_decodeSymbolFast(ref state1, bitD_bitContainer, ref bitD_bitsConsumed) : FSE_decodeSymbol(ref state1, bitD_bitContainer, ref bitD_bitsConsumed);
+                if (BIT_reloadDStream(ref bitD_bitContainer, ref bitD_bitsConsumed, ref bitD_ptr, bitD_start, bitD_limitPtr) == BIT_DStream_status.BIT_DStream_overflow)
                 {
-                    *op++ = fast != 0 ? FSE_decodeSymbolFast(&state2, &bitD) : FSE_decodeSymbol(&state2, &bitD);
+                    *op++ = fast != 0 ? FSE_decodeSymbolFast(ref state2, bitD_bitContainer, ref bitD_bitsConsumed) : FSE_decodeSymbol(ref state2, bitD_bitContainer, ref bitD_bitsConsumed);
                     break;
                 }
 
                 if (op > omax - 2)
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-                *op++ = fast != 0 ? FSE_decodeSymbolFast(&state2, &bitD) : FSE_decodeSymbol(&state2, &bitD);
-                if (BIT_reloadDStream(&bitD) == BIT_DStream_status.BIT_DStream_overflow)
+                *op++ = fast != 0 ? FSE_decodeSymbolFast(ref state2, bitD_bitContainer, ref bitD_bitsConsumed) : FSE_decodeSymbol(ref state2, bitD_bitContainer, ref bitD_bitsConsumed);
+                if (BIT_reloadDStream(ref bitD_bitContainer, ref bitD_bitsConsumed, ref bitD_ptr, bitD_start, bitD_limitPtr) == BIT_DStream_status.BIT_DStream_overflow)
                 {
-                    *op++ = fast != 0 ? FSE_decodeSymbolFast(&state1, &bitD) : FSE_decodeSymbol(&state1, &bitD);
+                    *op++ = fast != 0 ? FSE_decodeSymbolFast(ref state1, bitD_bitContainer, ref bitD_bitsConsumed) : FSE_decodeSymbol(ref state1, bitD_bitContainer, ref bitD_bitsConsumed);
                     break;
                 }
             }

@@ -700,9 +700,9 @@ namespace ZstdSharp.Unsafe
          * Initializes the bitstream.
          * @returns 0 or an error code.
          */
-        private static nuint HUF_initCStream(HUF_CStream_t* bitC, void* startPtr, nuint dstCapacity)
+        private static nuint HUF_initCStream(ref HUF_CStream_t bitC, void* startPtr, nuint dstCapacity)
         {
-            *bitC = new HUF_CStream_t
+            bitC = new HUF_CStream_t
             {
                 startPtr = (byte*)startPtr,
                 ptr = (byte*)startPtr,
@@ -725,22 +725,21 @@ namespace ZstdSharp.Unsafe
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static void HUF_addBits(HUF_CStream_t* bitC, nuint elt, int idx, int kFast)
+        private static void HUF_addBits(ref nuint bitC_bitContainer_e0, ref nuint bitC_bitPos_e0, nuint elt, int kFast)
         {
-            assert(idx <= 1);
             assert(HUF_getNbBits(elt) <= 12);
-            (&bitC->bitContainer.e0)[idx] >>= (int)HUF_getNbBits(elt);
-            (&bitC->bitContainer.e0)[idx] |= kFast != 0 ? HUF_getValueFast(elt) : HUF_getValue(elt);
-            (&bitC->bitPos.e0)[idx] += HUF_getNbBitsFast(elt);
-            assert(((&bitC->bitPos.e0)[idx] & 0xFF) <= (nuint)(sizeof(nuint) * 8));
+            bitC_bitContainer_e0 >>= (int)HUF_getNbBits(elt);
+            bitC_bitContainer_e0 |= kFast != 0 ? HUF_getValueFast(elt) : HUF_getValue(elt);
+            bitC_bitPos_e0 += HUF_getNbBitsFast(elt);
+            assert((bitC_bitPos_e0 & 0xFF) <= (nuint)(sizeof(nuint) * 8));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static void HUF_zeroIndex1(HUF_CStream_t* bitC)
+        private static void HUF_zeroIndex1(ref nuint bitC_bitContainer_e1, ref nuint bitC_bitPos_e1)
         {
-            bitC->bitContainer.e1 = 0;
-            bitC->bitPos.e1 = 0;
+            bitC_bitContainer_e1 = 0;
+            bitC_bitPos_e1 = 0;
         }
 
         /*! HUF_mergeIndex1() :
@@ -749,13 +748,13 @@ namespace ZstdSharp.Unsafe
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static void HUF_mergeIndex1(HUF_CStream_t* bitC)
+        private static void HUF_mergeIndex1(ref nuint bitC_bitContainer_e0, ref nuint bitC_bitPos_e0, ref nuint bitC_bitContainer_e1, ref nuint bitC_bitPos_e1)
         {
-            assert((bitC->bitPos.e1 & 0xFF) < (nuint)(sizeof(nuint) * 8));
-            bitC->bitContainer.e0 >>= (int)(bitC->bitPos.e1 & 0xFF);
-            bitC->bitContainer.e0 |= bitC->bitContainer.e1;
-            bitC->bitPos.e0 += bitC->bitPos.e1;
-            assert((bitC->bitPos.e0 & 0xFF) <= (nuint)(sizeof(nuint) * 8));
+            assert((bitC_bitPos_e1 & 0xFF) < (nuint)(sizeof(nuint) * 8));
+            bitC_bitContainer_e0 >>= (int)(bitC_bitPos_e1 & 0xFF);
+            bitC_bitContainer_e0 |= bitC_bitContainer_e1;
+            bitC_bitPos_e0 += bitC_bitPos_e1;
+            assert((bitC_bitPos_e0 & 0xFF) <= (nuint)(sizeof(nuint) * 8));
         }
 
         /*! HUF_flushBits() :
@@ -767,22 +766,22 @@ namespace ZstdSharp.Unsafe
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static void HUF_flushBits(HUF_CStream_t* bitC, int kFast)
+        private static void HUF_flushBits(ref nuint bitC_bitContainer_e0, ref nuint bitC_bitPos_e0, ref byte* bitC_ptr, byte* bitC_endPtr, int kFast)
         {
             /* The upper bits of bitPos are noisy, so we must mask by 0xFF. */
-            nuint nbBits = bitC->bitPos.e0 & 0xFF;
+            nuint nbBits = bitC_bitPos_e0 & 0xFF;
             nuint nbBytes = nbBits >> 3;
             /* The top nbBits bits of bitContainer are the ones we need. */
-            nuint bitContainer = bitC->bitContainer.e0 >> (int)((nuint)(sizeof(nuint) * 8) - nbBits);
-            bitC->bitPos.e0 &= 7;
+            nuint bitContainer = bitC_bitContainer_e0 >> (int)((nuint)(sizeof(nuint) * 8) - nbBits);
+            bitC_bitPos_e0 &= 7;
             assert(nbBits > 0);
             assert(nbBits <= (nuint)(sizeof(nuint) * 8));
-            assert(bitC->ptr <= bitC->endPtr);
-            MEM_writeLEST(bitC->ptr, bitContainer);
-            bitC->ptr += nbBytes;
-            assert(kFast == 0 || bitC->ptr <= bitC->endPtr);
-            if (kFast == 0 && bitC->ptr > bitC->endPtr)
-                bitC->ptr = bitC->endPtr;
+            assert(bitC_ptr <= bitC_endPtr);
+            MEM_writeLEST(bitC_ptr, bitContainer);
+            bitC_ptr += nbBytes;
+            assert(kFast == 0 || bitC_ptr <= bitC_endPtr);
+            if (kFast == 0 && bitC_ptr > bitC_endPtr)
+                bitC_ptr = bitC_endPtr;
         }
 
         /*! HUF_endMark()
@@ -799,28 +798,34 @@ namespace ZstdSharp.Unsafe
         /*! HUF_closeCStream() :
          *  @return Size of CStream, in bytes,
          *          or 0 if it could not fit into dstBuffer */
-        private static nuint HUF_closeCStream(HUF_CStream_t* bitC)
+        private static nuint HUF_closeCStream(ref HUF_CStream_t bitC)
         {
-            HUF_addBits(bitC, HUF_endMark(), 0, 0);
-            HUF_flushBits(bitC, 0);
+            HUF_addBits(ref bitC.bitContainer.e0, ref bitC.bitPos.e0, HUF_endMark(), 0);
+            HUF_flushBits(ref bitC.bitContainer.e0, ref bitC.bitPos.e0, ref bitC.ptr, bitC.endPtr, 0);
             {
-                nuint nbBits = bitC->bitPos.e0 & 0xFF;
-                if (bitC->ptr >= bitC->endPtr)
+                nuint nbBits = bitC.bitPos.e0 & 0xFF;
+                if (bitC.ptr >= bitC.endPtr)
                     return 0;
-                return (nuint)(bitC->ptr - bitC->startPtr) + (nuint)(nbBits > 0 ? 1 : 0);
+                return (nuint)(bitC.ptr - bitC.startPtr) + (nuint)(nbBits > 0 ? 1 : 0);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static void HUF_encodeSymbol(HUF_CStream_t* bitCPtr, uint symbol, nuint* CTable, int idx, int fast)
+        private static void HUF_encodeSymbol(ref nuint bitCPtr_bitContainer_e0, ref nuint bitCPtr_bitPos_e0, uint symbol, nuint* CTable, int fast)
         {
-            HUF_addBits(bitCPtr, CTable[symbol], idx, fast);
+            HUF_addBits(ref bitCPtr_bitContainer_e0, ref bitCPtr_bitPos_e0, CTable[symbol], fast);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void HUF_compress1X_usingCTable_internal_body_loop(HUF_CStream_t* bitC, byte* ip, nuint srcSize, nuint* ct, int kUnroll, int kFastFlush, int kLastFast)
+        private static void HUF_compress1X_usingCTable_internal_body_loop(ref HUF_CStream_t bitC, byte* ip, nuint srcSize, nuint* ct, int kUnroll, int kFastFlush, int kLastFast)
         {
+            byte* bitC_ptr = bitC.ptr;
+            byte* bitC_endPtr = bitC.endPtr;
+            nuint bitC_bitContainer_e0 = bitC.bitContainer.e0;
+            nuint bitC_bitPos_e0 = bitC.bitPos.e0;
+            nuint bitC_bitContainer_e1 = bitC.bitContainer.e1;
+            nuint bitC_bitPos_e1 = bitC.bitPos.e1;
             /* Join to kUnroll */
             int n = (int)srcSize;
             int rem = n % kUnroll;
@@ -828,10 +833,10 @@ namespace ZstdSharp.Unsafe
             {
                 for (; rem > 0; --rem)
                 {
-                    HUF_encodeSymbol(bitC, ip[--n], ct, 0, 0);
+                    HUF_encodeSymbol(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ip[--n], ct, 0);
                 }
 
-                HUF_flushBits(bitC, kFastFlush);
+                HUF_flushBits(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ref bitC_ptr, bitC_endPtr, kFastFlush);
             }
 
             assert(n % kUnroll == 0);
@@ -840,11 +845,11 @@ namespace ZstdSharp.Unsafe
                 int u;
                 for (u = 1; u < kUnroll; ++u)
                 {
-                    HUF_encodeSymbol(bitC, ip[n - u], ct, 0, 1);
+                    HUF_encodeSymbol(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ip[n - u], ct, 1);
                 }
 
-                HUF_encodeSymbol(bitC, ip[n - kUnroll], ct, 0, kLastFast);
-                HUF_flushBits(bitC, kFastFlush);
+                HUF_encodeSymbol(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ip[n - kUnroll], ct, kLastFast);
+                HUF_flushBits(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ref bitC_ptr, bitC_endPtr, kFastFlush);
                 n -= kUnroll;
             }
 
@@ -855,23 +860,29 @@ namespace ZstdSharp.Unsafe
                 int u;
                 for (u = 1; u < kUnroll; ++u)
                 {
-                    HUF_encodeSymbol(bitC, ip[n - u], ct, 0, 1);
+                    HUF_encodeSymbol(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ip[n - u], ct, 1);
                 }
 
-                HUF_encodeSymbol(bitC, ip[n - kUnroll], ct, 0, kLastFast);
-                HUF_flushBits(bitC, kFastFlush);
-                HUF_zeroIndex1(bitC);
+                HUF_encodeSymbol(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ip[n - kUnroll], ct, kLastFast);
+                HUF_flushBits(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ref bitC_ptr, bitC_endPtr, kFastFlush);
+                HUF_zeroIndex1(ref bitC_bitContainer_e1, ref bitC_bitPos_e1);
                 for (u = 1; u < kUnroll; ++u)
                 {
-                    HUF_encodeSymbol(bitC, ip[n - kUnroll - u], ct, 1, 1);
+                    HUF_encodeSymbol(ref bitC_bitContainer_e1, ref bitC_bitPos_e1, ip[n - kUnroll - u], ct, 1);
                 }
 
-                HUF_encodeSymbol(bitC, ip[n - kUnroll - kUnroll], ct, 1, kLastFast);
-                HUF_mergeIndex1(bitC);
-                HUF_flushBits(bitC, kFastFlush);
+                HUF_encodeSymbol(ref bitC_bitContainer_e1, ref bitC_bitPos_e1, ip[n - kUnroll - kUnroll], ct, kLastFast);
+                HUF_mergeIndex1(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ref bitC_bitContainer_e1, ref bitC_bitPos_e1);
+                HUF_flushBits(ref bitC_bitContainer_e0, ref bitC_bitPos_e0, ref bitC_ptr, bitC_endPtr, kFastFlush);
             }
 
             assert(n == 0);
+            bitC.ptr = bitC_ptr;
+            bitC.endPtr = bitC_endPtr;
+            bitC.bitContainer.e0 = bitC_bitContainer_e0;
+            bitC.bitPos.e0 = bitC_bitPos_e0;
+            bitC.bitContainer.e1 = bitC_bitContainer_e1;
+            bitC.bitPos.e1 = bitC_bitPos_e1;
         }
 
         /**
@@ -884,7 +895,6 @@ namespace ZstdSharp.Unsafe
             return (srcSize * tableLog >> 3) + 8;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint HUF_compress1X_usingCTable_internal_body(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable)
         {
             uint tableLog = HUF_readCTableHeader(CTable).tableLog;
@@ -893,17 +903,18 @@ namespace ZstdSharp.Unsafe
             byte* ostart = (byte*)dst;
             byte* oend = ostart + dstSize;
             HUF_CStream_t bitC;
+            System.Runtime.CompilerServices.Unsafe.SkipInit(out bitC);
             if (dstSize < 8)
                 return 0;
             {
                 byte* op = ostart;
-                nuint initErr = HUF_initCStream(&bitC, op, (nuint)(oend - op));
+                nuint initErr = HUF_initCStream(ref bitC, op, (nuint)(oend - op));
                 if (ERR_isError(initErr))
                     return 0;
             }
 
             if (dstSize < HUF_tightCompressBound(srcSize, tableLog) || tableLog > 11)
-                HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, MEM_32bits ? 2 : 4, 0, 0);
+                HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, MEM_32bits ? 2 : 4, 0, 0);
             else
             {
                 if (MEM_32bits)
@@ -911,16 +922,16 @@ namespace ZstdSharp.Unsafe
                     switch (tableLog)
                     {
                         case 11:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 2, 1, 0);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 2, 1, 0);
                             break;
                         case 10:
                         case 9:
                         case 8:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 2, 1, 1);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 2, 1, 1);
                             break;
                         case 7:
                         default:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 3, 1, 1);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 3, 1, 1);
                             break;
                     }
                 }
@@ -929,30 +940,30 @@ namespace ZstdSharp.Unsafe
                     switch (tableLog)
                     {
                         case 11:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 5, 1, 0);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 5, 1, 0);
                             break;
                         case 10:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 5, 1, 1);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 5, 1, 1);
                             break;
                         case 9:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 6, 1, 0);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 6, 1, 0);
                             break;
                         case 8:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 7, 1, 0);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 7, 1, 0);
                             break;
                         case 7:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 8, 1, 0);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 8, 1, 0);
                             break;
                         case 6:
                         default:
-                            HUF_compress1X_usingCTable_internal_body_loop(&bitC, ip, srcSize, ct, 9, 1, 1);
+                            HUF_compress1X_usingCTable_internal_body_loop(ref bitC, ip, srcSize, ct, 9, 1, 1);
                             break;
                     }
                 }
             }
 
             assert(bitC.ptr <= bitC.endPtr);
-            return HUF_closeCStream(&bitC);
+            return HUF_closeCStream(ref bitC);
         }
 
         private static nuint HUF_compress1X_usingCTable_internal(void* dst, nuint dstSize, void* src, nuint srcSize, nuint* CTable, int flags)
