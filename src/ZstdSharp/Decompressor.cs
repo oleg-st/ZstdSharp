@@ -99,8 +99,6 @@ namespace ZstdSharp
                         Methods.ZSTD_decompressDCtx(dctx, destPtr, (nuint)dest.Length, srcPtr, (nuint)src.Length);
                 }
 
-                GC.KeepAlive(this);
-
                 if (returnValue == unchecked(0 - (nuint)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall))
                 {
                     written = default;
