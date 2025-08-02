@@ -155,13 +155,11 @@ namespace ZstdSharp.Unsafe
 
             FSE_initDState(ref state1, ref bitD, dt);
             FSE_initDState(ref state2, ref bitD, dt);
-
-            var bitD_bitContainer = bitD.bitContainer;
-            var bitD_bitsConsumed = bitD.bitsConsumed;
-            var bitD_ptr = bitD.ptr;
-            var bitD_start = bitD.start;
-            var bitD_limitPtr = bitD.limitPtr;
-
+            nuint bitD_bitContainer = bitD.bitContainer;
+            uint bitD_bitsConsumed = bitD.bitsConsumed;
+            sbyte* bitD_ptr = bitD.ptr;
+            sbyte* bitD_start = bitD.start;
+            sbyte* bitD_limitPtr = bitD.limitPtr;
             if (BIT_reloadDStream(ref bitD_bitContainer, ref bitD_bitsConsumed, ref bitD_ptr, bitD_start, bitD_limitPtr) == BIT_DStream_status.BIT_DStream_overflow)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));

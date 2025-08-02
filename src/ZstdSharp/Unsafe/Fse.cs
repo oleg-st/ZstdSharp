@@ -87,16 +87,6 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void FSE_initDState(FSE_DState_t* DStatePtr, BIT_DStream_t* bitD, uint* dt)
-        {
-            void* ptr = dt;
-            FSE_DTableHeader* DTableH = (FSE_DTableHeader*)ptr;
-            DStatePtr->state = BIT_readBits(bitD, DTableH->tableLog);
-            BIT_reloadDStream(bitD);
-            DStatePtr->table = dt + 1;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void FSE_initDState(ref FSE_DState_t DStatePtr, ref BIT_DStream_t bitD, uint* dt)
         {
             void* ptr = dt;
@@ -105,7 +95,6 @@ namespace ZstdSharp.Unsafe
             BIT_reloadDStream(ref bitD.bitContainer, ref bitD.bitsConsumed, ref bitD.ptr, bitD.start, bitD.limitPtr);
             DStatePtr.table = dt + 1;
         }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte FSE_peekSymbol(FSE_DState_t* DStatePtr)
@@ -125,18 +114,6 @@ namespace ZstdSharp.Unsafe
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [InlineMethod.Inline]
-        private static byte FSE_decodeSymbol(FSE_DState_t* DStatePtr, BIT_DStream_t* bitD)
-        {
-            FSE_decode_t DInfo = ((FSE_decode_t*)DStatePtr->table)[DStatePtr->state];
-            uint nbBits = DInfo.nbBits;
-            byte symbol = DInfo.symbol;
-            nuint lowBits = BIT_readBits(bitD, nbBits);
-            DStatePtr->state = DInfo.newState + lowBits;
-            return symbol;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [InlineMethod.Inline]
         private static byte FSE_decodeSymbol(ref FSE_DState_t DStatePtr, nuint bitD_bitContainer, ref uint bitD_bitsConsumed)
         {
             FSE_decode_t DInfo = ((FSE_decode_t*)DStatePtr.table)[DStatePtr.state];
@@ -149,17 +126,6 @@ namespace ZstdSharp.Unsafe
 
         /*! FSE_decodeSymbolFast() :
         unsafe, only works if no symbol has a probability > 50% */
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte FSE_decodeSymbolFast(FSE_DState_t* DStatePtr, BIT_DStream_t* bitD)
-        {
-            FSE_decode_t DInfo = ((FSE_decode_t*)DStatePtr->table)[DStatePtr->state];
-            uint nbBits = DInfo.nbBits;
-            byte symbol = DInfo.symbol;
-            nuint lowBits = BIT_readBitsFast(bitD, nbBits);
-            DStatePtr->state = DInfo.newState + lowBits;
-            return symbol;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte FSE_decodeSymbolFast(ref FSE_DState_t DStatePtr, nuint bitD_bitContainer, ref uint bitD_bitsConsumed)
         {
