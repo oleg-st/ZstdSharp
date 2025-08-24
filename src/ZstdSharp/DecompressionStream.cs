@@ -79,7 +79,10 @@ namespace ZstdSharp
             }
             decompressor = null;
 
-            ArrayPool<byte>.Shared.Return(inputBuffer);
+            if (inputBuffer != null)
+            {
+                ArrayPool<byte>.Shared.Return(inputBuffer);
+            }
 
             if (!leaveOpen)
             {

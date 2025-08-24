@@ -109,7 +109,10 @@ namespace ZstdSharp
             }
             compressor = null;
 
-            ArrayPool<byte>.Shared.Return(outputBuffer);
+            if (outputBuffer != null)
+            {
+                ArrayPool<byte>.Shared.Return(outputBuffer);
+            }
 
             if (!leaveOpen)
             {
