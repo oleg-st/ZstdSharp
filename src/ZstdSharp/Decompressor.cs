@@ -153,13 +153,17 @@ namespace ZstdSharp
                 if (Methods.ZSTD_isError(remaining))
                     return OperationStatus.InvalidData;
 
-                // input is finished and no more internal buffers left
-                if (input.pos == input.size && remaining == 0)
-                    return OperationStatus.Done;
+                // input is finished
+                if (input.pos == input.size)
+                {
+                    // end of frame
+                    if (remaining == 0)
+                    {
+                        return OperationStatus.Done;
+                    }
 
-                // output is not finished
-                if (output.pos < output.size)
                     return OperationStatus.NeedMoreData;
+                }
 
                 return OperationStatus.DestinationTooSmall;
             }
