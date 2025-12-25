@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using ZstdSharp.Unsafe;
 
 namespace ZstdSharp
@@ -157,6 +158,41 @@ namespace ZstdSharp
         {
             using var cctx = handle.Acquire();
             Methods.ZSTD_CCtx_setPledgedSrcSize(cctx, pledgedSrcSize).EnsureZstdSuccess();
+        }
+
+
+        public OperationStatus WrapStream(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesConsumed, out int bytesWritten, bool isFinalBlock)
+            => WrapStream(source, destination, out bytesConsumed, out bytesWritten, isFinalBlock ? ZSTD_EndDirective.ZSTD_e_end : ZSTD_EndDirective.ZSTD_e_continue);
+
+        public OperationStatus FlushStream(Span<byte> destination, out int bytesWritten) 
+            => WrapStream(ReadOnlySpan<byte>.Empty, destination, out _, out bytesWritten, ZSTD_EndDirective.ZSTD_e_flush);
+
+        internal OperationStatus WrapStream(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesConsumed, out int bytesWritten, ZSTD_EndDirective directive)
+        {
+            using var cctx = handle.Acquire();
+
+            fixed (byte* srcPtr = source)
+            fixed (byte* dstPtr = destination)
+            {
+                var input = new ZSTD_inBuffer_s { src = srcPtr, size = (nuint)source.Length, pos = 0 };
+                var output = new ZSTD_outBuffer_s { dst = dstPtr, size = (nuint)destination.Length, pos = 0 };
+                var remaining = Methods.ZSTD_compressStream2(cctx, &output, &input, directive);
+                bytesConsumed = (int)input.pos;
+                bytesWritten = (int)output.pos;
+
+                if (Methods.ZSTD_isError(remaining))
+                    return OperationStatus.InvalidData;
+
+                // input is finished and no more internal buffers left
+                if (input.pos == input.size && remaining == 0)
+                    return OperationStatus.Done;
+
+                // output is not finished
+                if (output.pos < output.size)
+                    return OperationStatus.NeedMoreData;
+
+                return OperationStatus.DestinationTooSmall;
+            }
         }
     }
 }
