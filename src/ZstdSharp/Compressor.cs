@@ -167,32 +167,43 @@ namespace ZstdSharp
         public OperationStatus FlushStream(Span<byte> destination, out int bytesWritten) 
             => WrapStream(ReadOnlySpan<byte>.Empty, destination, out _, out bytesWritten, ZSTD_EndDirective.ZSTD_e_flush);
 
+        public void ResetStream()
+        {
+            using var cctx = handle.Acquire();
+            Methods.ZSTD_CCtx_reset(cctx, ZSTD_ResetDirective.ZSTD_reset_session_only).EnsureZstdSuccess();
+        }
+
         internal OperationStatus WrapStream(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesConsumed, out int bytesWritten, ZSTD_EndDirective directive)
         {
             using var cctx = handle.Acquire();
+            bytesConsumed = bytesWritten = 0;
 
             fixed (byte* srcPtr = source)
             fixed (byte* dstPtr = destination)
             {
                 var input = new ZSTD_inBuffer_s { src = srcPtr, size = (nuint)source.Length, pos = 0 };
                 var output = new ZSTD_outBuffer_s { dst = dstPtr, size = (nuint)destination.Length, pos = 0 };
-                var remaining = Methods.ZSTD_compressStream2(cctx, &output, &input, directive);
-                bytesConsumed = (int)input.pos;
-                bytesWritten = (int)output.pos;
 
-                if (Methods.ZSTD_isError(remaining))
-                    return OperationStatus.InvalidData;
-
-                // input is finished
-                if (input.pos == input.size)
+                while (output.pos != output.size)
                 {
-                    // no more internal buffers left
-                    if (remaining == 0)
-                    {
-                        return OperationStatus.Done;
-                    }
+                    var remaining = Methods.ZSTD_compressStream2(cctx, &output, &input, directive);
+                    bytesConsumed = (int)input.pos;
+                    bytesWritten = (int)output.pos;
 
-                    return OperationStatus.NeedMoreData;
+                    if (Methods.ZSTD_isError(remaining))
+                        return OperationStatus.InvalidData;
+
+                    // input is finished
+                    if (input.pos == input.size)
+                    {
+                        // no more internal buffers left
+                        if (remaining == 0)
+                        {
+                            return OperationStatus.Done;
+                        }
+
+                        return OperationStatus.NeedMoreData;
+                    }
                 }
 
                 return OperationStatus.DestinationTooSmall;
