@@ -198,9 +198,7 @@ namespace ZstdSharp
                     {
                         // no more internal buffers left
                         if (remaining == 0)
-                        {
                             return OperationStatus.Done;
-                        }
 
                         return OperationStatus.NeedMoreData;
                     }

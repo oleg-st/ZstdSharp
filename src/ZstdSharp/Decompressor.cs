@@ -162,9 +162,7 @@ namespace ZstdSharp
                     {
                         // end of frame
                         if (remaining == 0)
-                        {
                             return OperationStatus.Done;
-                        }
 
                         return OperationStatus.NeedMoreData;
                     }
