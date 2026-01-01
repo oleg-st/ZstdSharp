@@ -51,6 +51,32 @@ namespace ZstdSharp.Test
         }
 
         [Fact]
+        public void OneShotWithFlush()
+        {
+            var compressor = new Compressor();
+            var data = DataGenerator.GetSmallBuffer(DataFill.Random);
+            var decompressor = new Decompressor();
+            var compressBuffer = new byte[Compressor.GetCompressBound(data.Length)];
+
+            // compress 1
+            Assert.Equal(compressor.WrapStream(data, compressBuffer, out var compressBytesConsumed1, out var compressBytesWritten1, false),
+                OperationStatus.Done);
+            Assert.Equal(compressBytesConsumed1, data.Length);
+
+            // compress 2
+            Assert.Equal(compressor.FlushStream(new Span<byte>(compressBuffer).Slice(compressBytesWritten1), out var compressBytesWritten2), OperationStatus.Done);
+            Assert.True(compressBytesWritten2 > 0);
+
+            var decompressBuffer = new byte[data.Length];
+            var compressedSpan = new ReadOnlySpan<byte>(compressBuffer, 0, compressBytesWritten1 + compressBytesWritten2);
+            // no end of frame -> NeedMoreData
+            Assert.Equal(decompressor.UnwrapStream(compressedSpan, decompressBuffer, out var decompressBytesConsumed, out var decompressBytesWritten), OperationStatus.NeedMoreData);
+            Assert.Equal(decompressBytesWritten, data.Length);
+            Assert.Equal(decompressBytesConsumed, compressBytesWritten1 + compressBytesWritten2);
+            Assert.True(decompressBuffer.SequenceEqual(data));
+        }
+
+        [Fact]
         public void TwoConcatenated()
         {
             var compressor = new Compressor();
