@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using ZstdSharp.Unsafe;
 
 namespace ZstdSharp
@@ -127,6 +128,47 @@ namespace ZstdSharp
             {
                 using var dctx = handle.Acquire();
                 return Methods.ZSTD_decompressStream(dctx, outputPtr, inputPtr).EnsureZstdSuccess();
+            }
+        }
+
+        public void ResetStream()
+        {
+            using var dctx = handle.Acquire();
+            Methods.ZSTD_DCtx_reset(dctx, ZSTD_ResetDirective.ZSTD_reset_session_only).EnsureZstdSuccess();
+        }
+
+        public OperationStatus UnwrapStream(ReadOnlySpan<byte> source, Span<byte> destination, out int bytesConsumed, out int bytesWritten)
+        {
+            using var dctx = handle.Acquire();
+            bytesConsumed = bytesWritten = 0;
+
+            fixed (byte* srcPtr = source)
+            fixed (byte* dstPtr = destination)
+            {
+                var input = new ZSTD_inBuffer_s { src = srcPtr, size = (nuint)source.Length, pos = 0 };
+                var output = new ZSTD_outBuffer_s { dst = dstPtr, size = (nuint)destination.Length, pos = 0 };
+
+                while (output.pos != output.size)
+                {
+                    var remaining = Methods.ZSTD_decompressStream(dctx, &output, &input);
+                    bytesConsumed = (int)input.pos;
+                    bytesWritten = (int)output.pos;
+
+                    if (Methods.ZSTD_isError(remaining))
+                        return OperationStatus.InvalidData;
+
+                    // input is finished
+                    if (input.pos == input.size)
+                    {
+                        // end of frame
+                        if (remaining == 0)
+                            return OperationStatus.Done;
+
+                        return OperationStatus.NeedMoreData;
+                    }
+                }
+
+                return OperationStatus.DestinationTooSmall;
             }
         }
     }
