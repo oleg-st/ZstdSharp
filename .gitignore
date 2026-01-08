@@ -3,3 +3,5 @@ obj/
 *.user
 src/.vs
 /nugets/
+.idea/
+.DS_Store
