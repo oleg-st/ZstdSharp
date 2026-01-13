@@ -168,7 +168,7 @@ namespace ZstdSharp.Test
             bool isFinalBlock;
             do
             {
-                var chunk = srcSpan.Slice(offset);
+                var chunk = srcSpan.Slice(offset, Math.Min(srcSpan.Length - offset, chunkSize));
                 isFinalBlock = chunk.Length < chunkSize;
                 status = compressor.WrapStream(chunk, destSpan, out var bytesConsumed, out var bytesWritten, isFinalBlock);
                 Assert.True(status is OperationStatus.Done or OperationStatus.DestinationTooSmall);
@@ -202,9 +202,9 @@ namespace ZstdSharp.Test
             var offset = 0;
             do
             {
-                var chunk = srcSpan.Slice(offset);
+                var chunk = srcSpan.Slice(offset, Math.Min(srcSpan.Length - offset, chunkSize));
                 status = decompressor.UnwrapStream(chunk, destSpan, out var bytesConsumed, out var bytesWritten);
-                Assert.True(status is OperationStatus.Done or OperationStatus.DestinationTooSmall);
+                Assert.True(status is OperationStatus.Done or OperationStatus.DestinationTooSmall or OperationStatus.NeedMoreData);
                 ms.Write(dest, 0, bytesWritten);
                 offset += bytesConsumed;
             } while (status != OperationStatus.Done);
