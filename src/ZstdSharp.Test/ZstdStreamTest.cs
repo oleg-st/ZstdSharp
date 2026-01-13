@@ -14,9 +14,9 @@ namespace ZstdSharp.Test
             var compressor = new Compressor();
             var data = DataGenerator.GetSmallBuffer(DataFill.Random);
 
-            Assert.Equal(compressor.WrapStream(data, Span<byte>.Empty, out var bytesConsumed, out var bytesWritten, true), OperationStatus.DestinationTooSmall);
-            Assert.Equal(bytesConsumed, 0);
-            Assert.Equal(bytesWritten, 0);
+            Assert.Equal(OperationStatus.DestinationTooSmall, compressor.WrapStream(data, Span<byte>.Empty, out var bytesConsumed, out var bytesWritten, true));
+            Assert.Equal(0, bytesConsumed);
+            Assert.Equal(0, bytesWritten);
         }
 
         [Fact]
@@ -25,9 +25,9 @@ namespace ZstdSharp.Test
             var decompressor = new Decompressor();
             var data = DataGenerator.GetSmallBuffer(DataFill.Random);
 
-            Assert.Equal(decompressor.UnwrapStream(data, Span<byte>.Empty, out var bytesConsumed, out var bytesWritten), OperationStatus.DestinationTooSmall);
-            Assert.Equal(bytesConsumed, 0);
-            Assert.Equal(bytesWritten, 0);
+            Assert.Equal(OperationStatus.DestinationTooSmall, decompressor.UnwrapStream(data, Span<byte>.Empty, out var bytesConsumed, out var bytesWritten));
+            Assert.Equal(0, bytesConsumed);
+            Assert.Equal(0, bytesWritten);
         }
 
         [Fact]
@@ -38,20 +38,22 @@ namespace ZstdSharp.Test
             var decompressor = new Decompressor();
             var compressBuffer = new byte[Compressor.GetCompressBound(data.Length)];
 
-            Assert.Equal(compressor.WrapStream(data, compressBuffer, out var compressBytesConsumed, out var compressBytesWritten, true),
-                OperationStatus.Done);
-            Assert.Equal(compressBytesConsumed, data.Length);
+            Assert.Equal(OperationStatus.Done,
+                compressor.WrapStream(data, compressBuffer, out var compressBytesConsumed, out var compressBytesWritten, true));
+            Assert.Equal(data.Length, compressBytesConsumed);
 
             var decompressBuffer = new byte[data.Length];
             var compressedSpan = new ReadOnlySpan<byte>(compressBuffer, 0, compressBytesWritten);
-            Assert.Equal(decompressor.UnwrapStream(compressedSpan, decompressBuffer, out var decompressBytesConsumed, out var decompressBytesWritten), OperationStatus.Done);
-            Assert.Equal(decompressBytesWritten, data.Length);
-            Assert.Equal(decompressBytesConsumed, compressBytesWritten);
+            Assert.Equal(OperationStatus.Done, decompressor.UnwrapStream(compressedSpan, decompressBuffer, out var decompressBytesConsumed, out var decompressBytesWritten));
+            Assert.Equal(data.Length, decompressBytesWritten);
+            Assert.Equal(compressBytesWritten, decompressBytesConsumed);
             Assert.True(decompressBuffer.SequenceEqual(data));
         }
 
-        [Fact]
-        public void OneShotWithFlush()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void OneShotWithFlush(bool isFinalBlock)
         {
             var compressor = new Compressor();
             var data = DataGenerator.GetSmallBuffer(DataFill.Random);
@@ -59,20 +61,21 @@ namespace ZstdSharp.Test
             var compressBuffer = new byte[Compressor.GetCompressBound(data.Length)];
 
             // compress 1
-            Assert.Equal(compressor.WrapStream(data, compressBuffer, out var compressBytesConsumed1, out var compressBytesWritten1, false),
-                OperationStatus.Done);
+            Assert.Equal(OperationStatus.Done,
+                compressor.WrapStream(data, compressBuffer, out var compressBytesConsumed1, out var compressBytesWritten1, false));
             Assert.Equal(compressBytesConsumed1, data.Length);
 
             // compress 2
-            Assert.Equal(compressor.FlushStream(new Span<byte>(compressBuffer).Slice(compressBytesWritten1), out var compressBytesWritten2), OperationStatus.Done);
+            Assert.Equal(OperationStatus.Done, compressor.FlushStream(new Span<byte>(compressBuffer).Slice(compressBytesWritten1), out var compressBytesWritten2, isFinalBlock));
             Assert.True(compressBytesWritten2 > 0);
 
             var decompressBuffer = new byte[data.Length];
             var compressedSpan = new ReadOnlySpan<byte>(compressBuffer, 0, compressBytesWritten1 + compressBytesWritten2);
-            // no end of frame -> NeedMoreData
-            Assert.Equal(decompressor.UnwrapStream(compressedSpan, decompressBuffer, out var decompressBytesConsumed, out var decompressBytesWritten), OperationStatus.NeedMoreData);
-            Assert.Equal(decompressBytesWritten, data.Length);
-            Assert.Equal(decompressBytesConsumed, compressBytesWritten1 + compressBytesWritten2);
+            // end of frame -> Done otherwise NeedMoreData
+            Assert.Equal(isFinalBlock ? OperationStatus.Done : OperationStatus.NeedMoreData, 
+                decompressor.UnwrapStream(compressedSpan, decompressBuffer, out var decompressBytesConsumed, out var decompressBytesWritten));
+            Assert.Equal(data.Length, decompressBytesWritten);
+            Assert.Equal(compressBytesWritten1 + compressBytesWritten2, decompressBytesConsumed);
             Assert.True(decompressBuffer.SequenceEqual(data));
         }
 
@@ -85,20 +88,20 @@ namespace ZstdSharp.Test
             var compressBuffer = new byte[Compressor.GetCompressBound(data.Length) * 2];
 
             // compress 1
-            Assert.Equal(compressor.WrapStream(data, compressBuffer, out var compressBytesConsumed1, out var compressBytesWritten1, true),
-                OperationStatus.Done);
-            Assert.Equal(compressBytesConsumed1, data.Length);
+            Assert.Equal(OperationStatus.Done,
+                compressor.WrapStream(data, compressBuffer, out var compressBytesConsumed1, out var compressBytesWritten1, true));
+            Assert.Equal(data.Length, compressBytesConsumed1);
 
             // compress 2
-            Assert.Equal(compressor.WrapStream(data, new Span<byte>(compressBuffer).Slice(compressBytesWritten1), out var compressBytesConsumed2, out var compressBytesWritten2, true),
-                OperationStatus.Done);
-            Assert.Equal(compressBytesConsumed2, data.Length);
+            Assert.Equal(OperationStatus.Done,
+                compressor.WrapStream(data, new Span<byte>(compressBuffer).Slice(compressBytesWritten1), out var compressBytesConsumed2, out var compressBytesWritten2, true));
+            Assert.Equal(data.Length, compressBytesConsumed2);
 
             var decompressBuffer = new byte[data.Length * 2];
             var compressedSpan = new ReadOnlySpan<byte>(compressBuffer, 0, compressBytesWritten1 + compressBytesWritten2);
-            Assert.Equal(decompressor.UnwrapStream(compressedSpan, decompressBuffer, out var decompressBytesConsumed, out var decompressBytesWritten), OperationStatus.Done);
-            Assert.Equal(decompressBytesWritten, data.Length * 2);
-            Assert.Equal(decompressBytesConsumed, compressBytesWritten1 + compressBytesWritten2);
+            Assert.Equal(OperationStatus.Done, decompressor.UnwrapStream(compressedSpan, decompressBuffer, out var decompressBytesConsumed, out var decompressBytesWritten));
+            Assert.Equal(data.Length * 2, decompressBytesWritten);
+            Assert.Equal(compressBytesWritten1 + compressBytesWritten2, decompressBytesConsumed);
             Assert.True(new ReadOnlySpan<byte>(decompressBuffer).Slice(0, data.Length).SequenceEqual(data));
             Assert.True(new ReadOnlySpan<byte>(decompressBuffer).Slice(data.Length).SequenceEqual(data));
         }
@@ -111,11 +114,10 @@ namespace ZstdSharp.Test
             var decompressor = new Decompressor();
             var compressBuffer = new byte[Compressor.GetCompressBound(data.Length)];
 
-            Assert.Equal(
+            Assert.Equal(OperationStatus.Done,
                 compressor.WrapStream(data, compressBuffer, out var compressBytesConsumed, out var compressBytesWritten,
-                    true),
-                OperationStatus.Done);
-            Assert.Equal(compressBytesConsumed, data.Length);
+                    true));
+            Assert.Equal(data.Length, compressBytesConsumed);
 
             var decompressBuffer = new byte[data.Length];
             // split
@@ -125,22 +127,22 @@ namespace ZstdSharp.Test
                 new ReadOnlySpan<byte>(compressBuffer, truncatedLength, compressBytesWritten - truncatedLength);
 
             // more data
-            Assert.Equal(
+            Assert.Equal(OperationStatus.NeedMoreData,
                 decompressor.UnwrapStream(compressedSpan1, decompressBuffer, out var decompressBytesConsumed1,
-                    out var decompressBytesWritten1), OperationStatus.NeedMoreData);
+                    out var decompressBytesWritten1));
             // consumed all input
             Assert.Equal(decompressBytesConsumed1, compressedSpan1.Length);
 
             // leftover
-            Assert.Equal(
+            Assert.Equal(OperationStatus.Done,
                 decompressor.UnwrapStream(compressedSpan2,
                     new Span<byte>(decompressBuffer, decompressBytesWritten1,
                         decompressBuffer.Length - decompressBytesWritten1), out var decompressBytesConsumed2,
-                    out var decompressBytesWritten2), OperationStatus.Done);
+                    out var decompressBytesWritten2));
 
             // consumed all input
-            Assert.Equal(decompressBytesConsumed2, compressedSpan2.Length);
-            Assert.Equal(decompressBytesWritten1 + decompressBytesWritten2, data.Length);
+            Assert.Equal(compressedSpan2.Length, decompressBytesConsumed2);
+            Assert.Equal(data.Length, decompressBytesWritten1 + decompressBytesWritten2);
 
             Assert.True(decompressBuffer.SequenceEqual(data));
         }

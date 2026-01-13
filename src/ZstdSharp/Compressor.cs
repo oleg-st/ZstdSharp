@@ -167,6 +167,9 @@ namespace ZstdSharp
         public OperationStatus FlushStream(Span<byte> destination, out int bytesWritten) 
             => WrapStream(ReadOnlySpan<byte>.Empty, destination, out _, out bytesWritten, ZSTD_EndDirective.ZSTD_e_flush);
 
+        public OperationStatus FlushStream(Span<byte> destination, out int bytesWritten, bool isFinalBlock)
+            => WrapStream(ReadOnlySpan<byte>.Empty, destination, out _, out bytesWritten, isFinalBlock ? ZSTD_EndDirective.ZSTD_e_end : ZSTD_EndDirective.ZSTD_e_flush);
+
         public void ResetStream()
         {
             using var cctx = handle.Acquire();
