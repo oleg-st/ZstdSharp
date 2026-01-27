@@ -126,11 +126,18 @@ namespace ZstdSharp
         public override async Task FlushAsync(CancellationToken cancellationToken)
             => await FlushInternalAsync(ZSTD_EndDirective.ZSTD_e_flush, cancellationToken).ConfigureAwait(false);
 
-        private void FlushInternal(ZSTD_EndDirective directive) => WriteInternal(null, directive);
+        private void FlushInternal(ZSTD_EndDirective directive)
+        {
+            WriteInternal(null, directive);
+            innerStream.Flush();
+        }
 
         private async Task FlushInternalAsync(ZSTD_EndDirective directive,
-            CancellationToken cancellationToken = default) =>
+                                              CancellationToken cancellationToken = default)
+        {
             await WriteInternalAsync(null, directive, cancellationToken).ConfigureAwait(false);
+            await innerStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         public override void Write(byte[] buffer, int offset, int count)
             => Write(new ReadOnlySpan<byte>(buffer, offset, count));
