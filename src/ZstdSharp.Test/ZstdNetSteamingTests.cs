@@ -484,5 +484,57 @@ namespace ZstdSharp.Test
 
             Assert.True(data.SequenceEqual(resultStream.ToArray()));
         }
+
+        [Fact]
+        public void FlushTest()
+        {
+            var ms = new MemoryStream();
+            var bs = new BufferedStream(ms, 4096);
+            using var writer = new CompressionStream(bs);
+            var src = new byte[1] { 42 };
+            writer.Write(src);
+            writer.Flush();
+            Assert.True(ms.ToArray().Length > 0);
+        }
+
+        [Fact]
+        public void DisposeFlushTest()
+        {
+            var ms = new MemoryStream();
+            var bs = new BufferedStream(ms, 4096);
+            using var writer = new CompressionStream(bs, leaveOpen: true);
+            var src = new byte[1] { 42 };
+            writer.Write(src);
+            writer.Dispose();
+            Assert.True(ms.ToArray().Length == 0);
+            bs.Dispose();
+            Assert.True(ms.ToArray().Length > 0);
+        }
+
+        [Fact]
+        public async Task FlushAsyncTest()
+        {
+            var ms = new MemoryStream();
+            var bs = new BufferedStream(ms, 4096);
+            using var writer = new CompressionStream(bs);
+            var src = new byte[1] { 42 };
+            await writer.WriteAsync(src);
+            await writer.FlushAsync();
+            Assert.True(ms.ToArray().Length > 0);
+        }
+
+        [Fact]
+        public async Task DisposeFlushAsyncTest()
+        {
+            var ms = new MemoryStream();
+            var bs = new BufferedStream(ms, 4096);
+            using var writer = new CompressionStream(bs, leaveOpen: true);
+            var src = new byte[1] { 42 };
+            await writer.WriteAsync(src);
+            await writer.DisposeAsync();
+            Assert.True(ms.ToArray().Length == 0);
+            bs.Dispose();
+            Assert.True(ms.ToArray().Length > 0);
+        }
     }
 }

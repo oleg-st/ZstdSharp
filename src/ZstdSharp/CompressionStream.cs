@@ -76,7 +76,7 @@ namespace ZstdSharp
 
             try
             {
-                await FlushInternalAsync(ZSTD_EndDirective.ZSTD_e_end).ConfigureAwait(false);
+                await WriteInternalAsync(null, ZSTD_EndDirective.ZSTD_e_end).ConfigureAwait(false);
             }
             finally
             {
@@ -93,7 +93,7 @@ namespace ZstdSharp
             try
             {
                 if (disposing)
-                    FlushInternal(ZSTD_EndDirective.ZSTD_e_end);
+                    WriteInternal(null, ZSTD_EndDirective.ZSTD_e_end);
             }
             finally
             {
@@ -121,16 +121,16 @@ namespace ZstdSharp
         }
 
         public override void Flush()
-            => FlushInternal(ZSTD_EndDirective.ZSTD_e_flush);
+        {
+            WriteInternal(null, ZSTD_EndDirective.ZSTD_e_flush);
+            innerStream.Flush();
+        }
 
         public override async Task FlushAsync(CancellationToken cancellationToken)
-            => await FlushInternalAsync(ZSTD_EndDirective.ZSTD_e_flush, cancellationToken).ConfigureAwait(false);
-
-        private void FlushInternal(ZSTD_EndDirective directive) => WriteInternal(null, directive);
-
-        private async Task FlushInternalAsync(ZSTD_EndDirective directive,
-            CancellationToken cancellationToken = default) =>
-            await WriteInternalAsync(null, directive, cancellationToken).ConfigureAwait(false);
+        { 
+            await WriteInternalAsync(null, ZSTD_EndDirective.ZSTD_e_flush, cancellationToken).ConfigureAwait(false);
+            await innerStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         public override void Write(byte[] buffer, int offset, int count)
             => Write(new ReadOnlySpan<byte>(buffer, offset, count));
