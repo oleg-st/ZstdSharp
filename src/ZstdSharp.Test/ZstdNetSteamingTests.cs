@@ -48,7 +48,7 @@ namespace ZstdSharp.Test
     public class ZstdNetSteamingTests
     {
         [Fact]
-        public async void StreamingCompressionZeroAndOneByte()
+        public async Task StreamingCompressionZeroAndOneByte()
         {
             var data = new byte[] {0, 0, 0, 1, 2, 3, 4, 0, 0, 0};
 
@@ -57,15 +57,15 @@ namespace ZstdSharp.Test
             {
                 compressionStream.Write(data, 0, 0);
                 compressionStream.Write(ReadOnlySpan<byte>.Empty);
-                await compressionStream.WriteAsync(data, 0, 0);
-                await compressionStream.WriteAsync(ReadOnlyMemory<byte>.Empty);
+                await compressionStream.WriteAsync(data, 0, 0, TestContext.Current.CancellationToken);
+                await compressionStream.WriteAsync(ReadOnlyMemory<byte>.Empty, TestContext.Current.CancellationToken);
 
                 compressionStream.Write(data, 3, 1);
                 compressionStream.Write(new ReadOnlySpan<byte>(data, 4, 1));
                 compressionStream.Flush();
-                await compressionStream.WriteAsync(data, 5, 1);
-                await compressionStream.WriteAsync(new ReadOnlyMemory<byte>(data, 6, 1));
-                await compressionStream.FlushAsync();
+                await compressionStream.WriteAsync(data, 5, 1, TestContext.Current.CancellationToken);
+                await compressionStream.WriteAsync(new ReadOnlyMemory<byte>(data, 6, 1), TestContext.Current.CancellationToken);
+                await compressionStream.FlushAsync(TestContext.Current.CancellationToken);
             }
 
             tempStream.Seek(0, SeekOrigin.Begin);
@@ -75,13 +75,13 @@ namespace ZstdSharp.Test
             {
                 Assert.Equal(0, decompressionStream.Read(result, 0, 0));
                 Assert.Equal(0, decompressionStream.Read(Span<byte>.Empty));
-                Assert.Equal(0, await decompressionStream.ReadAsync(result, 0, 0));
-                Assert.Equal(0, await decompressionStream.ReadAsync(Memory<byte>.Empty));
+                Assert.Equal(0, await decompressionStream.ReadAsync(result, 0, 0, TestContext.Current.CancellationToken));
+                Assert.Equal(0, await decompressionStream.ReadAsync(Memory<byte>.Empty, TestContext.Current.CancellationToken));
 
                 Assert.Equal(1, decompressionStream.Read(result, 3, 1));
                 Assert.Equal(1, decompressionStream.Read(new Span<byte>(result, 4, 1)));
-                Assert.Equal(1, await decompressionStream.ReadAsync(result, 5, 1));
-                Assert.Equal(1, await decompressionStream.ReadAsync(new Memory<byte>(result, 6, 1)));
+                Assert.Equal(1, await decompressionStream.ReadAsync(result, 5, 1, TestContext.Current.CancellationToken));
+                Assert.Equal(1, await decompressionStream.ReadAsync(new Memory<byte>(result, 6, 1), TestContext.Current.CancellationToken));
             }
 
             Assert.True(data.SequenceEqual(result));
@@ -346,8 +346,8 @@ namespace ZstdSharp.Test
                 }
 
                 int bytesRead;
-                while ((bytesRead = await testStream.ReadAsync(buffer, offset, copyBufferSize)) > 0)
-                    await compressionStream.WriteAsync(buffer, offset, bytesRead);
+                while ((bytesRead = await testStream.ReadAsync(buffer, offset, copyBufferSize, TestContext.Current.CancellationToken)) > 0)
+                    await compressionStream.WriteAsync(buffer, offset, bytesRead, TestContext.Current.CancellationToken);
             }
 
             tempStream.Seek(0, SeekOrigin.Begin);
@@ -362,8 +362,8 @@ namespace ZstdSharp.Test
                 }
 
                 int bytesRead;
-                while ((bytesRead = await decompressionStream.ReadAsync(buffer, offset, copyBufferSize)) > 0)
-                    await resultStream.WriteAsync(buffer, offset, bytesRead);
+                while ((bytesRead = await decompressionStream.ReadAsync(buffer, offset, copyBufferSize, TestContext.Current.CancellationToken)) > 0)
+                    await resultStream.WriteAsync(buffer, offset, bytesRead, TestContext.Current.CancellationToken);
             }
 
             Assert.True(testStream.ToArray().SequenceEqual(resultStream.ToArray()));
@@ -409,15 +409,15 @@ namespace ZstdSharp.Test
             using (var decomp = new DecompressionStream(pipeClient))
             {
                 var data = new byte[] { 0, 1, 2 };
-                await comp.WriteAsync(data);
-                await comp.FlushAsync();
+                await comp.WriteAsync(data, TestContext.Current.CancellationToken);
+                await comp.FlushAsync(TestContext.Current.CancellationToken);
 
                 var buf = new byte[outputBufSize];
 
                 var received = new List<byte>();
                 while (received.Count < data.Length)
                 {
-                    var count = await decomp.ReadAsync(buf);
+                    var count = await decomp.ReadAsync(buf, TestContext.Current.CancellationToken);
                     received.AddRange(buf.Take(count));
                 }
 
@@ -518,8 +518,8 @@ namespace ZstdSharp.Test
             var bs = new BufferedStream(ms, 4096);
             using var writer = new CompressionStream(bs);
             var src = new byte[1] { 42 };
-            await writer.WriteAsync(src);
-            await writer.FlushAsync();
+            await writer.WriteAsync(src, TestContext.Current.CancellationToken);
+            await writer.FlushAsync(TestContext.Current.CancellationToken);
             Assert.True(ms.ToArray().Length > 0);
         }
 
@@ -530,7 +530,7 @@ namespace ZstdSharp.Test
             var bs = new BufferedStream(ms, 4096);
             using var writer = new CompressionStream(bs, leaveOpen: true);
             var src = new byte[1] { 42 };
-            await writer.WriteAsync(src);
+            await writer.WriteAsync(src, TestContext.Current.CancellationToken);
             await writer.DisposeAsync();
             Assert.True(ms.ToArray().Length == 0);
             bs.Dispose();
