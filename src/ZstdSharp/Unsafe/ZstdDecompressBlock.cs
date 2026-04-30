@@ -1412,7 +1412,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_decompressSequences_body(ZSTD_DCtx_s* dctx, void* dst, nuint maxDstSize, void* seqStart, nuint seqSize, int nbSeq, ZSTD_longOffset_e isLongOffset)
         {
             // HACK, force nbSeq to stack (better register usage)
-            System.Threading.Thread.VolatileRead(ref nbSeq);
+            System.Threading.Volatile.Read(ref nbSeq);
             byte* ip = (byte*)seqStart;
             byte* iend = ip + seqSize;
             byte* ostart = (byte*)dst;

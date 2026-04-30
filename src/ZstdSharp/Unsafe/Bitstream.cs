@@ -370,7 +370,6 @@ namespace ZstdSharp.Unsafe
         {
             if (bitD->bitsConsumed > (uint)(sizeof(nuint) * 8))
             {
-                const nuint zeroFilled = 0;
                 bitD->ptr = (sbyte*)&static_zeroFilled[0];
                 return BIT_DStream_status.BIT_DStream_overflow;
             }
@@ -563,7 +562,6 @@ namespace ZstdSharp.Unsafe
         {
             if (bitD_bitsConsumed > (uint)(sizeof(nuint) * 8))
             {
-                const nuint zeroFilled = 0;
                 bitD_ptr = (sbyte*)&static_zeroFilled[0];
                 return BIT_DStream_status.BIT_DStream_overflow;
             }
