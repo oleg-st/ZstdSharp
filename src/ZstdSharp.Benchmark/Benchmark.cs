@@ -23,6 +23,8 @@ namespace ZstdSharp.Benchmark
         private IntPtr dCtxNative;
 
         private readonly int level = 1;
+        // compressed on the same context right after `level`, uses the row-based match finder
+        private readonly int reuseLevel = 7;
         private nuint compressedLength;
 
         [GlobalSetup]
@@ -65,6 +67,30 @@ namespace ZstdSharp.Benchmark
             fixed (byte* srcPtr = src)
             {
                 Methods.ZSTD_compressCCtx(cCtx, dstPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length, level);
+            }
+        }
+
+        [BenchmarkCategory("CompressReuse"), Benchmark(Baseline = true)]
+        public void CompressReuseNative()
+        {
+            fixed (byte* dstPtr = dest)
+            fixed (byte* srcPtr = src)
+            {
+                ExternMethods.ZSTD_compressCCtx(cCtxNative, (IntPtr) dstPtr, (nuint) dest.Length, (IntPtr) srcPtr,
+                    (nuint) src.Length, level);
+                ExternMethods.ZSTD_compressCCtx(cCtxNative, (IntPtr) dstPtr, (nuint) dest.Length, (IntPtr) srcPtr,
+                    (nuint) src.Length, reuseLevel);
+            }
+        }
+
+        [BenchmarkCategory("CompressReuse"), Benchmark]
+        public void CompressReuseSharp()
+        {
+            fixed (byte* dstPtr = dest)
+            fixed (byte* srcPtr = src)
+            {
+                Methods.ZSTD_compressCCtx(cCtx, dstPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length, level);
+                Methods.ZSTD_compressCCtx(cCtx, dstPtr, (nuint) dest.Length, srcPtr, (nuint) src.Length, reuseLevel);
             }
         }
 
