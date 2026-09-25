@@ -382,10 +382,10 @@ namespace ZstdSharp.Unsafe
             {
                 cParams = @params->cParams,
                 fParams = @params->fParams,
-                compressionLevel = compressionLevel,
-                useRowMatchFinder = ZSTD_resolveRowMatchFinderMode(cctxParams->useRowMatchFinder, &@params->cParams),
-                postBlockSplitter = ZSTD_resolveBlockSplitterMode(cctxParams->postBlockSplitter, &@params->cParams)
+                compressionLevel = compressionLevel
             };
+            cctxParams->useRowMatchFinder = ZSTD_resolveRowMatchFinderMode(cctxParams->useRowMatchFinder, &@params->cParams);
+            cctxParams->postBlockSplitter = ZSTD_resolveBlockSplitterMode(cctxParams->postBlockSplitter, &@params->cParams);
             cctxParams->ldmParams.enableLdm = ZSTD_resolveEnableLdm(cctxParams->ldmParams.enableLdm, &@params->cParams);
             cctxParams->validateSequences = ZSTD_resolveExternalSequenceValidation(cctxParams->validateSequences);
             cctxParams->maxBlockSize = ZSTD_resolveMaxBlockSize(cctxParams->maxBlockSize);

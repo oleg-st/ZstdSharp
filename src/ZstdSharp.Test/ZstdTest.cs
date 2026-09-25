@@ -99,6 +99,41 @@ namespace ZstdSharp.Test
         }
 
         [Fact]
+        public void CompressCCtxReuseAcrossLevelsMatchesFreshContext()
+        {
+            // A previous call at a level without the row match finder (fast strategy) must not
+            // leak its resolved useRowMatchFinder into the next call on the same context.
+            var src = File.ReadAllBytes("dickens").AsSpan(0, 1 << 20).ToArray();
+            var fresh = new byte[Methods.ZSTD_compressBound((nuint)src.Length)];
+            var reused = new byte[fresh.Length];
+            var freshCtx = Methods.ZSTD_createCCtx();
+            var reusedCtx = Methods.ZSTD_createCCtx();
+            try
+            {
+                fixed (byte* srcPtr = src)
+                fixed (byte* freshPtr = fresh)
+                fixed (byte* reusedPtr = reused)
+                {
+                    var freshSize = Methods.ZSTD_compressCCtx(freshCtx, freshPtr, (nuint)fresh.Length, srcPtr,
+                        (nuint)src.Length, 12).EnsureZstdSuccess();
+
+                    Methods.ZSTD_compressCCtx(reusedCtx, reusedPtr, (nuint)reused.Length, srcPtr, 1 << 16, 1)
+                        .EnsureZstdSuccess();
+                    var reusedSize = Methods.ZSTD_compressCCtx(reusedCtx, reusedPtr, (nuint)reused.Length, srcPtr,
+                        (nuint)src.Length, 12).EnsureZstdSuccess();
+
+                    Assert.Equal(ZSTD_paramSwitch_e.ZSTD_ps_enable, reusedCtx->appliedParams.useRowMatchFinder);
+                    Assert.True(fresh.AsSpan(0, (int)freshSize).SequenceEqual(reused.AsSpan(0, (int)reusedSize)));
+                }
+            }
+            finally
+            {
+                Methods.ZSTD_freeCCtx(freshCtx);
+                Methods.ZSTD_freeCCtx(reusedCtx);
+            }
+        }
+
+        [Fact]
         public void CompressorLevels()
         {
             Assert.Equal(Compressor.MinCompressionLevel, Methods.ZSTD_minCLevel());
