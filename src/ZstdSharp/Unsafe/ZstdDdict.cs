@@ -4,16 +4,9 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        /* note: several prototypes are already published in `zstd.h` :
-         * ZSTD_createDDict()
-         * ZSTD_createDDict_byReference()
-         * ZSTD_createDDict_advanced()
-         * ZSTD_freeDDict()
-         * ZSTD_initStaticDDict()
-         * ZSTD_sizeof_DDict()
-         * ZSTD_estimateDDictSize()
-         * ZSTD_getDictID_fromDict()
-         */
+        /* The complete dictionary blob, including its header. Legacy decoders need
+         * the original bytes; ZSTD_copyDDictParameters() excludes the header from
+         * modern match history. */
         private static void* ZSTD_DDict_dictContent(ZSTD_DDict_s* ddict)
         {
             assert(ddict != null);
@@ -28,12 +21,14 @@ namespace ZstdSharp.Unsafe
 
         private static void ZSTD_copyDDictParameters(ZSTD_DCtx_s* dctx, ZSTD_DDict_s* ddict)
         {
+            void* content;
             assert(dctx != null);
             assert(ddict != null);
+            content = ddict->dictHeaderSize != 0 ? (byte*)ddict->dictContent + ddict->dictHeaderSize : ddict->dictContent;
             dctx->dictID = ddict->dictID;
-            dctx->prefixStart = ddict->dictContent;
-            dctx->virtualStart = ddict->dictContent;
-            dctx->dictEnd = (byte*)ddict->dictContent + ddict->dictSize;
+            dctx->prefixStart = content;
+            dctx->virtualStart = content;
+            dctx->dictEnd = ddict->dictSize != 0 ? (byte*)ddict->dictContent + ddict->dictSize : ddict->dictContent;
             dctx->previousDstEnd = dctx->dictEnd;
             if (ddict->entropyPresent != 0)
             {
@@ -57,6 +52,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_loadEntropy_intoDDict(ZSTD_DDict_s* ddict, ZSTD_dictContentType_e dictContentType)
         {
             ddict->dictID = 0;
+            ddict->dictHeaderSize = 0;
             ddict->entropyPresent = 0;
             if (dictContentType == ZSTD_dictContentType_e.ZSTD_dct_rawContent)
                 return 0;
@@ -78,9 +74,15 @@ namespace ZstdSharp.Unsafe
             }
 
             ddict->dictID = MEM_readLE32((sbyte*)ddict->dictContent + 4);
-            if (ERR_isError(ZSTD_loadDEntropy(&ddict->entropy, ddict->dictContent, ddict->dictSize)))
             {
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted));
+                nuint headerSize = ZSTD_loadDEntropy(&ddict->entropy, ddict->dictContent, ddict->dictSize);
+                if (ERR_isError(headerSize))
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_corrupted));
+                }
+
+                assert(headerSize <= ddict->dictSize);
+                ddict->dictHeaderSize = headerSize;
             }
 
             ddict->entropyPresent = 1;
@@ -89,6 +91,8 @@ namespace ZstdSharp.Unsafe
 
         private static nuint ZSTD_initDDict_internal(ZSTD_DDict_s* ddict, void* dict, nuint dictSize, ZSTD_dictLoadMethod_e dictLoadMethod, ZSTD_dictContentType_e dictContentType)
         {
+            if (dictSize == 0)
+                dict = null;
             if (dictLoadMethod == ZSTD_dictLoadMethod_e.ZSTD_dlm_byRef || dict == null || dictSize == 0)
             {
                 ddict->dictBuffer = null;
@@ -120,26 +124,44 @@ namespace ZstdSharp.Unsafe
             return 0;
         }
 
+        /* Same as ZSTD_createDDict_advanced(), but returns the error code on failure,
+         * in which case *ddictPtr is set to NULL. */
+        private static nuint ZSTD_createDDict_advanced_internal(ZSTD_DDict_s** ddictPtr, void* dict, nuint dictSize, ZSTD_dictLoadMethod_e dictLoadMethod, ZSTD_dictContentType_e dictContentType, ZSTD_customMem customMem)
+        {
+            ZSTD_DDict_s* ddict;
+            *ddictPtr = null;
+            if (((customMem.customAlloc == null ? 1 : 0) ^ (customMem.customFree == null ? 1 : 0)) != 0)
+            {
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_combination_unsupported));
+            }
+
+            ddict = (ZSTD_DDict_s*)ZSTD_customMalloc((nuint)sizeof(ZSTD_DDict_s), customMem);
+            if (ddict == null)
+            {
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+            }
+
+            ddict->cMem = customMem;
+            {
+                nuint initResult = ZSTD_initDDict_internal(ddict, dict, dictSize, dictLoadMethod, dictContentType);
+                if (ERR_isError(initResult))
+                {
+                    ZSTD_freeDDict(ddict);
+                    return initResult;
+                }
+            }
+
+            *ddictPtr = ddict;
+            return 0;
+        }
+
         public static ZSTD_DDict_s* ZSTD_createDDict_advanced(void* dict, nuint dictSize, ZSTD_dictLoadMethod_e dictLoadMethod, ZSTD_dictContentType_e dictContentType, ZSTD_customMem customMem)
         {
-            if (((customMem.customAlloc == null ? 1 : 0) ^ (customMem.customFree == null ? 1 : 0)) != 0)
+            ZSTD_DDict_s* ddict;
+            nuint err = ZSTD_createDDict_advanced_internal(&ddict, dict, dictSize, dictLoadMethod, dictContentType, customMem);
+            if (ERR_isError(err))
                 return null;
-            {
-                ZSTD_DDict_s* ddict = (ZSTD_DDict_s*)ZSTD_customMalloc((nuint)sizeof(ZSTD_DDict_s), customMem);
-                if (ddict == null)
-                    return null;
-                ddict->cMem = customMem;
-                {
-                    nuint initResult = ZSTD_initDDict_internal(ddict, dict, dictSize, dictLoadMethod, dictContentType);
-                    if (ERR_isError(initResult))
-                    {
-                        ZSTD_freeDDict(ddict);
-                        return null;
-                    }
-                }
-
-                return ddict;
-            }
+            return ddict;
         }
 
         /*! ZSTD_createDDict() :
@@ -174,15 +196,15 @@ namespace ZstdSharp.Unsafe
 
         public static ZSTD_DDict_s* ZSTD_initStaticDDict(void* sBuffer, nuint sBufferSize, void* dict, nuint dictSize, ZSTD_dictLoadMethod_e dictLoadMethod, ZSTD_dictContentType_e dictContentType)
         {
-            nuint neededSpace = (nuint)sizeof(ZSTD_DDict_s) + (dictLoadMethod == ZSTD_dictLoadMethod_e.ZSTD_dlm_byRef ? 0 : dictSize);
+            nuint neededSpace = ZSTD_estimateDDictSize(dictSize, dictLoadMethod);
             ZSTD_DDict_s* ddict = (ZSTD_DDict_s*)sBuffer;
             assert(sBuffer != null);
-            assert(dict != null);
+            assert(dict != null || dictSize == 0);
             if (((nuint)sBuffer & 7) != 0)
                 return null;
-            if (sBufferSize < neededSpace)
+            if (ERR_isError(neededSpace) || sBufferSize < neededSpace)
                 return null;
-            if (dictLoadMethod == ZSTD_dictLoadMethod_e.ZSTD_dlm_byCopy)
+            if (dictLoadMethod == ZSTD_dictLoadMethod_e.ZSTD_dlm_byCopy && dictSize != 0)
             {
                 memcpy(ddict + 1, dict, (uint)dictSize);
                 dict = ddict + 1;
@@ -213,7 +235,14 @@ namespace ZstdSharp.Unsafe
          *  Note : dictionary created by reference using ZSTD_dlm_byRef are smaller */
         public static nuint ZSTD_estimateDDictSize(nuint dictSize, ZSTD_dictLoadMethod_e dictLoadMethod)
         {
-            return (nuint)sizeof(ZSTD_DDict_s) + (dictLoadMethod == ZSTD_dictLoadMethod_e.ZSTD_dlm_byRef ? 0 : dictSize);
+            if (dictLoadMethod == ZSTD_dictLoadMethod_e.ZSTD_dlm_byRef)
+                return (nuint)sizeof(ZSTD_DDict_s);
+            if (dictSize > unchecked((nuint)(-1)) - (nuint)sizeof(ZSTD_DDict_s))
+            {
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+            }
+
+            return (nuint)sizeof(ZSTD_DDict_s) + dictSize;
         }
 
         public static nuint ZSTD_sizeof_DDict(ZSTD_DDict_s* ddict)

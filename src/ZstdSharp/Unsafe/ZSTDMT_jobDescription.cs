@@ -6,6 +6,8 @@ namespace ZstdSharp.Unsafe
         public nuint consumed;
         /* SHARED - set0 by mtctx, then modified by worker AND read by mtctx, then set0 by mtctx */
         public nuint cSize;
+        /* SHARED - set0 by mtctx, then set1 by worker when it no longer uses the job */
+        public uint completed;
         /* Thread-safe - used by mtctx and worker */
         public void* job_mutex;
         /* Thread-safe - used by mtctx and worker */

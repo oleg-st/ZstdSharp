@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -7,9 +6,12 @@ namespace ZstdSharp
 {
     internal unsafe class JobThreadPool : IDisposable
     {
-        private int numThreads;
-        private readonly List<JobThread> threads;
-        private readonly BlockingCollection<Job> queue;
+        private readonly List<Thread> threads = new List<Thread>();
+        private readonly Queue<Job> queue;
+        private readonly int queueSize;
+        private int threadLimit;
+        private int busyThreads;
+        private bool shuttingDown;
 
         private struct Job
         {
@@ -17,123 +19,130 @@ namespace ZstdSharp
             public void* opaque;
         }
 
-        private class JobThread
+        public JobThreadPool(int queueSize)
         {
-            private Thread Thread { get; }
-            public CancellationTokenSource CancellationTokenSource { get; }
-
-            public JobThread(Thread thread)
-            {
-                CancellationTokenSource = new CancellationTokenSource();
-                Thread = thread;
-            }
-
-            public void Start()
-            {
-                Thread.Start(this);
-            }
-
-            public void Cancel()
-            {
-                CancellationTokenSource.Cancel();
-            }
-
-            public void Join()
-            {
-                Thread.Join();
-            }
+            this.queueSize = queueSize;
+            queue = new Queue<Job>(Math.Max(1, queueSize));
         }
 
-        private void Worker(object obj)
+        public bool Resize(int numThreads)
         {
-            if (obj is not JobThread poolThread)
-                return;
-
-            var cancellationToken = poolThread.CancellationTokenSource.Token;
-            while (!queue.IsCompleted && !cancellationToken.IsCancellationRequested)
+            lock (queue)
             {
+                if (numThreads < 1 || shuttingDown)
+                    return false;
+
                 try
                 {
-                    if (queue.TryTake(out var job, -1, cancellationToken))
-                        ((delegate* managed<void*, void>)job.function)(job.opaque);
-                }
-                catch (InvalidOperationException)
-                {
-                }
-                catch (OperationCanceledException)
-                {
-                }
-            }
-        }
+                    // Reserve the list entries before starting any new threads.
+                    if (threads.Capacity < numThreads)
+                        threads.Capacity = numThreads;
 
-        public JobThreadPool(int num, int queueSize)
-        {
-            numThreads = num;
-            queue = new BlockingCollection<Job>(queueSize + 1);
-            threads = new List<JobThread>(num);
-            for (var i = 0; i < numThreads; i++)
-                CreateThread();
-        }
-
-        private void CreateThread()
-        {
-            var poolThread = new JobThread(new Thread(Worker));
-            threads.Add(poolThread);
-            poolThread.Start();
-        }
-
-        public void Resize(int num)
-        {
-            lock (threads)
-            {
-                if (num < numThreads)
-                {
-                    for (var i = numThreads - 1; i >= num; i--)
+                    while (threads.Count < numThreads)
                     {
-                        threads[i].Cancel();
-                        threads.RemoveAt(i);
+                        var thread = new Thread(Worker);
+                        thread.Start();
+                        threads.Add(thread);
                     }
                 }
-                else
+                catch (OutOfMemoryException)
                 {
-                    for (var i = numThreads; i < num; i++)
-                        CreateThread();
+                    return false;
+                }
+
+                threadLimit = numThreads;
+                Monitor.PulseAll(queue);
+                return true;
+            }
+        }
+
+        private void Worker()
+        {
+            while (true)
+            {
+                Job job;
+                lock (queue)
+                {
+                    while (queue.Count == 0 || busyThreads >= threadLimit)
+                    {
+                        if (shuttingDown)
+                            return;
+                        Monitor.Wait(queue);
+                    }
+
+                    job = queue.Dequeue();
+                    busyThreads++;
+                    Monitor.PulseAll(queue);
+                }
+
+                try
+                {
+                    ((delegate* managed<void*, void>)job.function)(job.opaque);
+                }
+                finally
+                {
+                    lock (queue)
+                    {
+                        busyThreads--;
+                        Monitor.PulseAll(queue);
+                    }
                 }
             }
+        }
 
-            numThreads = num;
+        // Without queueing, only accept work when a worker is available.
+        private bool IsFull() => queueSize == 0
+            ? busyThreads >= threadLimit || queue.Count != 0
+            : queue.Count >= queueSize;
+
+        private void Enqueue(void* function, void* opaque)
+        {
+            queue.Enqueue(new Job { function = function, opaque = opaque });
+            Monitor.PulseAll(queue);
         }
 
         public void Add(void* function, void* opaque)
         {
-            queue.Add(new Job { function = function, opaque = opaque });
+            lock (queue)
+            {
+                while (!shuttingDown && IsFull())
+                    Monitor.Wait(queue);
+                if (!shuttingDown)
+                    Enqueue(function, opaque);
+            }
         }
 
         public bool TryAdd(void* function, void* opaque)
         {
-            return queue.TryAdd(new Job { function = function, opaque = opaque });
+            lock (queue)
+            {
+                if (shuttingDown || IsFull())
+                    return false;
+
+                Enqueue(function, opaque);
+                return true;
+            }
         }
 
-        public void Join(bool cancel = true)
+        public void JoinJobs()
         {
-            queue.CompleteAdding();
-            List<JobThread> jobThreads;
-            lock (threads)
-                jobThreads = new List<JobThread>(threads);
-
-            if (cancel)
+            lock (queue)
             {
-                foreach (var thread in jobThreads)
-                    thread.Cancel();
+                while (queue.Count != 0 || busyThreads != 0)
+                    Monitor.Wait(queue);
             }
-
-            foreach (var thread in jobThreads)
-                thread.Join();
         }
 
         public void Dispose()
         {
-            queue.Dispose();
+            lock (queue)
+            {
+                shuttingDown = true;
+                Monitor.PulseAll(queue);
+            }
+
+            foreach (var thread in threads)
+                thread.Join();
         }
 
         public int Size()

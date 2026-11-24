@@ -7,7 +7,8 @@ namespace ZstdSharp.Unsafe
         public SeqStore_t secondHalfSeqStore;
         public SeqStore_t currSeqStore;
         public SeqStore_t nextSeqStore;
-        public fixed uint partitions[196];
+        /* splits, followed by the end of the block */
+        public fixed uint partitions[197];
         public ZSTD_entropyCTablesMetadata_t entropyMetadata;
     }
 }

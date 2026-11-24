@@ -196,6 +196,17 @@ namespace ZstdSharp.Unsafe
 
         private static readonly uint* ML_base = GetArrayPointer(new uint[53] { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 37, 39, 41, 43, 47, 51, 59, 67, 83, 99, 0x83, 0x103, 0x203, 0x403, 0x803, 0x1003, 0x2003, 0x4003, 0x8003, 0x10003 });
 #endif
+        /**
+         * @returns the cached per-context BMI2 dispatch hint, or 0 when the build does
+         *          not use cached CPU state.
+         *
+         * Beware: this is *not* a "does the CPU support BMI2" test. When BMI2 is enabled
+         * at compile time, DYNAMIC_BMI2 is 0: the whole library is already compiled with
+         * BMI2, no separate variant exists, and this returns 0 even though the CPU does
+         * support BMI2. Only use the result as a dispatch hint passed to a lower-level
+         * BMI2/default selector. Integrations may ignore the cached hint and consult
+         * their own CPU-feature policy at that selector.
+         */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int ZSTD_DCtx_get_bmi2(ZSTD_DCtx_s* dctx)
         {

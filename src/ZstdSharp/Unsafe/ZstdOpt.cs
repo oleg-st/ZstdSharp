@@ -87,6 +87,16 @@ namespace ZstdSharp.Unsafe
             return ZSTD_downscaleStats(table, lastEltIndex, ZSTD_highbit32(factor), base_directive_e.base_1guaranteed);
         }
 
+        /* Dictionary tables can assign costs at or above the frequency scale:
+         * absent FSE symbols cost tableLog+1, and the Huffman reader accepts tables
+         * deeper than LitHufLog. Keep a minimum frequency of 1 without underflowing
+         * the shift. A zero cost also retains its historical minimum frequency. */
+        private static uint ZSTD_freqFromBitCost(uint bitCost, uint scaleLog)
+        {
+            assert(scaleLog < 31);
+            return bitCost > 0 && bitCost < scaleLog ? 1U << (int)(scaleLog - bitCost) : 1;
+        }
+
 #if NET7_0_OR_GREATER
         private static ReadOnlySpan<uint> Span_baseLLfreqs => new uint[36]
         {
@@ -206,8 +216,7 @@ namespace ZstdSharp.Unsafe
                             /* scale to 2K */
                             const uint scaleLog = 11;
                             uint bitCost = HUF_getNbBitsFromCTable(&optPtr->symbolCosts->huf.CTable.e0, lit);
-                            assert(bitCost <= scaleLog);
-                            optPtr->litFreq[lit] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
+                            optPtr->litFreq[lit] = ZSTD_freqFromBitCost(bitCost, scaleLog);
                             optPtr->litSum += optPtr->litFreq[lit];
                         }
                     }
@@ -222,8 +231,7 @@ namespace ZstdSharp.Unsafe
                             /* scale to 1K */
                             const uint scaleLog = 10;
                             uint bitCost = FSE_getMaxNbBits(llstate.symbolTT, ll);
-                            assert(bitCost < scaleLog);
-                            optPtr->litLengthFreq[ll] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
+                            optPtr->litLengthFreq[ll] = ZSTD_freqFromBitCost(bitCost, scaleLog);
                             optPtr->litLengthSum += optPtr->litLengthFreq[ll];
                         }
                     }
@@ -237,8 +245,7 @@ namespace ZstdSharp.Unsafe
                         {
                             const uint scaleLog = 10;
                             uint bitCost = FSE_getMaxNbBits(mlstate.symbolTT, ml);
-                            assert(bitCost < scaleLog);
-                            optPtr->matchLengthFreq[ml] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
+                            optPtr->matchLengthFreq[ml] = ZSTD_freqFromBitCost(bitCost, scaleLog);
                             optPtr->matchLengthSum += optPtr->matchLengthFreq[ml];
                         }
                     }
@@ -252,8 +259,7 @@ namespace ZstdSharp.Unsafe
                         {
                             const uint scaleLog = 10;
                             uint bitCost = FSE_getMaxNbBits(ofstate.symbolTT, of);
-                            assert(bitCost < scaleLog);
-                            optPtr->offCodeFreq[of] = (uint)(bitCost != 0 ? 1 << (int)(scaleLog - bitCost) : 1);
+                            optPtr->offCodeFreq[of] = ZSTD_freqFromBitCost(bitCost, scaleLog);
                             optPtr->offCodeSum += optPtr->offCodeFreq[of];
                         }
                     }
@@ -1297,19 +1303,8 @@ namespace ZstdSharp.Unsafe
                     uint storeStart = storeEnd;
                     uint stretchPos = cur;
                     assert(storeEnd < (1 << 12) + 3);
-                    if (lastStretch.litlen > 0)
-                    {
-                        opt[storeEnd].litlen = lastStretch.litlen;
-                        opt[storeEnd].mlen = 0;
-                        storeStart = storeEnd - 1;
-                        opt[storeStart] = lastStretch;
-                    }
-
-                    {
-                        opt[storeEnd] = lastStretch;
-                        storeStart = storeEnd;
-                    }
-
+                    opt[storeEnd] = lastStretch;
+                    storeStart = storeEnd;
                     while (true)
                     {
                         ZSTD_optimal_t nextStretch = opt[stretchPos];

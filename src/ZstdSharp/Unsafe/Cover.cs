@@ -4,7 +4,6 @@ namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
-        private static int g_displayLevel = 0;
         /**
          * Returns the sum of the sample sizes.
          */
@@ -293,6 +292,8 @@ namespace ZstdSharp.Unsafe
         {
             nuint largestDict = 0;
             nuint largestCompressed = 0;
+            nuint candidateContentSize = 0;
+            nuint candidateDict = 0;
             byte* customDictContentEnd = customDictContent + dictContentSize;
             byte* largestDictbuffer = (byte*)malloc(dictBufferCapacity);
             byte* candidateDictBuffer = (byte*)malloc(dictBufferCapacity);
@@ -305,15 +306,15 @@ namespace ZstdSharp.Unsafe
             }
 
             memcpy(largestDictbuffer, customDictContent, (uint)dictContentSize);
-            dictContentSize = ZDICT_finalizeDictionary(largestDictbuffer, dictBufferCapacity, customDictContent, dictContentSize, samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
-            if (ZDICT_isError(dictContentSize))
+            largestDict = ZDICT_finalizeDictionary(largestDictbuffer, dictBufferCapacity, customDictContent, dictContentSize, samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
+            if (ZDICT_isError(largestDict))
             {
                 free(largestDictbuffer);
                 free(candidateDictBuffer);
-                return COVER_dictSelectionError(dictContentSize);
+                return COVER_dictSelectionError(largestDict);
             }
 
-            totalCompressedSize = COVER_checkTotalCompressedSize(@params, samplesSizes, samplesBuffer, offsets, nbCheckSamples, nbSamples, largestDictbuffer, dictContentSize);
+            totalCompressedSize = COVER_checkTotalCompressedSize(@params, samplesSizes, samplesBuffer, offsets, nbCheckSamples, nbSamples, largestDictbuffer, largestDict);
             if (ERR_isError(totalCompressedSize))
             {
                 free(largestDictbuffer);
@@ -324,24 +325,23 @@ namespace ZstdSharp.Unsafe
             if (@params.shrinkDict == 0)
             {
                 free(candidateDictBuffer);
-                return setDictSelection(largestDictbuffer, dictContentSize, totalCompressedSize);
+                return setDictSelection(largestDictbuffer, largestDict, totalCompressedSize);
             }
 
-            largestDict = dictContentSize;
             largestCompressed = totalCompressedSize;
-            dictContentSize = 256;
-            while (dictContentSize < largestDict)
+            candidateContentSize = 256;
+            while (candidateContentSize < dictContentSize)
             {
                 memcpy(candidateDictBuffer, largestDictbuffer, (uint)largestDict);
-                dictContentSize = ZDICT_finalizeDictionary(candidateDictBuffer, dictBufferCapacity, customDictContentEnd - dictContentSize, dictContentSize, samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
-                if (ZDICT_isError(dictContentSize))
+                candidateDict = ZDICT_finalizeDictionary(candidateDictBuffer, dictBufferCapacity, customDictContentEnd - candidateContentSize, candidateContentSize, samplesBuffer, samplesSizes, nbFinalizeSamples, @params.zParams);
+                if (ZDICT_isError(candidateDict))
                 {
                     free(largestDictbuffer);
                     free(candidateDictBuffer);
-                    return COVER_dictSelectionError(dictContentSize);
+                    return COVER_dictSelectionError(candidateDict);
                 }
 
-                totalCompressedSize = COVER_checkTotalCompressedSize(@params, samplesSizes, samplesBuffer, offsets, nbCheckSamples, nbSamples, candidateDictBuffer, dictContentSize);
+                totalCompressedSize = COVER_checkTotalCompressedSize(@params, samplesSizes, samplesBuffer, offsets, nbCheckSamples, nbSamples, candidateDictBuffer, candidateDict);
                 if (ERR_isError(totalCompressedSize))
                 {
                     free(largestDictbuffer);
@@ -352,16 +352,15 @@ namespace ZstdSharp.Unsafe
                 if (totalCompressedSize <= largestCompressed * regressionTolerance)
                 {
                     free(largestDictbuffer);
-                    return setDictSelection(candidateDictBuffer, dictContentSize, totalCompressedSize);
+                    return setDictSelection(candidateDictBuffer, candidateDict, totalCompressedSize);
                 }
 
-                dictContentSize *= 2;
+                candidateContentSize *= 2;
             }
 
-            dictContentSize = largestDict;
             totalCompressedSize = largestCompressed;
             free(candidateDictBuffer);
-            return setDictSelection(largestDictbuffer, dictContentSize, totalCompressedSize);
+            return setDictSelection(largestDictbuffer, largestDict, totalCompressedSize);
         }
     }
 }

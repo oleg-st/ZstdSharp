@@ -19,9 +19,13 @@ namespace ZstdSharp.Unsafe
         {
             if (customMem.customAlloc != null)
             {
-                /* calloc implemented as malloc+memset;
-                 * not as efficient as calloc, but next best guess for custom malloc */
+                /* calloc implemented as malloc+memset */
                 void* ptr = ((delegate* managed<void*, nuint, void*>)customMem.customAlloc)(customMem.opaque, size);
+                if (ptr == null)
+                {
+                    return null;
+                }
+
                 memset(ptr, 0, (uint)size);
                 return ptr;
             }

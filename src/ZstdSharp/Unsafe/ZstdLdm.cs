@@ -60,6 +60,8 @@ namespace ZstdSharp.Unsafe
                 hash = (hash << 1) + ZSTD_ldm_gearTab[data[n] & 0xff];
                 n += 1;
             }
+
+            state->rolling = hash;
         }
 
         /** ZSTD_ldm_gear_feed():
@@ -178,7 +180,14 @@ namespace ZstdSharp.Unsafe
 
             if (@params->hashLog == 0)
             {
-                @params->hashLog = @params->windowLog - @params->hashRateLog <= 6 ? 6 : @params->windowLog - @params->hashRateLog <= (uint)((sizeof(nuint) == 4 ? 30 : 31) < 30 ? sizeof(nuint) == 4 ? 30 : 31 : 30) ? @params->windowLog - @params->hashRateLog : (uint)((sizeof(nuint) == 4 ? 30 : 31) < 30 ? sizeof(nuint) == 4 ? 30 : 31 : 30);
+                if (@params->windowLog <= @params->hashRateLog)
+                {
+                    @params->hashLog = 6;
+                }
+                else
+                {
+                    @params->hashLog = @params->windowLog - @params->hashRateLog <= 6 ? 6 : @params->windowLog - @params->hashRateLog <= (uint)((sizeof(nuint) == 4 ? 30 : 31) < 30 ? sizeof(nuint) == 4 ? 30 : 31 : 30) ? @params->windowLog - @params->hashRateLog : (uint)((sizeof(nuint) == 4 ? 30 : 31) < 30 ? sizeof(nuint) == 4 ? 30 : 31 : 30);
+                }
             }
 
             if (@params->minMatchLength == 0)

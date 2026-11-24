@@ -41,7 +41,7 @@ namespace ZstdSharp.Unsafe
         public int isFrameDecompression;
         /* dictionary */
         public ZSTD_DDict_s* ddictLocal;
-        /* set by ZSTD_initDStream_usingDDict(), or ZSTD_DCtx_refDDict() */
+        /* single-DDict state; NULL while ddictSet exists */
         public ZSTD_DDict_s* ddict;
         public uint dictID;
         /* if == 1 : dictionary is "new" for working context, and presumed "cold" (not in cpu cache) */

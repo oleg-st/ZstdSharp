@@ -341,6 +341,7 @@ namespace ZstdSharp.Unsafe
                          * gain back half the rank.
                          */
                         uint nBitsToDecrease = ZSTD_highbit32((uint)totalCost) + 1;
+                        assert(nBitsToDecrease <= 12 + 1);
                         for (; nBitsToDecrease > 1; nBitsToDecrease--)
                         {
                             uint highPos = rankLast[nBitsToDecrease];

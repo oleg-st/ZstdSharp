@@ -7,14 +7,14 @@ namespace ZstdSharp.Unsafe
          ******************************************/
         public static uint ZSTD_versionNumber()
         {
-            return 1 * 100 * 100 + 5 * 100 + 7;
+            return 1 * 100 * 100 + 6 * 100 + 0;
         }
 
         /*! ZSTD_versionString() :
          *  Return runtime library version, like "1.4.5". Requires v1.3.0+. */
         public static string ZSTD_versionString()
         {
-            return "1.5.7";
+            return "1.6.0";
         }
 
         /*! ZSTD_isError() :
@@ -44,6 +44,21 @@ namespace ZstdSharp.Unsafe
         public static string ZSTD_getErrorString(ZSTD_ErrorCode code)
         {
             return ERR_getErrorString(code);
+        }
+
+        /*! ZSTD_isDeterministicBuild() :
+         * Returns 1 if the library is built using standard compilation flags,
+         * and participates in determinism guarantees with other builds of the
+         * same version.
+         * If this function returns 0, it means the library was compiled with
+         * non-standard compilation flags that change the output of the
+         * compressor.
+         * This is mainly used for Zstd's determinism test suite, which is only
+         * run when this function returns 1.
+         */
+        public static int ZSTD_isDeterministicBuild()
+        {
+            return 1;
         }
     }
 }

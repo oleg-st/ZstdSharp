@@ -328,7 +328,7 @@ namespace ZstdSharp.Unsafe
          *           The src buffer must be before the dst buffer.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ZSTD_wildcopy(void* dst, void* src, nint length, ZSTD_overlap_e ovtype)
+        private static void ZSTD_wildcopy(void* dst, void* src, nuint length, ZSTD_overlap_e ovtype)
         {
             nint diff = (nint)((byte*)dst - (byte*)src);
             byte* ip = (byte*)src;

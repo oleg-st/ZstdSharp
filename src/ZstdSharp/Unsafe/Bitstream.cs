@@ -391,7 +391,7 @@ namespace ZstdSharp.Unsafe
             {
                 uint nbBytes = bitD->bitsConsumed >> 3;
                 BIT_DStream_status result = BIT_DStream_status.BIT_DStream_unfinished;
-                if (bitD->ptr - nbBytes < bitD->start)
+                if (nbBytes > (nuint)(bitD->ptr - bitD->start))
                 {
                     nbBytes = (uint)(bitD->ptr - bitD->start);
                     result = BIT_DStream_status.BIT_DStream_endOfBuffer;
@@ -584,7 +584,7 @@ namespace ZstdSharp.Unsafe
             {
                 uint nbBytes = bitD_bitsConsumed >> 3;
                 BIT_DStream_status result = BIT_DStream_status.BIT_DStream_unfinished;
-                if (bitD_ptr - nbBytes < bitD_start)
+                if (nbBytes > (nuint)(bitD_ptr - bitD_start))
                 {
                     nbBytes = (uint)(bitD_ptr - bitD_start);
                     result = BIT_DStream_status.BIT_DStream_endOfBuffer;

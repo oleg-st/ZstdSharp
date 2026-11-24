@@ -1,6 +1,9 @@
 namespace ZstdSharp.Unsafe
 {
-    /* ====   Serial State   ==== */
+    /* ========================================================
+     * ===  Private interface, for use by ZSTD_compress.c   ===
+     * ===  Not exposed in libzstd. Never invoke directly   ===
+     * ======================================================== */
     public unsafe struct Range
     {
         public void* start;

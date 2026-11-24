@@ -556,6 +556,7 @@ namespace ZstdSharp.Unsafe
             System.Runtime.CompilerServices.Unsafe.SkipInit(out stateOffsetBits);
             FSE_CState_t stateLitLength;
             System.Runtime.CompilerServices.Unsafe.SkipInit(out stateLitLength);
+            assert(MEM_32bits || longOffsets == 0);
             if (ERR_isError(BIT_initCStream(ref blockStream, dst, dstCapacity)))
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
@@ -574,7 +575,7 @@ namespace ZstdSharp.Unsafe
             BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[nbSeq - 1].mlBase, ML_bits[mlCodeTable[nbSeq - 1]]);
             if (MEM_32bits)
                 BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
-            if (longOffsets != 0)
+            if (MEM_32bits && longOffsets != 0)
             {
                 uint ofBits = ofCodeTable[nbSeq - 1];
                 uint extraBits = ofBits - (ofBits < (uint)(MEM_32bits ? 25 : 57) - 1 ? ofBits : (uint)(MEM_32bits ? 25 : 57) - 1);
@@ -615,7 +616,7 @@ namespace ZstdSharp.Unsafe
                     BIT_addBits(ref blockStream_bitContainer, ref blockStream_bitPos, sequences[n].mlBase, mlBits);
                     if (MEM_32bits || ofBits + mlBits + llBits > 56)
                         BIT_flushBits(ref blockStream_bitContainer, ref blockStream_bitPos, ref blockStream_ptr, blockStream_endPtr);
-                    if (longOffsets != 0)
+                    if (MEM_32bits && longOffsets != 0)
                     {
                         uint extraBits = ofBits - (ofBits < (uint)(MEM_32bits ? 25 : 57) - 1 ? ofBits : (uint)(MEM_32bits ? 25 : 57) - 1);
                         if (extraBits != 0)

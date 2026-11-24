@@ -1,3 +1,4 @@
+using System;
 using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
@@ -25,16 +26,23 @@ namespace ZstdSharp.Unsafe
 
         private static void* POOL_create_advanced(nuint numThreads, nuint queueSize, ZSTD_customMem customMem)
         {
-            var jobThreadPool = new JobThreadPool((int)numThreads, (int)queueSize);
-            return UnmanagedObject.Wrap(jobThreadPool);
-        }
+            if (numThreads == 0 || numThreads > int.MaxValue || queueSize > int.MaxValue)
+                return null;
 
-        /*! POOL_join() :
-        Shutdown the queue, wake any sleeping threads, and join all of the threads.
-         */
-        private static void POOL_join(void* ctx)
-        {
-            GetThreadPool(ctx).Join();
+            JobThreadPool jobThreadPool = null;
+            try
+            {
+                jobThreadPool = new JobThreadPool((int)queueSize);
+                if (jobThreadPool.Resize((int)numThreads))
+                    return UnmanagedObject.Wrap(jobThreadPool);
+            }
+            catch (OutOfMemoryException)
+            {
+                // The caller handles allocation failures through a null pool.
+            }
+
+            jobThreadPool?.Dispose();
+            return null;
         }
 
         /*! POOL_free() :
@@ -48,7 +56,6 @@ namespace ZstdSharp.Unsafe
             }
 
             var jobThreadPool = GetThreadPool(ctx);
-            jobThreadPool.Join();
             jobThreadPool.Dispose();
             UnmanagedObject.Free(ctx);
         }
@@ -59,7 +66,7 @@ namespace ZstdSharp.Unsafe
         private static void POOL_joinJobs(void* ctx)
         {
             var jobThreadPool = GetThreadPool(ctx);
-            jobThreadPool.Join(false);
+            jobThreadPool.JoinJobs();
         }
 
         public static void ZSTD_freeThreadPool(void* pool)
@@ -82,11 +89,10 @@ namespace ZstdSharp.Unsafe
         /* @return : 0 on success, 1 on error */
         private static int POOL_resize(void* ctx, nuint numThreads)
         {
-            if (ctx == null)
+            if (ctx == null || numThreads == 0 || numThreads > int.MaxValue)
                 return 1;
             var jobThreadPool = GetThreadPool(ctx);
-            jobThreadPool.Resize((int)numThreads);
-            return 0;
+            return jobThreadPool.Resize((int)numThreads) ? 0 : 1;
         }
 
         /*! POOL_add() :

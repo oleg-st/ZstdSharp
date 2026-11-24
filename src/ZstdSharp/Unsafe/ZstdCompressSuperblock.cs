@@ -29,7 +29,7 @@ namespace ZstdSharp.Unsafe
             nuint lhSize = (nuint)(3 + (litSize >= 1 * (1 << 10) - header ? 1 : 0) + (litSize >= 16 * (1 << 10) - header ? 1 : 0));
             byte* ostart = (byte*)dst;
             byte* oend = ostart + dstSize;
-            byte* op = ostart + lhSize;
+            byte* op = ostart;
             uint singleStream = lhSize == 3 ? 1U : 0U;
             SymbolEncodingType_e hType = writeEntropy != 0 ? hufMetadata->hType : SymbolEncodingType_e.set_repeat;
             nuint cLitSize = 0;
@@ -40,13 +40,29 @@ namespace ZstdSharp.Unsafe
             }
             else if (hufMetadata->hType == SymbolEncodingType_e.set_rle)
             {
+                if (dstSize < 4)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
+
                 return ZSTD_compressRleLiteralsBlock(dst, dstSize, literals, litSize);
             }
 
             assert(litSize > 0);
             assert(hufMetadata->hType == SymbolEncodingType_e.set_compressed || hufMetadata->hType == SymbolEncodingType_e.set_repeat);
+            if (dstSize < lhSize)
+            {
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+            }
+
+            op += lhSize;
             if (writeEntropy != 0 && hufMetadata->hType == SymbolEncodingType_e.set_compressed)
             {
+                if (hufMetadata->hufDesSize > (nuint)(oend - op))
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
+
                 memcpy(op, hufMetadata->hufDesBuffer, (uint)hufMetadata->hufDesSize);
                 op += hufMetadata->hufDesSize;
                 cLitSize += hufMetadata->hufDesSize;
@@ -55,13 +71,13 @@ namespace ZstdSharp.Unsafe
             {
                 int flags = bmi2 != 0 ? (int)HUF_flags_e.HUF_flags_bmi2 : 0;
                 nuint cSize = singleStream != 0 ? HUF_compress1X_usingCTable(op, (nuint)(oend - op), literals, litSize, hufTable, flags) : HUF_compress4X_usingCTable(op, (nuint)(oend - op), literals, litSize, hufTable, flags);
-                op += cSize;
-                cLitSize += cSize;
                 if (cSize == 0 || ERR_isError(cSize))
                 {
                     return 0;
                 }
 
+                op += cSize;
+                cLitSize += cSize;
                 if (writeEntropy == 0 && cLitSize >= litSize)
                 {
                     return ZSTD_noCompressLiterals(dst, dstSize, literals, litSize);
@@ -175,6 +191,11 @@ namespace ZstdSharp.Unsafe
                 uint LLtype = (uint)fseMetadata->llType;
                 uint Offtype = (uint)fseMetadata->ofType;
                 uint MLtype = (uint)fseMetadata->mlType;
+                if (fseMetadata->fseTablesSize > (nuint)(oend - op))
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                }
+
                 *seqHead = (byte)((LLtype << 6) + (Offtype << 4) + (MLtype << 2));
                 memcpy(op, fseMetadata->fseTablesBuffer, (uint)fseMetadata->fseTablesSize);
                 op += fseMetadata->fseTablesSize;
@@ -220,7 +241,13 @@ namespace ZstdSharp.Unsafe
         {
             byte* ostart = (byte*)dst;
             byte* oend = ostart + dstCapacity;
-            byte* op = ostart + ZSTD_blockHeaderSize;
+            byte* op = ostart;
+            if (dstCapacity < ZSTD_blockHeaderSize)
+            {
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+            }
+
+            op += ZSTD_blockHeaderSize;
             {
                 nuint cLitSize = ZSTD_compressSubBlock_literal(&entropy->huf.CTable.e0, &entropyMetadata->hufMetadata, literals, litSize, op, (nuint)(oend - op), bmi2, writeLitEntropy, litEntropyWritten);
                 {
@@ -579,7 +606,7 @@ namespace ZstdSharp.Unsafe
                 }
             }
 
-            return ZSTD_compressSubBlock_multi(&zc->seqStore, zc->blockState.prevCBlock, zc->blockState.nextCBlock, &entropyMetadata, &zc->appliedParams, dst, dstCapacity, src, srcSize, zc->bmi2, lastBlock, zc->tmpWorkspace, zc->tmpWkspSize);
+            return ZSTD_compressSubBlock_multi(&zc->seqStore, zc->blockState.prevCBlock, zc->blockState.nextCBlock, &entropyMetadata, &zc->appliedParams, dst, dstCapacity, src, srcSize, ZSTD_CCtx_get_bmi2(zc), lastBlock, zc->tmpWorkspace, zc->tmpWkspSize);
         }
     }
 }

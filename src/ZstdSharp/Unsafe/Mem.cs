@@ -14,6 +14,16 @@ namespace ZstdSharp.Unsafe
         *  Memory I/O API
         *****************************************************************/
         /*=== Static platform detection ===*/
+        private static bool MEM_arm64
+        {
+            [InlineMethod.Inline]
+#if NET5_0_OR_GREATER
+            get => System.Runtime.Intrinsics.Arm.ArmBase.Arm64.IsSupported;
+#else
+            get => false;
+#endif
+        }
+
         private static bool MEM_32bits
         {
             [InlineMethod.Inline]

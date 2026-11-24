@@ -1,10 +1,17 @@
-using static ZstdSharp.UnsafeHelper;
 using System.Runtime.CompilerServices;
+using static ZstdSharp.UnsafeHelper;
 
 namespace ZstdSharp.Unsafe
 {
     public static unsafe partial class Methods
     {
+        /* Select the oldest input-ring range used by an unfinished job. */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Range ZSTDMT_getJobInputRange(Range prefix, Range src, uint firstJob)
+        {
+            return firstJob != 0 || prefix.size == 0 ? src : prefix;
+        }
+
         private static readonly buffer_s g_nullBuffer = new buffer_s(start: null, capacity: 0);
         private static void ZSTDMT_freeBufferPool(ZSTDMT_bufferPool_s* bufPool)
         {
@@ -636,6 +643,7 @@ namespace ZstdSharp.Unsafe
                 assert(lastCBlockSize == 0);
             job->cSize += lastCBlockSize;
             job->consumed = job->src.size;
+            job->completed = 1;
             SynchronizationWrapper.Pulse(&job->job_mutex);
             SynchronizationWrapper.Exit(&job->job_mutex);
         }
@@ -764,21 +772,25 @@ namespace ZstdSharp.Unsafe
         private static void ZSTDMT_releaseAllJobResources(ZSTDMT_CCtx_s* mtctx)
         {
             uint jobID;
-            for (jobID = 0; jobID <= mtctx->jobIDMask; jobID++)
+            if (mtctx->jobs != null)
             {
-                /* Copy the mutex/cond out */
-                void* mutex = mtctx->jobs[jobID].job_mutex;
-                void* cond = mtctx->jobs[jobID].job_cond;
-                ZSTDMT_releaseBuffer(mtctx->bufPool, mtctx->jobs[jobID].dstBuff);
-                mtctx->jobs[jobID] = new ZSTDMT_jobDescription
+                for (jobID = 0; jobID <= mtctx->jobIDMask; jobID++)
                 {
-                    job_mutex = mutex,
-                    job_cond = cond
-                };
+                    /* Copy the mutex/cond out */
+                    void* mutex = mtctx->jobs[jobID].job_mutex;
+                    void* cond = mtctx->jobs[jobID].job_cond;
+                    ZSTDMT_releaseBuffer(mtctx->bufPool, mtctx->jobs[jobID].dstBuff);
+                    mtctx->jobs[jobID] = new ZSTDMT_jobDescription
+                    {
+                        job_mutex = mutex,
+                        job_cond = cond
+                    };
+                }
             }
 
             mtctx->inBuff.buffer = g_nullBuffer;
             mtctx->inBuff.filled = 0;
+            mtctx->jobReady = 0;
             mtctx->allJobsCompleted = 1;
         }
 
@@ -788,7 +800,7 @@ namespace ZstdSharp.Unsafe
             {
                 uint jobID = mtctx->doneJobID & mtctx->jobIDMask;
                 SynchronizationWrapper.Enter(&mtctx->jobs[jobID].job_mutex);
-                while (mtctx->jobs[jobID].consumed < mtctx->jobs[jobID].src.size)
+                while (mtctx->jobs[jobID].completed == 0)
                 {
                     SynchronizationWrapper.Wait(&mtctx->jobs[jobID].job_mutex);
                 }
@@ -798,10 +810,24 @@ namespace ZstdSharp.Unsafe
             }
         }
 
+        /*! ZSTDMT_waitForPendingJobs() :
+         *  Waits for the jobs of an unfinished frame to complete, then releases their resources.
+         *  Must be called before freeing anything these jobs reference, such as the dictionary.
+         *  Does nothing if the last frame was completed. */
+        private static void ZSTDMT_waitForPendingJobs(ZSTDMT_CCtx_s* mtctx)
+        {
+            if (mtctx->allJobsCompleted == 0)
+            {
+                ZSTDMT_waitForAllJobsCompleted(mtctx);
+                ZSTDMT_releaseAllJobResources(mtctx);
+            }
+        }
+
         private static nuint ZSTDMT_freeCCtx(ZSTDMT_CCtx_s* mtctx)
         {
             if (mtctx == null)
                 return 0;
+            ZSTDMT_waitForPendingJobs(mtctx);
             if (mtctx->providedFactory == 0)
                 POOL_free(mtctx->factory);
             ZSTDMT_releaseAllJobResources(mtctx);
@@ -828,8 +854,12 @@ namespace ZstdSharp.Unsafe
          * @return : error code if fails, 0 on success */
         private static nuint ZSTDMT_resize(ZSTDMT_CCtx_s* mtctx, uint nbWorkers)
         {
-            if (POOL_resize(mtctx->factory, nbWorkers) != 0)
-                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+            if (mtctx->providedFactory == 0)
+            {
+                if (POOL_resize(mtctx->factory, nbWorkers) != 0)
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+            }
+
             {
                 nuint err_code = ZSTDMT_expandJobsTable(mtctx, nbWorkers);
                 if (ERR_isError(err_code))
@@ -960,7 +990,7 @@ namespace ZstdSharp.Unsafe
                 jobLog = 20 > @params->cParams.windowLog + 2 ? 20 : @params->cParams.windowLog + 2;
             }
 
-            return jobLog < (uint)(MEM_32bits ? 29 : 30) ? jobLog : (uint)(MEM_32bits ? 29 : 30);
+            return jobLog < (uint)(MEM_32bits ? 28 : 30) ? jobLog : (uint)(MEM_32bits ? 28 : 30);
         }
 
         private static int ZSTDMT_overlapLog_default(ZSTD_strategy strat)
@@ -1015,9 +1045,9 @@ namespace ZstdSharp.Unsafe
         {
             assert(!ERR_isError(ZSTD_checkCParams(@params.cParams)));
             assert(!(dict != null && cdict != null));
+            ZSTDMT_waitForPendingJobs(mtctx);
             if (@params.nbWorkers != mtctx->@params.nbWorkers)
             {
-                /* init */
                 nuint err_code = ZSTDMT_resize(mtctx, (uint)@params.nbWorkers);
                 if (ERR_isError(err_code))
                 {
@@ -1027,15 +1057,8 @@ namespace ZstdSharp.Unsafe
 
             if (@params.jobSize != 0 && @params.jobSize < 512 * (1 << 10))
                 @params.jobSize = 512 * (1 << 10);
-            if (@params.jobSize > (nuint)(MEM_32bits ? 512 * (1 << 20) : 1024 * (1 << 20)))
-                @params.jobSize = (nuint)(MEM_32bits ? 512 * (1 << 20) : 1024 * (1 << 20));
-            if (mtctx->allJobsCompleted == 0)
-            {
-                ZSTDMT_waitForAllJobsCompleted(mtctx);
-                ZSTDMT_releaseAllJobResources(mtctx);
-                mtctx->allJobsCompleted = 1;
-            }
-
+            if (@params.jobSize > (nuint)(MEM_32bits ? 256 * (1 << 20) : 1024 * (1 << 20)))
+                @params.jobSize = (nuint)(MEM_32bits ? 256 * (1 << 20) : 1024 * (1 << 20));
             mtctx->@params = @params;
             mtctx->frameContentSize = pledgedSrcSize;
             ZSTD_freeCDict(mtctx->cdictLocal);
@@ -1059,7 +1082,7 @@ namespace ZstdSharp.Unsafe
                 mtctx->targetSectionSize = (nuint)(1UL << (int)ZSTDMT_computeTargetJobLog(&@params));
             }
 
-            assert(mtctx->targetSectionSize <= (nuint)(MEM_32bits ? 512 * (1 << 20) : 1024 * (1 << 20)));
+            assert(mtctx->targetSectionSize <= (nuint)(MEM_32bits ? 256 * (1 << 20) : 1024 * (1 << 20)));
             if (@params.rsyncable != 0)
             {
                 /* Aim for the targetsectionSize as the average job size. */
@@ -1085,11 +1108,18 @@ namespace ZstdSharp.Unsafe
                  * with the LDM window.
                  */
                 nuint nbSlackBuffers = (nuint)(2 + (mtctx->targetPrefixSize > 0 ? 1 : 0));
-                nuint slackSize = mtctx->targetSectionSize * nbSlackBuffers;
+                ulong slackSize = (ulong)mtctx->targetSectionSize * nbSlackBuffers;
                 /* Compute the total size, and always have enough slack */
-                nuint nbWorkers = (nuint)(mtctx->@params.nbWorkers > 1 ? mtctx->@params.nbWorkers : 1);
-                nuint sectionsSize = mtctx->targetSectionSize * nbWorkers;
-                nuint capacity = (windowSize > sectionsSize ? windowSize : sectionsSize) + slackSize;
+                ulong nbWorkers = (ulong)(mtctx->@params.nbWorkers > 1 ? mtctx->@params.nbWorkers : 1);
+                ulong sectionsSize = mtctx->targetSectionSize * nbWorkers;
+                ulong capacity64 = (windowSize > sectionsSize ? windowSize : sectionsSize) + slackSize;
+                nuint capacity;
+                capacity = (nuint)capacity64;
+                if (capacity != capacity64)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                }
+
                 if (mtctx->roundBuff.capacity < capacity)
                 {
                     if (mtctx->roundBuff.buffer != null)
@@ -1154,6 +1184,7 @@ namespace ZstdSharp.Unsafe
             assert(job->src.size == 0);
             assert(job->firstJob == 0);
             assert(job->dstBuff.start == null);
+            job->completed = 1;
             job->dstBuff = ZSTDMT_getBuffer(job->bufPool);
             if (job->dstBuff.start == null)
             {
@@ -1187,6 +1218,7 @@ namespace ZstdSharp.Unsafe
                 mtctx->jobs[jobID].prefix = mtctx->inBuff.prefix;
                 mtctx->jobs[jobID].consumed = 0;
                 mtctx->jobs[jobID].cSize = 0;
+                mtctx->jobs[jobID].completed = 0;
                 mtctx->jobs[jobID].@params = mtctx->@params;
                 mtctx->jobs[jobID].cdict = mtctx->nextJobID == 0 ? mtctx->cdict : null;
                 mtctx->jobs[jobID].fullFrameSize = mtctx->frameContentSize;
@@ -1334,9 +1366,8 @@ namespace ZstdSharp.Unsafe
         }
 
         /**
-         * Returns the range of data used by the earliest job that is not yet complete.
-         * If the data of the first job is broken up into two segments, we cover both
-         * sections.
+         * Returns the oldest input-ring range used by a job that is not yet complete.
+         * Protecting this range prevents ring reuse from reaching the job's source.
          */
         private static Range ZSTDMT_getInputDataInUse(ZSTDMT_CCtx_s* mtctx)
         {
@@ -1357,12 +1388,7 @@ namespace ZstdSharp.Unsafe
                 SynchronizationWrapper.Exit(&mtctx->jobs[wJobID].job_mutex);
                 if (consumed < mtctx->jobs[wJobID].src.size)
                 {
-                    Range range = mtctx->jobs[wJobID].prefix;
-                    if (range.size == 0)
-                    {
-                        range = mtctx->jobs[wJobID].src;
-                    }
-
+                    Range range = ZSTDMT_getJobInputRange(mtctx->jobs[wJobID].prefix, mtctx->jobs[wJobID].src, mtctx->jobs[wJobID].firstJob);
                     assert(range.start <= mtctx->jobs[wJobID].src.start);
                     return range;
                 }
@@ -1545,6 +1571,14 @@ namespace ZstdSharp.Unsafe
             return hintInSize;
         }
 
+        /*! ZSTDMT_isFrameEnded() :
+         *  @return 1 once the last job of the current frame is created :
+         *  remaining input then belongs to the next frame. */
+        private static uint ZSTDMT_isFrameEnded(ZSTDMT_CCtx_s* mtctx)
+        {
+            return mtctx->frameEnded;
+        }
+
         /** ZSTDMT_compressStream_generic() :
          *  internal use only - exposed to be invoked from zstd_compress.c
          *  assumption : output and input are valid (pos <= size)
@@ -1559,7 +1593,7 @@ namespace ZstdSharp.Unsafe
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_stage_wrong));
             }
 
-            if (mtctx->jobReady == 0 && input->size > input->pos)
+            if (mtctx->jobReady == 0 && mtctx->frameEnded == 0 && input->size > input->pos)
             {
                 if (mtctx->inBuff.buffer.start == null)
                 {
@@ -1608,7 +1642,7 @@ namespace ZstdSharp.Unsafe
             {
                 /* block if there was no forward input progress */
                 nuint remainingToFlush = ZSTDMT_flushProduced(mtctx, output, forwardInputProgress == 0 ? 1U : 0U, endOp);
-                if (input->pos < input->size)
+                if (input->pos < input->size && mtctx->frameEnded == 0)
                     return remainingToFlush > 1 ? remainingToFlush : 1;
                 return remainingToFlush;
             }

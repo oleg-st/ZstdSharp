@@ -1,5 +1,6 @@
 namespace ZstdSharp.Unsafe
 {
+    /* misc */
     public enum ZSTD_nextInputType_e
     {
         ZSTDnit_frameHeader,

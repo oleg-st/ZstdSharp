@@ -16,5 +16,6 @@ namespace ZstdSharp.Unsafe
         public uint* freqs;
         public uint* dmerAt;
         public uint d;
+        public int displayLevel;
     }
 }

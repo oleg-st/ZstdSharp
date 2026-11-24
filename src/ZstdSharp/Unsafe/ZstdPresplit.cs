@@ -68,7 +68,7 @@ namespace ZstdSharp.Unsafe
             recordFingerprint_generic(fp, src, srcSize, 43, 8);
         }
 
-        private static ulong abs64(long s64)
+        private static ulong ZSTD_abs64(long s64)
         {
             return (ulong)(s64 < 0 ? -s64 : s64);
         }
@@ -80,7 +80,7 @@ namespace ZstdSharp.Unsafe
             assert(hashLog <= 10);
             for (n = 0; n < (nuint)1 << (int)hashLog; n++)
             {
-                distance += abs64(fp1->events[n] * (long)fp2->nbEvents - fp2->events[n] * (long)fp1->nbEvents);
+                distance += ZSTD_abs64(fp1->events[n] * (long)fp2->nbEvents - fp2->events[n] * (long)fp1->nbEvents);
             }
 
             return distance;
@@ -218,7 +218,7 @@ namespace ZstdSharp.Unsafe
                 ulong distFromBegin = fpDistance(&fpstats->pastEvents, middleEvents, 8);
                 ulong distFromEnd = fpDistance(&fpstats->newEvents, middleEvents, 8);
                 const ulong minDistance = 512 * 512 / 3;
-                if (abs64((long)distFromBegin - (long)distFromEnd) < minDistance)
+                if (ZSTD_abs64((long)distFromBegin - (long)distFromEnd) < minDistance)
                     return 64 * (1 << 10);
                 return (nuint)(distFromBegin > distFromEnd ? 32 * (1 << 10) : 96 * (1 << 10));
             }

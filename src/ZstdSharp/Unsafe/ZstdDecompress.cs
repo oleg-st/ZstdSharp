@@ -35,8 +35,7 @@ namespace ZstdSharp.Unsafe
                     return 0;
                 }
 
-                idx &= idxRangeMask;
-                idx++;
+                idx = idx + 1 & idxRangeMask;
             }
 
             hashSet->ddictPtrTable[idx] = ddict;
@@ -86,18 +85,11 @@ namespace ZstdSharp.Unsafe
         {
             nuint idx = ZSTD_DDictHashSet_getIndex(hashSet, dictID);
             nuint idxRangeMask = hashSet->ddictPtrTableSize - 1;
-            for (; ; )
+            while (hashSet->ddictPtrTable[idx] != null)
             {
-                nuint currDictID = ZSTD_getDictID_fromDDict(hashSet->ddictPtrTable[idx]);
-                if (currDictID == dictID || currDictID == 0)
-                {
+                if (ZSTD_getDictID_fromDDict(hashSet->ddictPtrTable[idx]) == dictID)
                     break;
-                }
-                else
-                {
-                    idx &= idxRangeMask;
-                    idx++;
-                }
+                idx = idx + 1 & idxRangeMask;
             }
 
             return hashSet->ddictPtrTable[idx];
@@ -145,7 +137,7 @@ namespace ZstdSharp.Unsafe
          */
         private static nuint ZSTD_DDictHashSet_addDDict(ZSTD_DDictHashSet* hashSet, ZSTD_DDict_s* ddict, ZSTD_customMem customMem)
         {
-            if (hashSet->ddictPtrCount * 4 / hashSet->ddictPtrTableSize * 3 != 0)
+            if (hashSet->ddictPtrCount * 4 >= hashSet->ddictPtrTableSize * 3)
             {
                 nuint err_code = ZSTD_DDictHashSet_expand(hashSet, customMem);
                 if (ERR_isError(err_code))
@@ -199,8 +191,9 @@ namespace ZstdSharp.Unsafe
             dctx->maxBlockSizeParam = 0;
         }
 
-        private static void ZSTD_initDCtx_internal(ZSTD_DCtx_s* dctx)
+        private static void ZSTD_initDCtx_internal(ZSTD_DCtx_s* dctx, ZSTD_customMem customMem)
         {
+            dctx->customMem = customMem;
             dctx->staticSize = 0;
             dctx->ddict = null;
             dctx->ddictLocal = null;
@@ -211,6 +204,8 @@ namespace ZstdSharp.Unsafe
             dctx->inBuffSize = 0;
             dctx->outBuffSize = 0;
             dctx->streamStage = ZSTD_dStreamStage.zdss_init;
+            dctx->stage = ZSTD_dStage.ZSTDds_getFrameHeaderSize;
+            dctx->expected = 0;
             dctx->noForwardProgress = 0;
             dctx->oversizedDuration = 0;
             dctx->isFrameDecompression = 1;
@@ -225,7 +220,7 @@ namespace ZstdSharp.Unsafe
                 return null;
             if (workspaceSize < (nuint)sizeof(ZSTD_DCtx_s))
                 return null;
-            ZSTD_initDCtx_internal(dctx);
+            ZSTD_initDCtx_internal(dctx, ZSTD_defaultCMem);
             dctx->staticSize = workspaceSize;
             dctx->inBuff = (sbyte*)(dctx + 1);
             return dctx;
@@ -239,8 +234,7 @@ namespace ZstdSharp.Unsafe
                 ZSTD_DCtx_s* dctx = (ZSTD_DCtx_s*)ZSTD_customMalloc((nuint)sizeof(ZSTD_DCtx_s), customMem);
                 if (dctx == null)
                     return null;
-                dctx->customMem = customMem;
-                ZSTD_initDCtx_internal(dctx);
+                ZSTD_initDCtx_internal(dctx, customMem);
                 return dctx;
             }
         }
@@ -263,6 +257,31 @@ namespace ZstdSharp.Unsafe
             dctx->dictUses = ZSTD_dictUses_e.ZSTD_dont_use;
         }
 
+        /* Abandon any active or failed streaming session.
+         * This is the implementation of ZSTD_reset_session_only.
+         * Single-shot entry points call it first, so that a DCtx left mid-stream
+         * (or in an undefined state after a streaming error) can be reused, and
+         * so that it is returned to a clean streaming state afterwards. */
+        private static void ZSTD_DCtx_resetSession(ZSTD_DCtx_s* dctx)
+        {
+            if (dctx->streamStage != ZSTD_dStreamStage.zdss_init && dctx->dictUses == ZSTD_dictUses_e.ZSTD_use_once)
+                ZSTD_clearDict(dctx);
+            dctx->streamStage = ZSTD_dStreamStage.zdss_init;
+            dctx->noForwardProgress = 0;
+            dctx->isFrameDecompression = 1;
+        }
+
+        /* Discard borrowed dictionary references without freeing the DDicts. */
+        private static void ZSTD_clearDDictSet(ZSTD_DCtx_s* dctx)
+        {
+            if (dctx->ddictSet != null)
+            {
+                assert(dctx->staticSize == 0);
+                ZSTD_freeDDictHashSet(dctx->ddictSet, dctx->customMem);
+                dctx->ddictSet = null;
+            }
+        }
+
         public static nuint ZSTD_freeDCtx(ZSTD_DCtx_s* dctx)
         {
             if (dctx == null)
@@ -277,46 +296,36 @@ namespace ZstdSharp.Unsafe
                 ZSTD_clearDict(dctx);
                 ZSTD_customFree(dctx->inBuff, cMem);
                 dctx->inBuff = null;
-                if (dctx->ddictSet != null)
-                {
-                    ZSTD_freeDDictHashSet(dctx->ddictSet, cMem);
-                    dctx->ddictSet = null;
-                }
-
+                ZSTD_clearDDictSet(dctx);
                 ZSTD_customFree(dctx, cMem);
                 return 0;
             }
         }
 
-        /* no longer useful */
-        public static void ZSTD_copyDCtx(ZSTD_DCtx_s* dstDCtx, ZSTD_DCtx_s* srcDCtx)
-        {
-            nuint toCopy = (nuint)((sbyte*)&dstDCtx->inBuff - (sbyte*)dstDCtx);
-            memcpy(dstDCtx, srcDCtx, (uint)toCopy);
-        }
-
-        /* Given a dctx with a digested frame params, re-selects the correct ZSTD_DDict based on
-         * the requested dict ID from the frame. If there exists a reference to the correct ZSTD_DDict, then
-         * accordingly sets the ddict to be used to decompress the frame.
+        /* Look up the DDict for a complete, valid Zstandard frame header.
+         * The result is for this frame only; it does not change the single-DDict state.
          *
-         * If no DDict is found, then no action is taken, and the ZSTD_DCtx::ddict remains as-is.
+         * Returns dictionary_wrong if the set does not contain a requested nonzero ID.
+         * For ID 0, returns the registered DDict, or NULL to use no dictionary.
          *
+         * Must be called before installing the dictionary's decoding state.
          * ZSTD_d_refMultipleDDicts must be enabled for this function to be called.
          */
-        private static void ZSTD_DCtx_selectFrameDDict(ZSTD_DCtx_s* dctx)
+        private static nuint ZSTD_DCtx_getFrameDDict(ZSTD_DCtx_s* dctx, uint dictID, ZSTD_DDict_s** ddict)
         {
+            ZSTD_DDict_s* frameDDict;
             assert(dctx->refMultipleDDicts != default && dctx->ddictSet != null);
-            if (dctx->ddict != null)
+            assert(dctx->ddictLocal == null && dctx->ddict == null);
+            assert(dctx->dictUses == ZSTD_dictUses_e.ZSTD_dont_use);
+            frameDDict = ZSTD_DDictHashSet_getDDict(dctx->ddictSet, dictID);
+            if (frameDDict == null && dictID != 0)
             {
-                ZSTD_DDict_s* frameDDict = ZSTD_DDictHashSet_getDDict(dctx->ddictSet, dctx->fParams.dictID);
-                if (frameDDict != null)
-                {
-                    ZSTD_clearDict(dctx);
-                    dctx->dictID = dctx->fParams.dictID;
-                    dctx->ddict = frameDDict;
-                    dctx->dictUses = ZSTD_dictUses_e.ZSTD_use_indefinitely;
-                }
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_wrong));
             }
+
+            assert(frameDDict == null || ZSTD_getDictID_fromDDict(frameDDict) == dictID);
+            *ddict = frameDDict;
+            return 0;
         }
 
         /*! ZSTD_isFrame() :
@@ -705,7 +714,7 @@ namespace ZstdSharp.Unsafe
 
         /** ZSTD_decodeFrameHeader() :
          * `headerSize` must be the size provided by ZSTD_frameHeaderSize().
-         * If multiple DDict references are enabled, also will choose the correct DDict to use.
+         * The dictionary's decoding state must already be installed.
          * @return : 0 if success, or an error code, which can be tested using ZSTD_isError() */
         private static nuint ZSTD_decodeFrameHeader(ZSTD_DCtx_s* dctx, void* src, nuint headerSize)
         {
@@ -717,11 +726,6 @@ namespace ZstdSharp.Unsafe
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
-            if (dctx->refMultipleDDicts == ZSTD_refMultipleDDicts_e.ZSTD_rmd_refMultipleDDicts && dctx->ddictSet != null)
-            {
-                ZSTD_DCtx_selectFrameDDict(dctx);
-            }
-
             if (dctx->fParams.dictID != 0 && dctx->dictID != dctx->fParams.dictID)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dictionary_wrong));
@@ -730,7 +734,6 @@ namespace ZstdSharp.Unsafe
             dctx->validateChecksum = (uint)(dctx->fParams.checksumFlag != 0 && dctx->forceIgnoreChecksum == default ? 1 : 0);
             if (dctx->validateChecksum != 0)
                 ZSTD_XXH64_reset(&dctx->xxhState, 0);
-            dctx->processedCSize += headerSize;
             return 0;
         }
 
@@ -829,6 +832,8 @@ namespace ZstdSharp.Unsafe
                 ulong decompressedBound = frameSizeInfo.decompressedBound;
                 if (ERR_isError(compressedSize) || decompressedBound == unchecked(0UL - 2))
                     return unchecked(0UL - 2);
+                if (decompressedBound >= unchecked(0UL - 2) - bound)
+                    return unchecked(0UL - 2);
                 assert(srcSize >= compressedSize);
                 src = (byte*)src + compressedSize;
                 srcSize -= compressedSize;
@@ -908,7 +913,8 @@ namespace ZstdSharp.Unsafe
         public static nuint ZSTD_insertBlock(ZSTD_DCtx_s* dctx, void* blockStart, nuint blockSize)
         {
             ZSTD_checkContinuity(dctx, blockStart, blockSize);
-            dctx->previousDstEnd = (sbyte*)blockStart + blockSize;
+            if (blockSize != 0)
+                dctx->previousDstEnd = (sbyte*)blockStart + blockSize;
             return blockSize;
         }
 
@@ -1037,6 +1043,11 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
+                if (decodedSize > dctx->fParams.blockSizeMax)
+                {
+                    return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                }
+
                 if (dctx->validateChecksum != 0)
                 {
                     ZSTD_XXH64_update(&dctx->xxhState, op, decodedSize);
@@ -1090,19 +1101,15 @@ namespace ZstdSharp.Unsafe
             return (nuint)(op - ostart);
         }
 
-        private static nuint ZSTD_decompressMultiFrame(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize, void* dict, nuint dictSize, ZSTD_DDict_s* ddict)
+        private static nuint ZSTD_decompressMultiFrame(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize, void* dict, nuint dictSize, ZSTD_DDict_s* ddict, int useDDictSet)
         {
             void* dststart = dst;
             int moreThan1Frame = 0;
             assert(dict == null || ddict == null);
-            if (ddict != null)
-            {
-                dict = ZSTD_DDict_dictContent(ddict);
-                dictSize = ZSTD_DDict_dictSize(ddict);
-            }
-
+            assert(useDDictSet == 0 || dctx->refMultipleDDicts != default && dctx->ddictSet != null && dctx->ddictLocal == null && dctx->ddict == null && dict == null && ddict == null);
             while (srcSize >= ZSTD_startingInputLength(dctx->format))
             {
+                ZSTD_DDict_s* frameDDict = ddict;
                 if (dctx->format == ZSTD_format_e.ZSTD_f_zstd1 && srcSize >= 4)
                 {
                     uint magicNumber = MEM_readLE32(src);
@@ -1125,10 +1132,26 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                if (ddict != null)
+                if (useDDictSet != 0)
                 {
-                    /* we were called from ZSTD_decompress_usingDDict */
-                    nuint err_code = ZSTD_decompressBegin_usingDDict(dctx, ddict);
+                    ZSTD_frameHeader zfh;
+                    nuint hSize = ZSTD_getFrameHeader_advanced(&zfh, src, srcSize, dctx->format);
+                    if (hSize == 0 && zfh.frameType == ZSTD_frameType_e.ZSTD_frame)
+                    {
+                        /* Invalid/incomplete headers must not change dictionary selection.
+                         * ZSTD_decompressFrame() will report the header error. */
+                        nuint err_code = ZSTD_DCtx_getFrameDDict(dctx, zfh.dictID, &frameDDict);
+                        if (ERR_isError(err_code))
+                        {
+                            return err_code;
+                        }
+                    }
+                }
+
+                if (frameDDict != null)
+                {
+                    /* Use either the explicit DDict or the one selected from the set. */
+                    nuint err_code = ZSTD_decompressBegin_usingDDict(dctx, frameDDict);
                     if (ERR_isError(err_code))
                     {
                         return err_code;
@@ -1177,14 +1200,18 @@ namespace ZstdSharp.Unsafe
          *  Dictionary must be identical to the one used during compression.
          *  Note : This function loads the dictionary, resulting in significant startup delay.
          *         It's intended for a dictionary used only once.
-         *  Note : When `dict == NULL || dictSize < 8` no dictionary is used. */
+         *  Note : When `dict == NULL || dictSize < 8` no dictionary is used.
+         *  Note : The streaming session of @dctx is reset first, as with
+         *         ZSTD_DCtx_reset(dctx, ZSTD_reset_session_only). */
         public static nuint ZSTD_decompress_usingDict(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize, void* dict, nuint dictSize)
         {
-            return ZSTD_decompressMultiFrame(dctx, dst, dstCapacity, src, srcSize, dict, dictSize, null);
+            ZSTD_DCtx_resetSession(dctx);
+            return ZSTD_decompressMultiFrame(dctx, dst, dstCapacity, src, srcSize, dict, dictSize, null, 0);
         }
 
         private static ZSTD_DDict_s* ZSTD_getDDict(ZSTD_DCtx_s* dctx)
         {
+            assert(dctx->ddictSet == null);
             switch (dctx->dictUses)
             {
                 default:
@@ -1205,10 +1232,16 @@ namespace ZstdSharp.Unsafe
          *  Same as ZSTD_decompress(),
          *  requires an allocated ZSTD_DCtx.
          *  Compatible with sticky parameters (see below).
+         *  The streaming session of @dctx is reset first, as with
+         *  ZSTD_DCtx_reset(dctx, ZSTD_reset_session_only).
+         *  See ZSTD_DCtx_refPrefix() for the effect on a referenced prefix.
          */
         public static nuint ZSTD_decompressDCtx(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
-            return ZSTD_decompress_usingDDict(dctx, dst, dstCapacity, src, srcSize, ZSTD_getDDict(dctx));
+            ZSTD_DCtx_resetSession(dctx);
+            if (dctx->refMultipleDDicts != default && dctx->ddictSet != null)
+                return ZSTD_decompressMultiFrame(dctx, dst, dstCapacity, src, srcSize, null, 0, null, 1);
+            return ZSTD_decompressMultiFrame(dctx, dst, dstCapacity, src, srcSize, null, 0, ZSTD_getDDict(dctx), 0);
         }
 
         /*! ZSTD_decompress() :
@@ -1292,11 +1325,18 @@ namespace ZstdSharp.Unsafe
         }
 
         /** ZSTD_decompressContinue() :
+         *  The frame must first be initialized with ZSTD_decompressBegin() or one of its dictionary-taking variants.
+         *  ZSTD_DCtx_reset() does not replace this initialization.
          *  srcSize : must be the exact nb of bytes expected (see ZSTD_nextSrcSizeToDecompress())
          *  @return : nb of bytes generated into `dst` (necessarily <= `dstCapacity)
          *            or an error code, which can be tested using ZSTD_isError() */
         public static nuint ZSTD_decompressContinue(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize)
         {
+            if (dctx->stage == ZSTD_dStage.ZSTDds_getFrameHeaderSize && dctx->expected == 0)
+            {
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_stage_wrong));
+            }
+
             if (srcSize != ZSTD_nextSrcSizeToDecompressWithInputSize(dctx, srcSize))
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
@@ -1361,8 +1401,18 @@ namespace ZstdSharp.Unsafe
                             return 0;
                         }
 
+                        if (bp.blockType != blockType_e.bt_raw)
+                        {
+                            return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                        }
+
                         if (bp.lastBlock != 0)
                         {
+                            if (dctx->fParams.frameContentSize != unchecked(0UL - 1) && dctx->decodedSize != dctx->fParams.frameContentSize)
+                            {
+                                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
+                            }
+
                             if (dctx->fParams.checksumFlag != 0)
                             {
                                 dctx->expected = 4;
@@ -1370,6 +1420,7 @@ namespace ZstdSharp.Unsafe
                             }
                             else
                             {
+                                ZSTD_DCtx_trace_end(dctx, dctx->decodedSize, dctx->processedCSize, 1);
                                 dctx->expected = 0;
                                 dctx->stage = ZSTD_dStage.ZSTDds_getFrameHeaderSize;
                             }
@@ -1433,7 +1484,8 @@ namespace ZstdSharp.Unsafe
                         dctx->decodedSize += rSize;
                         if (dctx->validateChecksum != 0)
                             ZSTD_XXH64_update(&dctx->xxhState, dst, rSize);
-                        dctx->previousDstEnd = (sbyte*)dst + rSize;
+                        if (rSize != 0)
+                            dctx->previousDstEnd = (sbyte*)dst + rSize;
                         if (dctx->expected > 0)
                         {
                             return rSize;
@@ -1661,6 +1713,13 @@ namespace ZstdSharp.Unsafe
             return ZSTD_refDictContent(dctx, dict, dictSize);
         }
 
+        /*! ZSTD_decompressBegin() :
+         *  Initialize the bufferless decoder to start a new frame without a dictionary.
+         *  Decompression parameters must be configured before calling this function.
+         *  Call this function, ZSTD_decompressBegin_usingDict(), or ZSTD_decompressBegin_usingDDict()
+         *  before the first ZSTD_decompressContinue() call for each frame, including after ZSTD_DCtx_reset().
+         *  Use the dictionary-taking variants when the frame requires a dictionary.
+         */
         public static nuint ZSTD_decompressBegin(ZSTD_DCtx_s* dctx)
         {
             assert(dctx != null);
@@ -1712,7 +1771,8 @@ namespace ZstdSharp.Unsafe
             {
                 sbyte* dictStart = (sbyte*)ZSTD_DDict_dictContent(ddict);
                 nuint dictSize = ZSTD_DDict_dictSize(ddict);
-                void* dictEnd = dictStart + dictSize;
+                /* An empty DDict may have NULL content. */
+                void* dictEnd = dictSize != 0 ? dictStart + dictSize : dictStart;
                 dctx->ddictIsCold = dctx->dictEnd != dictEnd ? 1 : 0;
             }
 
@@ -1783,7 +1843,8 @@ namespace ZstdSharp.Unsafe
          *   Use dictionary without significant overhead. */
         public static nuint ZSTD_decompress_usingDDict(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize, ZSTD_DDict_s* ddict)
         {
-            return ZSTD_decompressMultiFrame(dctx, dst, dstCapacity, src, srcSize, null, 0, ddict);
+            ZSTD_DCtx_resetSession(dctx);
+            return ZSTD_decompressMultiFrame(dctx, dst, dstCapacity, src, srcSize, null, 0, ddict, 0);
         }
 
         /*=====================================
@@ -1820,7 +1881,7 @@ namespace ZstdSharp.Unsafe
             return 1 << 17;
         }
 
-        /*! ZSTD_DCtx_loadDictionary_advanced() :
+        /*! ZSTD_DCtx_loadDictionary_advanced() : Requires v1.6.0+
          *  Same as ZSTD_DCtx_loadDictionary(),
          *  but gives direct control over
          *  how to load the dictionary (by copy ? by reference ?)
@@ -1833,12 +1894,20 @@ namespace ZstdSharp.Unsafe
             }
 
             ZSTD_clearDict(dctx);
+            ZSTD_clearDDictSet(dctx);
             if (dict != null && dictSize != 0)
             {
-                dctx->ddictLocal = ZSTD_createDDict_advanced(dict, dictSize, dictLoadMethod, dictContentType, dctx->customMem);
-                if (dctx->ddictLocal == null)
+                if (dctx->staticSize != 0)
                 {
                     return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                }
+
+                {
+                    nuint err_code = ZSTD_createDDict_advanced_internal(&dctx->ddictLocal, dict, dictSize, dictLoadMethod, dictContentType, dctx->customMem);
+                    if (ERR_isError(err_code))
+                    {
+                        return err_code;
+                    }
                 }
 
                 dctx->ddict = dctx->ddictLocal;
@@ -1865,6 +1934,8 @@ namespace ZstdSharp.Unsafe
          * @result : 0, or an error code (which can be tested with ZSTD_isError()).
          *  Special : Adding a NULL (or 0-size) dictionary invalidates any previous dictionary,
          *            meaning "return to no-dictionary mode".
+         *  Loading any dictionary also discards the multiple-DDict reference table,
+         *  without disabling ZSTD_d_refMultipleDDicts.
          *  Note 1 : Loading a dictionary involves building tables,
          *           which has a non-negligible impact on CPU usage and latency.
          *           It's recommended to "load once, use many times", to amortize the cost
@@ -1880,7 +1951,9 @@ namespace ZstdSharp.Unsafe
 
         /*! ZSTD_DCtx_refPrefix_advanced() :
          *  Same as ZSTD_DCtx_refPrefix(), but gives finer control over
-         *  how to interpret prefix content (automatic ? force raw mode (default) ? full mode only ?) */
+         *  how to interpret prefix content (automatic ? force raw mode (default) ? full mode only ?).
+         *  The prefix has the same single-use lifetime and reset behavior described
+         *  by ZSTD_DCtx_refPrefix(). */
         public static nuint ZSTD_DCtx_refPrefix_advanced(ZSTD_DCtx_s* dctx, void* prefix, nuint prefixSize, ZSTD_dictContentType_e dictContentType)
         {
             {
@@ -1896,18 +1969,40 @@ namespace ZstdSharp.Unsafe
         }
 
         /*! ZSTD_DCtx_refPrefix() : Requires v1.4.0+
-         *  Reference a prefix (single-usage dictionary) to decompress next frame.
+         *  Reference a prefix (single-usage dictionary) for decompression.
          *  This is the reverse operation of ZSTD_CCtx_refPrefix(),
          *  and must use the same prefix as the one used during compression.
-         *  Prefix is **only used once**. Reference is discarded at end of frame.
-         *  End of frame is reached when ZSTD_decompressStream() returns 0.
+         *  The prefix is **only used once**:
+         *  - ZSTD_decompressDCtx() uses it for exactly one call, including all frames
+         *    in concatenated input. The call consumes the prefix even if the input
+         *    is empty, contains only skippable frames, or produces an error.
+         *  - ZSTD_decompressStream() uses it until the first frame is completely
+         *    decoded and flushed, as indicated by a return value of 0. This includes
+         *    empty and skippable frames, even though they produce no output.
+         *  The explicit-dictionary functions ZSTD_decompress_usingDict() and
+         *  ZSTD_decompress_usingDDict() use their dictionary argument instead and
+         *  do not consume the prefix configured on the DCtx.
+         *
+         *  ZSTD_DCtx_reset(dctx, ZSTD_reset_session_only) preserves an unused prefix
+         *  if streaming decompression has not started. Once streaming has started,
+         *  even with an incomplete header, a session-only reset abandons the frame
+         *  and discards the prefix. After a streaming error the DCtx may be in an
+         *  undefined state and must be reset before streaming can resume. Errors
+         *  returned before streaming starts may leave an unused prefix installed.
+         *  To unconditionally discard it, use ZSTD_reset_session_and_parameters,
+         *  or ZSTD_reset_parameters when no frame is active. The latter can fail
+         *  with ZSTD_error_stage_wrong during decompression.
          * @result : 0, or an error code (which can be tested with ZSTD_isError()).
-         *  Note 1 : Adding any prefix (including NULL) invalidates any previously set prefix or dictionary
+         *  Note 1 : Adding any prefix (including NULL or a zero-sized prefix) invalidates
+         *           any previously set prefix or dictionary,
+         *           including the multiple-DDict reference table.
+         *           Successfully loading or referencing another dictionary, or calling
+         *           ZSTD_initDStream(), also discards the prefix.
          *  Note 2 : Prefix buffer is referenced. It **must** outlive decompression.
-         *           Prefix buffer must remain unmodified up to the end of frame,
-         *           reached when ZSTD_decompressStream() returns 0.
+         *           It must remain unmodified until the one-shot call returns, the
+         *           streaming frame completes, or the prefix is explicitly discarded.
          *  Note 3 : By default, the prefix is treated as raw content (ZSTD_dct_rawContent).
-         *           Use ZSTD_CCtx_refPrefix_advanced() to alter dictMode (Experimental section)
+         *           Use ZSTD_DCtx_refPrefix_advanced() to alter dictMode (Experimental section)
          *  Note 4 : Referencing a raw content prefix has almost no cpu nor memory cost.
          *           A full dictionary is more costly, as it requires building tables.
          */
@@ -2004,13 +2099,20 @@ namespace ZstdSharp.Unsafe
 
         /*! ZSTD_DCtx_refDDict() : Requires v1.4.0+
          *  Reference a prepared dictionary, to be used to decompress next frames.
-         *  The dictionary remains active for decompression of future frames using same DCtx.
+         *  In single-DDict mode, the dictionary remains active for decompression of
+         *  future frames using the same DCtx.
          *
          *  If called with ZSTD_d_refMultipleDDicts enabled, repeated calls of this function
          *  will store the DDict references in a table, and the DDict used for decompression
          *  will be determined at decompression time, as per the dict ID in the frame.
-         *  The memory for the table is allocated on the first call to refDDict, and can be
-         *  freed with ZSTD_freeDCtx().
+         *  The memory for the table is allocated on the first call to refDDict.
+         *  The table is freed by ZSTD_DCtx_refDDict(dctx, NULL), by ZSTD_DCtx_reset()
+         *  with ZSTD_reset_parameters or ZSTD_reset_session_and_parameters, by any
+         *  ZSTD_DCtx_loadDictionary() or ZSTD_DCtx_refPrefix() call, by disabling
+         *  multiple-DDict mode, and by ZSTD_freeDCtx().
+         *  Disabling multiple-DDict mode releases all dictionary references from the set;
+         *  no dictionary from the set is retained for subsequent decompression.
+         *  Referencing a DDict invalidates any previously loaded dictionary or prefix.
          *
          *  If called with ZSTD_d_refMultipleDDicts disabled (the default), only one dictionary
          *  will be managed, and referencing a dictionary effectively "discards" any previous one.
@@ -2029,8 +2131,6 @@ namespace ZstdSharp.Unsafe
             ZSTD_clearDict(dctx);
             if (ddict != null)
             {
-                dctx->ddict = ddict;
-                dctx->dictUses = ZSTD_dictUses_e.ZSTD_use_indefinitely;
                 if (dctx->refMultipleDDicts == ZSTD_refMultipleDDicts_e.ZSTD_rmd_refMultipleDDicts)
                 {
                     if (dctx->ddictSet == null)
@@ -2051,6 +2151,16 @@ namespace ZstdSharp.Unsafe
                         }
                     }
                 }
+                else
+                {
+                    assert(dctx->ddictSet == null);
+                    dctx->ddict = ddict;
+                    dctx->dictUses = ZSTD_dictUses_e.ZSTD_use_indefinitely;
+                }
+            }
+            else
+            {
+                ZSTD_clearDDictSet(dctx);
             }
 
             return 0;
@@ -2270,6 +2380,13 @@ namespace ZstdSharp.Unsafe
                         return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_unsupported));
                     }
 
+                    if (value == (int)ZSTD_refMultipleDDicts_e.ZSTD_rmd_refSingleDDict && dctx->ddictSet != null)
+                    {
+                        assert(dctx->ddict == null && dctx->ddictLocal == null);
+                        assert(dctx->dictUses == ZSTD_dictUses_e.ZSTD_dont_use);
+                        ZSTD_clearDDictSet(dctx);
+                    }
+
                     dctx->refMultipleDDicts = (ZSTD_refMultipleDDicts_e)value;
                     return 0;
                 case ZSTD_dParameter.ZSTD_d_experimentalParam5:
@@ -2303,16 +2420,18 @@ namespace ZstdSharp.Unsafe
         /*! ZSTD_DCtx_reset() :
          *  Return a DCtx to clean state.
          *  Session and parameters can be reset jointly or separately.
-         *  Parameters can only be reset when no active frame is being decompressed.
+         *  ZSTD_reset_parameters can only be used when no frame is being decompressed;
+         *  otherwise it returns ZSTD_error_stage_wrong without resetting the parameters.
+         *  ZSTD_reset_session_and_parameters also abandons any active frame.
+         *  A successful parameter reset discards any referenced prefix or dictionary.
+         *  See ZSTD_DCtx_refPrefix() for the effect of a session-only reset on a prefix.
          * @return : 0, or an error code, which can be tested with ZSTD_isError()
          */
         public static nuint ZSTD_DCtx_reset(ZSTD_DCtx_s* dctx, ZSTD_ResetDirective reset)
         {
             if (reset == ZSTD_ResetDirective.ZSTD_reset_session_only || reset == ZSTD_ResetDirective.ZSTD_reset_session_and_parameters)
             {
-                dctx->streamStage = ZSTD_dStreamStage.zdss_init;
-                dctx->noForwardProgress = 0;
-                dctx->isFrameDecompression = 1;
+                ZSTD_DCtx_resetSession(dctx);
             }
 
             if (reset == ZSTD_ResetDirective.ZSTD_reset_parameters || reset == ZSTD_ResetDirective.ZSTD_reset_session_and_parameters)
@@ -2323,6 +2442,7 @@ namespace ZstdSharp.Unsafe
                 }
 
                 ZSTD_clearDict(dctx);
+                ZSTD_clearDDictSet(dctx);
                 ZSTD_DCtx_resetParameters(dctx);
             }
 
@@ -2466,7 +2586,7 @@ namespace ZstdSharp.Unsafe
                     }
                 }
 
-                *op += decodedSize;
+                *op = (sbyte*)ZSTD_maybeNullPtrAdd(*op, (nint)decodedSize);
                 zds->streamStage = ZSTD_dStreamStage.zdss_read;
                 assert(*op <= oend);
                 assert(zds->outBufferMode == ZSTD_bufferMode_e.ZSTD_bm_stable);
@@ -2494,11 +2614,16 @@ namespace ZstdSharp.Unsafe
          * Note: when an operation returns with an error code, the @zds state may be left in undefined state.
          *       It's UB to invoke `ZSTD_decompressStream()` on such a state.
          *       In order to re-use such a state, it must be first reset,
-         *       which can be done explicitly (`ZSTD_DCtx_reset()`),
-         *       or is implied for operations starting some new decompression job (`ZSTD_initDStream`, `ZSTD_decompressDCtx()`, `ZSTD_decompress_usingDict()`)
+         *       which can be done explicitly (`ZSTD_DCtx_reset(zds, ZSTD_reset_session_only)`),
+         *       or is implied for operations starting some new decompression job
+         *       (`ZSTD_initDStream()`, `ZSTD_decompressDCtx()`, `ZSTD_decompress_usingDict()`, `ZSTD_decompress_usingDDict()`).
+         *       The single-shot functions also leave the session clean:
+         *       streaming can start a new frame afterwards without an explicit reset.
          */
         public static nuint ZSTD_decompressStream(ZSTD_DCtx_s* zds, ZSTD_outBuffer_s* output, ZSTD_inBuffer_s* input)
         {
+            ZSTD_DDict_s* frameDDict = null;
+            int useDDictSet = zds->refMultipleDDicts != default && zds->ddictSet != null ? 1 : 0;
             sbyte* src = (sbyte*)input->src;
             sbyte* istart = input->pos != 0 ? src + input->pos : src;
             sbyte* iend = input->size != 0 ? src + input->size : src;
@@ -2539,150 +2664,163 @@ namespace ZstdSharp.Unsafe
                         goto case ZSTD_dStreamStage.zdss_loadHeader;
                     case ZSTD_dStreamStage.zdss_loadHeader:
                         {
-                            nuint hSize = ZSTD_getFrameHeader_advanced(&zds->fParams, zds->headerBuffer, zds->lhSize, zds->format);
-                            if (zds->refMultipleDDicts != default && zds->ddictSet != null)
+                            /* Legacy dispatch and the one-shot decoder both start at istart.
+                             * Equality means no header bytes came from an earlier call.
+                             * Check istart first to avoid subtracting NULL on empty input. */
+                            int headerFromThisCall = istart != null && (nuint)(ip - istart) == zds->lhSize ? 1 : 0;
                             {
-                                ZSTD_DCtx_selectFrameDDict(zds);
-                            }
-
-                            if (ERR_isError(hSize))
-                            {
-                                return hSize;
-                            }
-
-                            if (hSize != 0)
-                            {
-                                /* if hSize!=0, hSize > zds->lhSize */
-                                nuint toLoad = hSize - zds->lhSize;
-                                nuint remainingInput = (nuint)(iend - ip);
-                                assert(iend >= ip);
-                                if (toLoad > remainingInput)
+                                nuint hSize = ZSTD_getFrameHeader_advanced(&zds->fParams, zds->headerBuffer, zds->lhSize, zds->format);
+                                if (ERR_isError(hSize))
                                 {
-                                    if (remainingInput > 0)
-                                    {
-                                        memcpy(zds->headerBuffer + zds->lhSize, ip, (uint)remainingInput);
-                                        zds->lhSize += remainingInput;
-                                    }
-
-                                    input->pos = input->size;
-                                    {
-                                        /* check first few bytes */
-                                        nuint err_code = ZSTD_getFrameHeader_advanced(&zds->fParams, zds->headerBuffer, zds->lhSize, zds->format);
-                                        if (ERR_isError(err_code))
-                                        {
-                                            return err_code;
-                                        }
-                                    }
-
-                                    return ((nuint)(zds->format == ZSTD_format_e.ZSTD_f_zstd1 ? 6 : 2) > hSize ? (nuint)(zds->format == ZSTD_format_e.ZSTD_f_zstd1 ? 6 : 2) : hSize) - zds->lhSize + ZSTD_blockHeaderSize;
+                                    return hSize;
                                 }
 
-                                assert(ip != null);
-                                memcpy(zds->headerBuffer + zds->lhSize, ip, (uint)toLoad);
-                                zds->lhSize = hSize;
-                                ip += toLoad;
-                                break;
+                                if (hSize != 0)
+                                {
+                                    /* if hSize!=0, hSize > zds->lhSize */
+                                    nuint toLoad = hSize - zds->lhSize;
+                                    nuint remainingInput = (nuint)(iend - ip);
+                                    assert(iend >= ip);
+                                    if (toLoad > remainingInput)
+                                    {
+                                        if (remainingInput > 0)
+                                        {
+                                            memcpy(zds->headerBuffer + zds->lhSize, ip, (uint)remainingInput);
+                                            zds->lhSize += remainingInput;
+                                        }
+
+                                        input->pos = input->size;
+                                        {
+                                            /* check first few bytes */
+                                            nuint err_code = ZSTD_getFrameHeader_advanced(&zds->fParams, zds->headerBuffer, zds->lhSize, zds->format);
+                                            if (ERR_isError(err_code))
+                                            {
+                                                return err_code;
+                                            }
+                                        }
+
+                                        return ((nuint)(zds->format == ZSTD_format_e.ZSTD_f_zstd1 ? 6 : 2) > hSize ? (nuint)(zds->format == ZSTD_format_e.ZSTD_f_zstd1 ? 6 : 2) : hSize) - zds->lhSize + ZSTD_blockHeaderSize;
+                                    }
+
+                                    assert(ip != null);
+                                    memcpy(zds->headerBuffer + zds->lhSize, ip, (uint)toLoad);
+                                    zds->lhSize = hSize;
+                                    ip += toLoad;
+                                    break;
+                                }
                             }
-                        }
 
-                        if (zds->fParams.frameContentSize != unchecked(0UL - 1) && zds->fParams.frameType != ZSTD_frameType_e.ZSTD_skippableFrame && (nuint)(oend - op) >= zds->fParams.frameContentSize)
-                        {
-                            nuint cSize = ZSTD_findFrameCompressedSize_advanced(istart, (nuint)(iend - istart), zds->format);
-                            if (cSize <= (nuint)(iend - istart))
+                            frameDDict = null;
+                            if (useDDictSet != 0 && zds->fParams.frameType == ZSTD_frameType_e.ZSTD_frame)
                             {
-                                /* shortcut : using single-pass mode */
-                                nuint decompressedSize = ZSTD_decompress_usingDDict(zds, op, (nuint)(oend - op), istart, cSize, ZSTD_getDDict(zds));
-                                if (ERR_isError(decompressedSize))
-                                    return decompressedSize;
-                                assert(istart != null);
-                                ip = istart + cSize;
-                                op = op != null ? op + decompressedSize : op;
-                                zds->expected = 0;
-                                zds->streamStage = ZSTD_dStreamStage.zdss_init;
-                                someMoreWork = 0;
-                                break;
-                            }
-                        }
-
-                        if (zds->outBufferMode == ZSTD_bufferMode_e.ZSTD_bm_stable && zds->fParams.frameType != ZSTD_frameType_e.ZSTD_skippableFrame && zds->fParams.frameContentSize != unchecked(0UL - 1) && (nuint)(oend - op) < zds->fParams.frameContentSize)
-                        {
-                            return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
-                        }
-
-                        {
-                            nuint err_code = ZSTD_decompressBegin_usingDDict(zds, ZSTD_getDDict(zds));
-                            if (ERR_isError(err_code))
-                            {
-                                return err_code;
-                            }
-                        }
-
-                        if (zds->format == ZSTD_format_e.ZSTD_f_zstd1 && (MEM_readLE32(zds->headerBuffer) & 0xFFFFFFF0) == 0x184D2A50)
-                        {
-                            zds->expected = MEM_readLE32(zds->headerBuffer + 4);
-                            zds->stage = ZSTD_dStage.ZSTDds_skipFrame;
-                        }
-                        else
-                        {
-                            {
-                                nuint err_code = ZSTD_decodeFrameHeader(zds, zds->headerBuffer, zds->lhSize);
+                                nuint err_code = ZSTD_DCtx_getFrameDDict(zds, zds->fParams.dictID, &frameDDict);
                                 if (ERR_isError(err_code))
                                 {
                                     return err_code;
                                 }
                             }
 
-                            zds->expected = ZSTD_blockHeaderSize;
-                            zds->stage = ZSTD_dStage.ZSTDds_decodeBlockHeader;
-                        }
-
-                        zds->fParams.windowSize = zds->fParams.windowSize > 1U << 10 ? zds->fParams.windowSize : 1U << 10;
-                        if (zds->fParams.windowSize > zds->maxWindowSize)
-                        {
-                            return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_frameParameter_windowTooLarge));
-                        }
-
-                        if (zds->maxBlockSizeParam != 0)
-                            zds->fParams.blockSizeMax = zds->fParams.blockSizeMax < (uint)zds->maxBlockSizeParam ? zds->fParams.blockSizeMax : (uint)zds->maxBlockSizeParam;
-                        {
-                            /* frame checksum */
-                            nuint neededInBuffSize = zds->fParams.blockSizeMax > 4 ? zds->fParams.blockSizeMax : 4;
-                            nuint neededOutBuffSize = zds->outBufferMode == ZSTD_bufferMode_e.ZSTD_bm_buffered ? ZSTD_decodingBufferSize_internal(zds->fParams.windowSize, zds->fParams.frameContentSize, zds->fParams.blockSizeMax) : 0;
-                            ZSTD_DCtx_updateOversizedDuration(zds, neededInBuffSize, neededOutBuffSize);
+                            if (headerFromThisCall != 0 && zds->fParams.frameContentSize != unchecked(0UL - 1) && zds->fParams.frameType != ZSTD_frameType_e.ZSTD_skippableFrame && (nuint)(oend - op) >= zds->fParams.frameContentSize)
                             {
-                                int tooSmall = zds->inBuffSize < neededInBuffSize || zds->outBuffSize < neededOutBuffSize ? 1 : 0;
-                                int tooLarge = ZSTD_DCtx_isOversizedTooLong(zds);
-                                if (tooSmall != 0 || tooLarge != 0)
+                                nuint cSize = ZSTD_findFrameCompressedSize_advanced(istart, (nuint)(iend - istart), zds->format);
+                                if (cSize <= (nuint)(iend - istart))
                                 {
-                                    nuint bufferSize = neededInBuffSize + neededOutBuffSize;
-                                    if (zds->staticSize != 0)
-                                    {
-                                        assert(zds->staticSize >= (nuint)sizeof(ZSTD_DCtx_s));
-                                        if (bufferSize > zds->staticSize - (nuint)sizeof(ZSTD_DCtx_s))
-                                        {
-                                            return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
-                                        }
-                                    }
-                                    else
-                                    {
-                                        ZSTD_customFree(zds->inBuff, zds->customMem);
-                                        zds->inBuffSize = 0;
-                                        zds->outBuffSize = 0;
-                                        zds->inBuff = (sbyte*)ZSTD_customMalloc(bufferSize, zds->customMem);
-                                        if (zds->inBuff == null)
-                                        {
-                                            return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
-                                        }
-                                    }
-
-                                    zds->inBuffSize = neededInBuffSize;
-                                    zds->outBuff = zds->inBuff + zds->inBuffSize;
-                                    zds->outBuffSize = neededOutBuffSize;
+                                    /* shortcut : using single-pass mode */
+                                    /* Not ZSTD_decompress_usingDDict(), which resets the streaming session */
+                                    nuint decompressedSize = ZSTD_decompressMultiFrame(zds, op, (nuint)(oend - op), istart, cSize, null, 0, useDDictSet != 0 ? frameDDict : ZSTD_getDDict(zds), 0);
+                                    if (ERR_isError(decompressedSize))
+                                        return decompressedSize;
+                                    ip = istart + cSize;
+                                    op = op != null ? op + decompressedSize : op;
+                                    zds->expected = 0;
+                                    zds->streamStage = ZSTD_dStreamStage.zdss_init;
+                                    someMoreWork = 0;
+                                    break;
                                 }
                             }
+
+                            if (zds->outBufferMode == ZSTD_bufferMode_e.ZSTD_bm_stable && zds->fParams.frameType != ZSTD_frameType_e.ZSTD_skippableFrame && zds->fParams.frameContentSize != unchecked(0UL - 1) && (nuint)(oend - op) < zds->fParams.frameContentSize)
+                            {
+                                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_dstSize_tooSmall));
+                            }
+
+                            {
+                                nuint err_code = ZSTD_decompressBegin_usingDDict(zds, useDDictSet != 0 ? frameDDict : ZSTD_getDDict(zds));
+                                if (ERR_isError(err_code))
+                                {
+                                    return err_code;
+                                }
+                            }
+
+                            if (zds->format == ZSTD_format_e.ZSTD_f_zstd1 && (MEM_readLE32(zds->headerBuffer) & 0xFFFFFFF0) == 0x184D2A50)
+                            {
+                                zds->expected = MEM_readLE32(zds->headerBuffer + 4);
+                                zds->stage = ZSTD_dStage.ZSTDds_skipFrame;
+                            }
+                            else
+                            {
+                                {
+                                    nuint err_code = ZSTD_decodeFrameHeader(zds, zds->headerBuffer, zds->lhSize);
+                                    if (ERR_isError(err_code))
+                                    {
+                                        return err_code;
+                                    }
+                                }
+
+                                zds->processedCSize = zds->lhSize;
+                                zds->expected = ZSTD_blockHeaderSize;
+                                zds->stage = ZSTD_dStage.ZSTDds_decodeBlockHeader;
+                            }
+
+                            zds->fParams.windowSize = zds->fParams.windowSize > 1U << 10 ? zds->fParams.windowSize : 1U << 10;
+                            if (zds->fParams.windowSize > zds->maxWindowSize)
+                            {
+                                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_frameParameter_windowTooLarge));
+                            }
+
+                            if (zds->maxBlockSizeParam != 0)
+                                zds->fParams.blockSizeMax = zds->fParams.blockSizeMax < (uint)zds->maxBlockSizeParam ? zds->fParams.blockSizeMax : (uint)zds->maxBlockSizeParam;
+                            {
+                                /* frame checksum */
+                                nuint neededInBuffSize = zds->fParams.blockSizeMax > 4 ? zds->fParams.blockSizeMax : 4;
+                                nuint neededOutBuffSize = zds->outBufferMode == ZSTD_bufferMode_e.ZSTD_bm_buffered ? ZSTD_decodingBufferSize_internal(zds->fParams.windowSize, zds->fParams.frameContentSize, zds->fParams.blockSizeMax) : 0;
+                                ZSTD_DCtx_updateOversizedDuration(zds, neededInBuffSize, neededOutBuffSize);
+                                {
+                                    int tooSmall = zds->inBuffSize < neededInBuffSize || zds->outBuffSize < neededOutBuffSize ? 1 : 0;
+                                    int tooLarge = ZSTD_DCtx_isOversizedTooLong(zds);
+                                    if (tooSmall != 0 || tooLarge != 0)
+                                    {
+                                        nuint bufferSize = neededInBuffSize + neededOutBuffSize;
+                                        if (zds->staticSize != 0)
+                                        {
+                                            assert(zds->staticSize >= (nuint)sizeof(ZSTD_DCtx_s));
+                                            if (bufferSize > zds->staticSize - (nuint)sizeof(ZSTD_DCtx_s))
+                                            {
+                                                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                                            }
+                                        }
+                                        else
+                                        {
+                                            ZSTD_customFree(zds->inBuff, zds->customMem);
+                                            zds->inBuffSize = 0;
+                                            zds->outBuffSize = 0;
+                                            zds->inBuff = (sbyte*)ZSTD_customMalloc(bufferSize, zds->customMem);
+                                            if (zds->inBuff == null)
+                                            {
+                                                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_memory_allocation));
+                                            }
+                                        }
+
+                                        zds->inBuffSize = neededInBuffSize;
+                                        zds->outBuff = zds->inBuff + zds->inBuffSize;
+                                        zds->outBuffSize = neededOutBuffSize;
+                                    }
+                                }
+                            }
+
+                            zds->streamStage = ZSTD_dStreamStage.zdss_read;
                         }
 
-                        zds->streamStage = ZSTD_dStreamStage.zdss_read;
                         goto case ZSTD_dStreamStage.zdss_read;
                     case ZSTD_dStreamStage.zdss_read:
                         {

@@ -68,7 +68,7 @@ namespace ZstdSharp.Test
         [MemberData(nameof(LevelsData))]
         public void CompressAndDecompressWithNative(int level)
         {
-            var srcBuffer = File.ReadAllBytes("dickens");
+            var srcBuffer = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "dickens"));
 
             var compressBound = Compressor.GetCompressBound(srcBuffer.Length);
             Assert.Equal((int) ExternMethods.ZSTD_compressBound((nuint) srcBuffer.Length), compressBound);

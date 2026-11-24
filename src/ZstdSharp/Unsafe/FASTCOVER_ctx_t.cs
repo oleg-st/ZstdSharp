@@ -16,5 +16,6 @@ namespace ZstdSharp.Unsafe
         public uint d;
         public uint f;
         public FASTCOVER_accel_t accelParams;
+        public int displayLevel;
     }
 }

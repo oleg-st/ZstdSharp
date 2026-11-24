@@ -378,7 +378,7 @@ namespace ZstdSharp.Test
             [CombinatorialValues(2, 4)] int outputBufSize)
         {
             using (var pipeServer = new AnonymousPipeServerStream())
-            using (var pipeClient = new AnonymousPipeClientStream(pipeServer.GetClientHandleAsString()))
+            using (var pipeClient = new AnonymousPipeClientStream(PipeDirection.In, pipeServer.ClientSafePipeHandle))
             using (var comp = new CompressionStream(pipeServer))
             using (var decomp = new DecompressionStream(pipeClient))
             {
@@ -404,7 +404,7 @@ namespace ZstdSharp.Test
             [CombinatorialValues(2, 4)] int outputBufSize)
         {
             using (var pipeServer = new AnonymousPipeServerStream())
-            using (var pipeClient = new AnonymousPipeClientStream(pipeServer.GetClientHandleAsString()))
+            using (var pipeClient = new AnonymousPipeClientStream(PipeDirection.In, pipeServer.ClientSafePipeHandle))
             using (var comp = new CompressionStream(pipeServer))
             using (var decomp = new DecompressionStream(pipeClient))
             {

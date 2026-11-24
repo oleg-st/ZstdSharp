@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using Xunit;
 using Zstd.Extern;
 using ZstdSharp.Unsafe;
@@ -27,7 +28,8 @@ namespace ZstdSharp.Test
         [Fact]
         public void BlockSplitterCorruptionTest()
         {
-            var bytes = File.ReadAllBytes("golden-compression/PR-3517-block-splitter-corruption-test");
+            var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "golden-compression",
+                "PR-3517-block-splitter-corruption-test"));
             var compressor = new Compressor(19);
             compressor.SetParameter(ZSTD_cParameter.ZSTD_c_minMatch, 7);
             // ZSTD_c_experimentalParam13 -> ZSTD_c_useBlockSplitter
@@ -55,6 +57,45 @@ namespace ZstdSharp.Test
             }
         }
 
+        [Theory]
+        [InlineData(31)]
+        [InlineData(65539)]
+        public void CompressExternalSequencesAndLiterals(int firstMatchLength)
+        {
+            var sequences = new[]
+            {
+                new ZSTD_Sequence { offset = 1, litLength = 1, matchLength = (uint)firstMatchLength },
+                new ZSTD_Sequence { offset = 2, litLength = 2, matchLength = 32 },
+                new ZSTD_Sequence { offset = 1, litLength = 1, matchLength = 40 },
+                new ZSTD_Sequence { litLength = 1 } // Explicit end of block
+            };
+            var literals = Encoding.ASCII.GetBytes("AbcD!........"); // Eight bytes of required padding
+            var expected = Encoding.ASCII.GetBytes(new string('A', firstMatchLength + 1)
+                + string.Concat(Enumerable.Repeat("bc", 17)) + new string('D', 41) + "!");
+            var compressed = new byte[Methods.ZSTD_compressBound((nuint)expected.Length)];
+
+            var ctx = Methods.ZSTD_createCCtx();
+            try
+            {
+                Methods.ZSTD_CCtx_setParameter(ctx, ZSTD_cParameter.ZSTD_c_experimentalParam11,
+                    (int)ZSTD_sequenceFormat_e.ZSTD_sf_explicitBlockDelimiters).EnsureZstdSuccess();
+                Methods.ZSTD_CCtx_setParameter(ctx, ZSTD_cParameter.ZSTD_c_experimentalParam19,
+                    (int)ZSTD_paramSwitch_e.ZSTD_ps_disable).EnsureZstdSuccess(); // Skip repcode search
+                fixed (ZSTD_Sequence* seq = sequences)
+                fixed (byte* lit = literals, dst = compressed)
+                {
+                    var size = Methods.ZSTD_compressSequencesAndLiterals(ctx, dst, (nuint)compressed.Length,
+                        seq, (nuint)sequences.Length, lit, 5, (nuint)literals.Length, (nuint)expected.Length).EnsureZstdSuccess();
+                    using var decompressor = new Decompressor();
+                    Assert.Equal(expected, decompressor.Unwrap(compressed.AsSpan(0, (int)size)).ToArray());
+                }
+            }
+            finally
+            {
+                Methods.ZSTD_freeCCtx(ctx);
+            }
+        }
+
         [Fact]
         public void VersionMatch()
         {
@@ -66,7 +107,7 @@ namespace ZstdSharp.Test
         {
             const int level = 1;
             const int numThreads = 4;
-            const string filename = "dickens";
+            var filename = Path.Combine(AppContext.BaseDirectory, "dickens");
             var srcBuffer = File.ReadAllBytes(filename);
 
             using var compressor = new Compressor(level);
@@ -83,7 +124,7 @@ namespace ZstdSharp.Test
         {
             const int level = 1;
             const int numThreads = 4;
-            const string filename = "dickens";
+            var filename = Path.Combine(AppContext.BaseDirectory, "dickens");
             using var input = File.OpenRead(filename);
             using var output = new MemoryStream();
 

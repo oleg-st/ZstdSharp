@@ -34,6 +34,23 @@ namespace ZstdSharp.Unsafe
         }
 
         private static readonly RawSeqStore_t kNullRawSeqStore = new RawSeqStore_t(seq: null, pos: 0, posInSequence: 0, size: 0, capacity: 0);
+        /**
+         * @returns the cached per-context BMI2 dispatch hint, or 0 when the build does
+         *          not use cached CPU state.
+         *
+         * Beware: this is *not* a "does the CPU support BMI2" test. When BMI2 is enabled
+         * at compile time, DYNAMIC_BMI2 is 0: the whole library is already compiled with
+         * BMI2, no separate variant exists, and this returns 0 even though the CPU does
+         * support BMI2. Only use the result as a dispatch hint passed to a lower-level
+         * BMI2/default selector. Integrations may ignore the cached hint and consult
+         * their own CPU-feature policy at that selector.
+         */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ZSTD_CCtx_get_bmi2(ZSTD_CCtx_s* cctx)
+        {
+            return 0;
+        }
+
 #if NET7_0_OR_GREATER
         private static ReadOnlySpan<byte> Span_LL_Code => new byte[64]
         {
@@ -357,7 +374,7 @@ namespace ZstdSharp.Unsafe
             assert(iend > ilimit_w);
             if (ip <= ilimit_w)
             {
-                ZSTD_wildcopy(op, ip, (nint)(ilimit_w - ip), ZSTD_overlap_e.ZSTD_no_overlap);
+                ZSTD_wildcopy(op, ip, (nuint)(ilimit_w - ip), ZSTD_overlap_e.ZSTD_no_overlap);
                 op += ilimit_w - ip;
                 ip = ilimit_w;
             }
@@ -424,7 +441,7 @@ namespace ZstdSharp.Unsafe
                 ZSTD_copy16(seqStorePtr->lit, literals);
                 if (litLength > 16)
                 {
-                    ZSTD_wildcopy(seqStorePtr->lit + 16, literals + 16, (nint)litLength - 16, ZSTD_overlap_e.ZSTD_no_overlap);
+                    ZSTD_wildcopy(seqStorePtr->lit + 16, literals + 16, litLength - 16, ZSTD_overlap_e.ZSTD_no_overlap);
                 }
             }
             else

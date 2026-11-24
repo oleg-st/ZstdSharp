@@ -5,8 +5,6 @@ namespace ZstdSharp.Unsafe
         public ZSTD_compressionStage_e stage;
         /* == 1 if cParams(except wlog) or compression level are changed in requestedParams. Triggers transmission of new params to ZSTDMT (if available) then reset to 0. */
         public int cParamsChanged;
-        /* == 1 if the CPU supports BMI2 and 0 otherwise. CPU support is determined dynamically once per context lifetime. */
-        public int bmi2;
         public ZSTD_CCtx_params_s requestedParams;
         public ZSTD_CCtx_params_s appliedParams;
         /* Param storage used by the simple API - not sticky. Must only be used in top-level simple API functions for storage. */

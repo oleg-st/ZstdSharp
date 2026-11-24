@@ -3,11 +3,63 @@ using System.Buffers;
 using System.IO;
 using System.Linq;
 using Xunit;
+using ZstdSharp.Unsafe;
 
 namespace ZstdSharp.Test
 {
     public class ZstdStreamTest
     {
+        [Fact]
+        public unsafe void StreamingHistoryExpiresAfterOutputBufferChanges()
+        {
+            // CVE-2026-124851: the old output segment and the current prefix share one window.
+            const int window = 1 << 10;
+            var data = new byte[3 * window];
+            new Random(42).NextBytes(data);
+            using var compressor = new Compressor();
+            compressor.SetParameter(ZSTD_cParameter.ZSTD_c_windowLog, 10);
+            var frame = compressor.Wrap(data);
+            var output = new byte[data.Length + 1];
+            var context = Methods.ZSTD_createDCtx();
+            try
+            {
+                Assert.Equal((nuint)0, Methods.ZSTD_decompressBegin(context));
+                fixed (byte* input = frame)
+                fixed (byte* buffer = output)
+                {
+                    int consumed = 0, produced = 0;
+                    bool checkedHistory = false;
+                    while (consumed < frame.Length)
+                    {
+                        var needed = Methods.ZSTD_nextSrcSizeToDecompress(context);
+                        Assert.InRange((int)needed, 1, frame.Length - consumed);
+                        // Leave a gap after block one, then decode the remaining blocks contiguously.
+                        var dst = buffer + produced + (produced >= window ? 1 : 0);
+                        var written = Methods.ZSTD_decompressContinue(context, dst,
+                            (nuint)(data.Length - produced), input + consumed, needed);
+                        Assert.False(Methods.ZSTD_isError(written));
+                        if (produced == 2 * window && written == 0)
+                        {
+                            // The third block header has been read. Block two fills the entire history.
+                            Assert.Equal((ulong)window, context->fParams.windowSize);
+                            Assert.True(context->virtualStart == buffer + window + 1);
+                            checkedHistory = true;
+                        }
+                        consumed += (int)needed;
+                        produced += (int)written;
+                    }
+                    Assert.True(checkedHistory);
+                    Assert.Equal(data.Length, produced);
+                }
+                Assert.True(data.AsSpan(0, window).SequenceEqual(output.AsSpan(0, window)));
+                Assert.True(data.AsSpan(window).SequenceEqual(output.AsSpan(window + 1)));
+            }
+            finally
+            {
+                Methods.ZSTD_freeDCtx(context);
+            }
+        }
+
         [Fact]
         public void EmptyCompress()
         {

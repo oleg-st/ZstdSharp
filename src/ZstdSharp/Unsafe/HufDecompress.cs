@@ -34,7 +34,7 @@ namespace ZstdSharp.Unsafe
             void* dt = DTable + 1;
             uint dtLog = HUF_getDTableDesc(DTable).tableLog;
             byte* istart = (byte*)src;
-            byte* oend = ZSTD_maybeNullPtrAdd((byte*)dst, (nint)dstSize);
+            byte* oend = (byte*)ZSTD_maybeNullPtrAdd(dst, (nint)dstSize);
             if (!BitConverter.IsLittleEndian || MEM_32bits)
                 return 0;
             if (dstSize == 0)
@@ -83,7 +83,7 @@ namespace ZstdSharp.Unsafe
         {
             if ((&args->op.e0)[stream] > segmentEnd)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
-            if ((&args->ip.e0)[stream] < (&args->iend.e0)[stream] - 8)
+            if ((&args->ip.e0)[stream] < args->ilowest || (&args->ip.e0)[stream] < (&args->iend.e0)[stream] && (nuint)((&args->iend.e0)[stream] - (&args->ip.e0)[stream]) > 8)
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_corruption_detected));
             assert(sizeof(nuint) == 8);
             bit->bitContainer = MEM_readLEST((&args->ip.e0)[stream]);
@@ -329,7 +329,7 @@ namespace ZstdSharp.Unsafe
         private static nuint HUF_decompress1X1_usingDTable_internal_body(void* dst, nuint dstSize, void* cSrc, nuint cSrcSize, uint* DTable)
         {
             byte* op = (byte*)dst;
-            byte* oend = ZSTD_maybeNullPtrAdd(op, (nint)dstSize);
+            byte* oend = (byte*)ZSTD_maybeNullPtrAdd(op, (nint)dstSize);
             void* dtPtr = DTable + 1;
             HUF_DEltX1* dt = (HUF_DEltX1*)dtPtr;
             BIT_DStream_t bitD;
@@ -571,194 +571,194 @@ namespace ZstdSharp.Unsafe
                     {
                         {
                             /* Decode 5 symbols in each of the 4 streams */
-                            int index = (int)(bits0 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits0 >> 53;
+                            ushort entry = dtable[index];
                             bits0 <<= entry & 0x3F;
-                            op0[0] = (byte)(entry >> 8 & 0xFF);
+                            op0[0] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits1 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits1 >> 53;
+                            ushort entry = dtable[index];
                             bits1 <<= entry & 0x3F;
-                            op1[0] = (byte)(entry >> 8 & 0xFF);
+                            op1[0] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits2 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits2 >> 53;
+                            ushort entry = dtable[index];
                             bits2 <<= entry & 0x3F;
-                            op2[0] = (byte)(entry >> 8 & 0xFF);
+                            op2[0] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits3 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits3 >> 53;
+                            ushort entry = dtable[index];
                             bits3 <<= entry & 0x3F;
-                            op3[0] = (byte)(entry >> 8 & 0xFF);
+                            op3[0] = (byte)(entry >> 8);
                         }
                     }
 
                     {
                         {
-                            int index = (int)(bits0 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits0 >> 53;
+                            ushort entry = dtable[index];
                             bits0 <<= entry & 0x3F;
-                            op0[1] = (byte)(entry >> 8 & 0xFF);
+                            op0[1] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits1 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits1 >> 53;
+                            ushort entry = dtable[index];
                             bits1 <<= entry & 0x3F;
-                            op1[1] = (byte)(entry >> 8 & 0xFF);
+                            op1[1] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits2 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits2 >> 53;
+                            ushort entry = dtable[index];
                             bits2 <<= entry & 0x3F;
-                            op2[1] = (byte)(entry >> 8 & 0xFF);
+                            op2[1] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits3 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits3 >> 53;
+                            ushort entry = dtable[index];
                             bits3 <<= entry & 0x3F;
-                            op3[1] = (byte)(entry >> 8 & 0xFF);
+                            op3[1] = (byte)(entry >> 8);
                         }
                     }
 
                     {
                         {
-                            int index = (int)(bits0 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits0 >> 53;
+                            ushort entry = dtable[index];
                             bits0 <<= entry & 0x3F;
-                            op0[2] = (byte)(entry >> 8 & 0xFF);
+                            op0[2] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits1 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits1 >> 53;
+                            ushort entry = dtable[index];
                             bits1 <<= entry & 0x3F;
-                            op1[2] = (byte)(entry >> 8 & 0xFF);
+                            op1[2] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits2 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits2 >> 53;
+                            ushort entry = dtable[index];
                             bits2 <<= entry & 0x3F;
-                            op2[2] = (byte)(entry >> 8 & 0xFF);
+                            op2[2] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits3 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits3 >> 53;
+                            ushort entry = dtable[index];
                             bits3 <<= entry & 0x3F;
-                            op3[2] = (byte)(entry >> 8 & 0xFF);
+                            op3[2] = (byte)(entry >> 8);
                         }
                     }
 
                     {
                         {
-                            int index = (int)(bits0 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits0 >> 53;
+                            ushort entry = dtable[index];
                             bits0 <<= entry & 0x3F;
-                            op0[3] = (byte)(entry >> 8 & 0xFF);
+                            op0[3] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits1 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits1 >> 53;
+                            ushort entry = dtable[index];
                             bits1 <<= entry & 0x3F;
-                            op1[3] = (byte)(entry >> 8 & 0xFF);
+                            op1[3] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits2 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits2 >> 53;
+                            ushort entry = dtable[index];
                             bits2 <<= entry & 0x3F;
-                            op2[3] = (byte)(entry >> 8 & 0xFF);
+                            op2[3] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits3 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits3 >> 53;
+                            ushort entry = dtable[index];
                             bits3 <<= entry & 0x3F;
-                            op3[3] = (byte)(entry >> 8 & 0xFF);
+                            op3[3] = (byte)(entry >> 8);
                         }
                     }
 
                     {
                         {
-                            int index = (int)(bits0 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits0 >> 53;
+                            ushort entry = dtable[index];
                             bits0 <<= entry & 0x3F;
-                            op0[4] = (byte)(entry >> 8 & 0xFF);
+                            op0[4] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits1 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits1 >> 53;
+                            ushort entry = dtable[index];
                             bits1 <<= entry & 0x3F;
-                            op1[4] = (byte)(entry >> 8 & 0xFF);
+                            op1[4] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits2 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits2 >> 53;
+                            ushort entry = dtable[index];
                             bits2 <<= entry & 0x3F;
-                            op2[4] = (byte)(entry >> 8 & 0xFF);
+                            op2[4] = (byte)(entry >> 8);
                         }
 
                         {
-                            int index = (int)(bits3 >> 53);
-                            int entry = dtable[index];
+                            ulong index = bits3 >> 53;
+                            ushort entry = dtable[index];
                             bits3 <<= entry & 0x3F;
-                            op3[4] = (byte)(entry >> 8 & 0xFF);
+                            op3[4] = (byte)(entry >> 8);
                         }
                     }
 
                     {
                         {
                             /* Reload each of the 4 the bitstreams */
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits0);
-                            int nbBits = ctz & 7;
-                            int nbBytes = ctz >> 3;
+                            ulong ctz = ZSTD_countTrailingZeros64(bits0);
+                            ulong nbBits = ctz & 7;
+                            ulong nbBytes = ctz >> 3;
                             op0 += 5;
                             ip0 -= nbBytes;
                             bits0 = MEM_read64(ip0) | 1;
-                            bits0 <<= nbBits;
+                            bits0 <<= (int)nbBits;
                         }
 
                         {
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits1);
-                            int nbBits = ctz & 7;
-                            int nbBytes = ctz >> 3;
+                            ulong ctz = ZSTD_countTrailingZeros64(bits1);
+                            ulong nbBits = ctz & 7;
+                            ulong nbBytes = ctz >> 3;
                             op1 += 5;
                             ip1 -= nbBytes;
                             bits1 = MEM_read64(ip1) | 1;
-                            bits1 <<= nbBits;
+                            bits1 <<= (int)nbBits;
                         }
 
                         {
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits2);
-                            int nbBits = ctz & 7;
-                            int nbBytes = ctz >> 3;
+                            ulong ctz = ZSTD_countTrailingZeros64(bits2);
+                            ulong nbBits = ctz & 7;
+                            ulong nbBytes = ctz >> 3;
                             op2 += 5;
                             ip2 -= nbBytes;
                             bits2 = MEM_read64(ip2) | 1;
-                            bits2 <<= nbBits;
+                            bits2 <<= (int)nbBits;
                         }
 
                         {
-                            int ctz = (int)ZSTD_countTrailingZeros64(bits3);
-                            int nbBits = ctz & 7;
-                            int nbBytes = ctz >> 3;
+                            ulong ctz = ZSTD_countTrailingZeros64(bits3);
+                            ulong nbBits = ctz & 7;
+                            ulong nbBytes = ctz >> 3;
                             op3 += 5;
                             ip3 -= nbBytes;
                             bits3 = MEM_read64(ip3) | 1;
-                            bits3 <<= nbBits;
+                            bits3 <<= (int)nbBits;
                         }
                     }
                 }
@@ -789,7 +789,7 @@ namespace ZstdSharp.Unsafe
         {
             void* dt = DTable + 1;
             byte* ilowest = (byte*)cSrc;
-            byte* oend = ZSTD_maybeNullPtrAdd((byte*)dst, (nint)dstSize);
+            byte* oend = (byte*)ZSTD_maybeNullPtrAdd(dst, (nint)dstSize);
             HUF_DecompressFastArgs args;
             {
                 nuint ret = HUF_DecompressFastArgs_init(&args, dst, dstSize, cSrc, cSrcSize, DTable);
@@ -1219,7 +1219,10 @@ namespace ZstdSharp.Unsafe
             {
                 if (dtLog <= 11 && MEM_64bits)
                 {
-                    while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pEnd - 9)
+                    /* up to 10 symbols at a time */
+                    /* For an 8-byte output, pEnd - 9 would precede the buffer. */
+                    byte* pLimit = (nuint)(pEnd - p) >= 10 ? pEnd - 9 : p;
+                    while (BIT_reloadDStream(bitDPtr) == BIT_DStream_status.BIT_DStream_unfinished && p < pLimit)
                     {
                         p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
                         p += HUF_decodeSymbolX2(p, bitDPtr, dt, dtLog);
@@ -1272,7 +1275,7 @@ namespace ZstdSharp.Unsafe
 
             {
                 byte* ostart = (byte*)dst;
-                byte* oend = ZSTD_maybeNullPtrAdd(ostart, (nint)dstSize);
+                byte* oend = (byte*)ZSTD_maybeNullPtrAdd(ostart, (nint)dstSize);
                 /* force compiler to not use strict-aliasing */
                 void* dtPtr = DTable + 1;
                 HUF_DEltX2* dt = (HUF_DEltX2*)dtPtr;
@@ -1532,225 +1535,276 @@ namespace ZstdSharp.Unsafe
                 {
                     {
                         {
-                            /* Decode 5 symbols from each of the first 3 streams.
-                             * The final stream will be decoded during the reload phase
-                             * to reduce register pressure.
+                            /* Decode 5 symbols from each of the first 3 or 4 streams.
+                             * In the 3-way case the final stream will be decoded during
+                             * the reload phase to reduce register pressure.
                              */
-                            int index = (int)(bits0 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits & 0x3F;
-                            op0 += entry.length;
+                            ulong index = bits0 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op0, (ushort)entry);
+                            bits0 <<= (int)(entry >> 16 & 0x3F);
+                            op0 += entry >> 24;
                         }
 
                         {
-                            int index = (int)(bits1 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits & 0x3F;
-                            op1 += entry.length;
+                            ulong index = bits1 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op1, (ushort)entry);
+                            bits1 <<= (int)(entry >> 16 & 0x3F);
+                            op1 += entry >> 24;
                         }
 
                         {
-                            int index = (int)(bits2 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits & 0x3F;
-                            op2 += entry.length;
-                        }
-                    }
-
-                    {
-                        {
-                            int index = (int)(bits0 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits & 0x3F;
-                            op0 += entry.length;
+                            ulong index = bits2 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op2, (ushort)entry);
+                            bits2 <<= (int)(entry >> 16 & 0x3F);
+                            op2 += entry >> 24;
                         }
 
+                        if (MEM_arm64)
                         {
-                            int index = (int)(bits1 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits & 0x3F;
-                            op1 += entry.length;
-                        }
-
-                        {
-                            int index = (int)(bits2 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits & 0x3F;
-                            op2 += entry.length;
+                            ulong index = bits3 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op3, (ushort)entry);
+                            bits3 <<= (int)(entry >> 16 & 0x3F);
+                            op3 += entry >> 24;
                         }
                     }
 
                     {
                         {
-                            int index = (int)(bits0 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits & 0x3F;
-                            op0 += entry.length;
+                            ulong index = bits0 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op0, (ushort)entry);
+                            bits0 <<= (int)(entry >> 16 & 0x3F);
+                            op0 += entry >> 24;
                         }
 
                         {
-                            int index = (int)(bits1 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits & 0x3F;
-                            op1 += entry.length;
+                            ulong index = bits1 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op1, (ushort)entry);
+                            bits1 <<= (int)(entry >> 16 & 0x3F);
+                            op1 += entry >> 24;
                         }
 
                         {
-                            int index = (int)(bits2 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits & 0x3F;
-                            op2 += entry.length;
-                        }
-                    }
-
-                    {
-                        {
-                            int index = (int)(bits0 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits & 0x3F;
-                            op0 += entry.length;
+                            ulong index = bits2 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op2, (ushort)entry);
+                            bits2 <<= (int)(entry >> 16 & 0x3F);
+                            op2 += entry >> 24;
                         }
 
+                        if (MEM_arm64)
                         {
-                            int index = (int)(bits1 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits & 0x3F;
-                            op1 += entry.length;
-                        }
-
-                        {
-                            int index = (int)(bits2 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits & 0x3F;
-                            op2 += entry.length;
+                            ulong index = bits3 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op3, (ushort)entry);
+                            bits3 <<= (int)(entry >> 16 & 0x3F);
+                            op3 += entry >> 24;
                         }
                     }
 
                     {
                         {
-                            int index = (int)(bits0 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op0, entry.sequence);
-                            bits0 <<= entry.nbBits & 0x3F;
-                            op0 += entry.length;
+                            ulong index = bits0 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op0, (ushort)entry);
+                            bits0 <<= (int)(entry >> 16 & 0x3F);
+                            op0 += entry >> 24;
                         }
 
                         {
-                            int index = (int)(bits1 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op1, entry.sequence);
-                            bits1 <<= entry.nbBits & 0x3F;
-                            op1 += entry.length;
+                            ulong index = bits1 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op1, (ushort)entry);
+                            bits1 <<= (int)(entry >> 16 & 0x3F);
+                            op1 += entry >> 24;
                         }
 
                         {
-                            int index = (int)(bits2 >> 53);
-                            HUF_DEltX2 entry = dtable[index];
-                            MEM_write16(op2, entry.sequence);
-                            bits2 <<= entry.nbBits & 0x3F;
-                            op2 += entry.length;
+                            ulong index = bits2 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op2, (ushort)entry);
+                            bits2 <<= (int)(entry >> 16 & 0x3F);
+                            op2 += entry >> 24;
+                        }
+
+                        if (MEM_arm64)
+                        {
+                            ulong index = bits3 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op3, (ushort)entry);
+                            bits3 <<= (int)(entry >> 16 & 0x3F);
+                            op3 += entry >> 24;
                         }
                     }
 
                     {
-                        /* Decode one symbol from the final stream */
-                        int index = (int)(bits3 >> 53);
-                        HUF_DEltX2 entry = dtable[index];
-                        MEM_write16(op3, entry.sequence);
-                        bits3 <<= entry.nbBits & 0x3F;
-                        op3 += entry.length;
+                        {
+                            ulong index = bits0 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op0, (ushort)entry);
+                            bits0 <<= (int)(entry >> 16 & 0x3F);
+                            op0 += entry >> 24;
+                        }
+
+                        {
+                            ulong index = bits1 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op1, (ushort)entry);
+                            bits1 <<= (int)(entry >> 16 & 0x3F);
+                            op1 += entry >> 24;
+                        }
+
+                        {
+                            ulong index = bits2 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op2, (ushort)entry);
+                            bits2 <<= (int)(entry >> 16 & 0x3F);
+                            op2 += entry >> 24;
+                        }
+
+                        if (MEM_arm64)
+                        {
+                            ulong index = bits3 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op3, (ushort)entry);
+                            bits3 <<= (int)(entry >> 16 & 0x3F);
+                            op3 += entry >> 24;
+                        }
                     }
 
                     {
                         {
+                            ulong index = bits0 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op0, (ushort)entry);
+                            bits0 <<= (int)(entry >> 16 & 0x3F);
+                            op0 += entry >> 24;
+                        }
+
+                        {
+                            ulong index = bits1 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op1, (ushort)entry);
+                            bits1 <<= (int)(entry >> 16 & 0x3F);
+                            op1 += entry >> 24;
+                        }
+
+                        {
+                            ulong index = bits2 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op2, (ushort)entry);
+                            bits2 <<= (int)(entry >> 16 & 0x3F);
+                            op2 += entry >> 24;
+                        }
+
+                        if (MEM_arm64)
+                        {
+                            ulong index = bits3 >> 53;
+                            nuint entry = MEM_readLE32(&dtable[index]);
+                            MEM_write16(op3, (ushort)entry);
+                            bits3 <<= (int)(entry >> 16 & 0x3F);
+                            op3 += entry >> 24;
+                        }
+                    }
+
+                    if (!MEM_arm64)
+                    {
+                        /* In the 3-way case decode one symbol from the final stream. */
+                        ulong index = bits3 >> 53;
+                        nuint entry = MEM_readLE32(&dtable[index]);
+                        MEM_write16(op3, (ushort)entry);
+                        bits3 <<= (int)(entry >> 16 & 0x3F);
+                        op3 += entry >> 24;
+                    }
+
+                    {
+                        {
+                            if (!MEM_arm64)
                             {
-                                /* Decode 4 symbols from the final stream & reload bitstreams.
-                                 * The final stream is reloaded last, meaning that all 5 symbols
-                                 * are decoded from the final stream before it is reloaded.
+                                /* In the 3-way case decode 4 symbols from the final stream &
+                                 * reload bitstreams. The final stream is reloaded last, meaning
+                                 * that all 5 symbols are decoded from the final stream before
+                                 * it is reloaded.
                                  */
-                                int index = (int)(bits3 >> 53);
-                                HUF_DEltX2 entry = dtable[index];
-                                MEM_write16(op3, entry.sequence);
-                                bits3 <<= entry.nbBits & 0x3F;
-                                op3 += entry.length;
+                                ulong index = bits3 >> 53;
+                                nuint entry = MEM_readLE32(&dtable[index]);
+                                MEM_write16(op3, (ushort)entry);
+                                bits3 <<= (int)(entry >> 16 & 0x3F);
+                                op3 += entry >> 24;
                             }
 
                             {
-                                int ctz = (int)ZSTD_countTrailingZeros64(bits0);
-                                int nbBits = ctz & 7;
-                                int nbBytes = ctz >> 3;
+                                ulong ctz = ZSTD_countTrailingZeros64(bits0);
+                                ulong nbBits = ctz & 7;
+                                ulong nbBytes = ctz >> 3;
                                 ip0 -= nbBytes;
                                 bits0 = MEM_read64(ip0) | 1;
-                                bits0 <<= nbBits;
+                                bits0 <<= (int)nbBits;
                             }
                         }
 
                         {
+                            if (!MEM_arm64)
                             {
-                                int index = (int)(bits3 >> 53);
-                                HUF_DEltX2 entry = dtable[index];
-                                MEM_write16(op3, entry.sequence);
-                                bits3 <<= entry.nbBits & 0x3F;
-                                op3 += entry.length;
+                                ulong index = bits3 >> 53;
+                                nuint entry = MEM_readLE32(&dtable[index]);
+                                MEM_write16(op3, (ushort)entry);
+                                bits3 <<= (int)(entry >> 16 & 0x3F);
+                                op3 += entry >> 24;
                             }
 
                             {
-                                int ctz = (int)ZSTD_countTrailingZeros64(bits1);
-                                int nbBits = ctz & 7;
-                                int nbBytes = ctz >> 3;
+                                ulong ctz = ZSTD_countTrailingZeros64(bits1);
+                                ulong nbBits = ctz & 7;
+                                ulong nbBytes = ctz >> 3;
                                 ip1 -= nbBytes;
                                 bits1 = MEM_read64(ip1) | 1;
-                                bits1 <<= nbBits;
+                                bits1 <<= (int)nbBits;
                             }
                         }
 
                         {
+                            if (!MEM_arm64)
                             {
-                                int index = (int)(bits3 >> 53);
-                                HUF_DEltX2 entry = dtable[index];
-                                MEM_write16(op3, entry.sequence);
-                                bits3 <<= entry.nbBits & 0x3F;
-                                op3 += entry.length;
+                                ulong index = bits3 >> 53;
+                                nuint entry = MEM_readLE32(&dtable[index]);
+                                MEM_write16(op3, (ushort)entry);
+                                bits3 <<= (int)(entry >> 16 & 0x3F);
+                                op3 += entry >> 24;
                             }
 
                             {
-                                int ctz = (int)ZSTD_countTrailingZeros64(bits2);
-                                int nbBits = ctz & 7;
-                                int nbBytes = ctz >> 3;
+                                ulong ctz = ZSTD_countTrailingZeros64(bits2);
+                                ulong nbBits = ctz & 7;
+                                ulong nbBytes = ctz >> 3;
                                 ip2 -= nbBytes;
                                 bits2 = MEM_read64(ip2) | 1;
-                                bits2 <<= nbBits;
+                                bits2 <<= (int)nbBits;
                             }
                         }
 
                         {
+                            if (!MEM_arm64)
                             {
-                                int index = (int)(bits3 >> 53);
-                                HUF_DEltX2 entry = dtable[index];
-                                MEM_write16(op3, entry.sequence);
-                                bits3 <<= entry.nbBits & 0x3F;
-                                op3 += entry.length;
+                                ulong index = bits3 >> 53;
+                                nuint entry = MEM_readLE32(&dtable[index]);
+                                MEM_write16(op3, (ushort)entry);
+                                bits3 <<= (int)(entry >> 16 & 0x3F);
+                                op3 += entry >> 24;
                             }
 
                             {
-                                int ctz = (int)ZSTD_countTrailingZeros64(bits3);
-                                int nbBits = ctz & 7;
-                                int nbBytes = ctz >> 3;
+                                ulong ctz = ZSTD_countTrailingZeros64(bits3);
+                                ulong nbBits = ctz & 7;
+                                ulong nbBytes = ctz >> 3;
                                 ip3 -= nbBytes;
                                 bits3 = MEM_read64(ip3) | 1;
-                                bits3 <<= nbBits;
+                                bits3 <<= (int)nbBits;
                             }
                         }
                     }
@@ -1777,7 +1831,7 @@ namespace ZstdSharp.Unsafe
         {
             void* dt = DTable + 1;
             byte* ilowest = (byte*)cSrc;
-            byte* oend = ZSTD_maybeNullPtrAdd((byte*)dst, (nint)dstSize);
+            byte* oend = (byte*)ZSTD_maybeNullPtrAdd(dst, (nint)dstSize);
             HUF_DecompressFastArgs args;
             {
                 nuint ret = HUF_DecompressFastArgs_init(&args, dst, dstSize, cSrc, cSrcSize, DTable);

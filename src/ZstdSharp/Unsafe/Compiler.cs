@@ -30,9 +30,9 @@ namespace ZstdSharp.Unsafe
          * @return ptr + add with wrapping
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte* ZSTD_wrappedPtrAdd(byte* ptr, nint add)
+        private static void* ZSTD_wrappedPtrAdd(void* ptr, nint add)
         {
-            return ptr + add;
+            return (sbyte*)ptr + add;
         }
 
         /**
@@ -42,9 +42,9 @@ namespace ZstdSharp.Unsafe
          * @return ptr - sub with wrapping
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte* ZSTD_wrappedPtrSub(byte* ptr, nint sub)
+        private static void* ZSTD_wrappedPtrSub(void* ptr, nint sub)
         {
-            return ptr - sub;
+            return (sbyte*)ptr - sub;
         }
 
         /**
@@ -54,9 +54,9 @@ namespace ZstdSharp.Unsafe
          * @returns `ptr + add` except it defines `NULL + 0 == NULL`.
          */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte* ZSTD_maybeNullPtrAdd(byte* ptr, nint add)
+        private static void* ZSTD_maybeNullPtrAdd(void* ptr, nint add)
         {
-            return add > 0 ? ptr + add : ptr;
+            return add > 0 ? (sbyte*)ptr + add : ptr;
         }
     }
 }

@@ -189,7 +189,7 @@ namespace ZstdSharp.Unsafe
          * Returns 0 on success or error code on error.
          * The context must be destroyed with `FASTCOVER_ctx_destroy()`.
          */
-        private static nuint FASTCOVER_ctx_init(FASTCOVER_ctx_t* ctx, void* samplesBuffer, nuint* samplesSizes, uint nbSamples, uint d, double splitPoint, uint f, FASTCOVER_accel_t accelParams)
+        private static nuint FASTCOVER_ctx_init(FASTCOVER_ctx_t* ctx, void* samplesBuffer, nuint* samplesSizes, uint nbSamples, uint d, double splitPoint, uint f, FASTCOVER_accel_t accelParams, int displayLevel)
         {
             byte* samples = (byte*)samplesBuffer;
             nuint totalSamplesSize = COVER_sum(samplesSizes, nbSamples);
@@ -198,7 +198,9 @@ namespace ZstdSharp.Unsafe
             uint nbTestSamples = splitPoint < 1 ? nbSamples - nbTrainSamples : nbSamples;
             nuint trainingSamplesSize = splitPoint < 1 ? COVER_sum(samplesSizes, nbTrainSamples) : totalSamplesSize;
             nuint testSamplesSize = splitPoint < 1 ? COVER_sum(samplesSizes + nbTrainSamples, nbTestSamples) : totalSamplesSize;
-            if (totalSamplesSize < (d > sizeof(ulong) ? d : sizeof(ulong)) || totalSamplesSize >= (sizeof(nuint) == 8 ? unchecked((uint)-1) : 1 * (1U << 30)))
+            nuint readLength = d > sizeof(ulong) ? d : sizeof(ulong);
+            ctx->displayLevel = displayLevel;
+            if (totalSamplesSize < readLength || totalSamplesSize >= (sizeof(nuint) == 8 ? unchecked((uint)-1) : 1 * (1U << 30)))
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
@@ -213,6 +215,11 @@ namespace ZstdSharp.Unsafe
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
             }
 
+            if (trainingSamplesSize < readLength)
+            {
+                return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_srcSize_wrong));
+            }
+
             *ctx = new FASTCOVER_ctx_t
             {
                 samples = samples,
@@ -220,7 +227,7 @@ namespace ZstdSharp.Unsafe
                 nbSamples = nbSamples,
                 nbTrainSamples = nbTrainSamples,
                 nbTestSamples = nbTestSamples,
-                nbDmers = trainingSamplesSize - (d > sizeof(ulong) ? d : sizeof(ulong)) + 1,
+                nbDmers = trainingSamplesSize - readLength + 1,
                 d = d,
                 f = f,
                 accelParams = accelParams,
@@ -263,7 +270,9 @@ namespace ZstdSharp.Unsafe
             /* Divide the data into epochs. We will select one segment from each epoch. */
             COVER_epoch_info_t epochs = COVER_computeEpochs((uint)dictBufferCapacity, (uint)ctx->nbDmers, parameters.k, 1);
             const nuint maxZeroScoreRun = 10;
+            int displayLevel = ctx->displayLevel;
             nuint zeroScoreRun = 0;
+            int lastUpdateTime = 0;
             nuint epoch;
             for (epoch = 0; tail > 0; epoch = (epoch + 1) % epochs.num)
             {
@@ -315,6 +324,7 @@ namespace ZstdSharp.Unsafe
             byte* dict = (byte*)malloc(dictBufferCapacity);
             COVER_dictSelection selection = COVER_dictSelectionError(unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_GENERIC)));
             uint* freqs = (uint*)malloc(((ulong)1 << (int)ctx->f) * sizeof(uint));
+            int displayLevel = ctx->displayLevel;
             if (segmentFreqs == null || dict == null || freqs == null)
             {
                 goto _cleanup;
@@ -386,7 +396,7 @@ namespace ZstdSharp.Unsafe
             FASTCOVER_ctx_t ctx;
             ZDICT_cover_params_t coverParams;
             FASTCOVER_accel_t accelParams;
-            g_displayLevel = (int)parameters.zParams.notificationLevel;
+            int displayLevel = (int)parameters.zParams.notificationLevel;
             parameters.splitPoint = 1;
             parameters.f = parameters.f == 0 ? 20 : parameters.f;
             parameters.accel = parameters.accel == 0 ? 1 : parameters.accel;
@@ -409,14 +419,14 @@ namespace ZstdSharp.Unsafe
 
             accelParams = FASTCOVER_defaultAccelParameters[parameters.accel];
             {
-                nuint initVal = FASTCOVER_ctx_init(&ctx, samplesBuffer, samplesSizes, nbSamples, coverParams.d, parameters.splitPoint, parameters.f, accelParams);
+                nuint initVal = FASTCOVER_ctx_init(&ctx, samplesBuffer, samplesSizes, nbSamples, coverParams.d, parameters.splitPoint, parameters.f, accelParams, displayLevel);
                 if (ERR_isError(initVal))
                 {
                     return initVal;
                 }
             }
 
-            COVER_warnOnSmallCorpus(dictBufferCapacity, ctx.nbDmers, g_displayLevel);
+            COVER_warnOnSmallCorpus(dictBufferCapacity, ctx.nbDmers, displayLevel);
             {
                 /* Initialize array to keep track of frequency of dmer within activeSegment */
                 ushort* segmentFreqs = (ushort*)calloc((ulong)1 << (int)parameters.f, sizeof(ushort));
@@ -476,6 +486,7 @@ namespace ZstdSharp.Unsafe
             COVER_best_s best;
             void* pool = null;
             int warned = 0;
+            int lastUpdateTime = 0;
             if (splitPoint <= 0 || splitPoint > 1)
             {
                 return unchecked((nuint)(-(int)ZSTD_ErrorCode.ZSTD_error_parameter_outOfBound));
@@ -514,13 +525,14 @@ namespace ZstdSharp.Unsafe
             coverParams = new ZDICT_cover_params_t();
             FASTCOVER_convertToCoverParams(*parameters, &coverParams);
             accelParams = FASTCOVER_defaultAccelParameters[accel];
-            g_displayLevel = displayLevel == 0 ? 0 : displayLevel - 1;
             for (d = kMinD; d <= kMaxD; d += 2)
             {
                 /* Initialize the context for this value of d */
                 FASTCOVER_ctx_t ctx;
                 {
-                    nuint initVal = FASTCOVER_ctx_init(&ctx, samplesBuffer, samplesSizes, nbSamples, d, splitPoint, f, accelParams);
+                    /* Turn down global display level to clean up display at level 2 and below */
+                    int childDisplayLevel = displayLevel == 0 ? 0 : displayLevel - 1;
+                    nuint initVal = FASTCOVER_ctx_init(&ctx, samplesBuffer, samplesSizes, nbSamples, d, splitPoint, f, accelParams, childDisplayLevel);
                     if (ERR_isError(initVal))
                     {
                         COVER_best_destroy(&best);
@@ -556,7 +568,7 @@ namespace ZstdSharp.Unsafe
                     data->parameters.splitPoint = splitPoint;
                     data->parameters.steps = kSteps;
                     data->parameters.shrinkDict = shrinkDict;
-                    data->parameters.zParams.notificationLevel = (uint)g_displayLevel;
+                    data->parameters.zParams.notificationLevel = (uint)ctx.displayLevel;
                     if (FASTCOVER_checkParameters(data->parameters, dictBufferCapacity, data->ctx->f, accel) == 0)
                     {
                         free(data);
