@@ -14,8 +14,10 @@ namespace ZstdSharp
     /// </remarks>
     /// <seealso cref="SafeCctxHandle"/>
     /// <seealso cref="SafeDctxHandle"/>
-    internal abstract unsafe class SafeZstdHandle : SafeHandle
+    internal abstract unsafe class SafeZstdHandle<T> : SafeHandle where T : unmanaged
     {
+        private GCHandle prefixHandle;
+
         /// <summary>
         /// Parameterless constructor is hidden. Use the static <c>Create</c> factory
         /// method to create a new safe handle instance.
@@ -25,12 +27,54 @@ namespace ZstdSharp
         }
 
         public sealed override bool IsInvalid => handle == IntPtr.Zero;
+
+        public SafeHandleHolder<T> Acquire() => new(this);
+
+#nullable enable
+        public void RefPrefix(byte[]? prefix)
+        {
+            using var context = Acquire();
+            int length = prefix?.Length ?? 0;
+            var newPin = length == 0 ? default : GCHandle.Alloc(prefix, GCHandleType.Pinned);
+            try
+            {
+                void* address = newPin.IsAllocated ? (void*)newPin.AddrOfPinnedObject() : null;
+                RefPrefixCore(context, address, (nuint)length).EnsureZstdSuccess();
+            }
+            catch
+            {
+                if (newPin.IsAllocated)
+                    newPin.Free();
+                throw;
+            }
+
+            // The context can still use the old prefix if it rejects the change.
+            FreePinnedPrefix();
+            prefixHandle = newPin;
+        }
+#nullable restore
+
+        public void FreePinnedPrefix()
+        {
+            if (prefixHandle.IsAllocated)
+                prefixHandle.Free();
+        }
+
+        protected sealed override bool ReleaseHandle()
+        {
+            var result = FreeContext((T*)handle);
+            FreePinnedPrefix();
+            return result == 0;
+        }
+
+        protected abstract nuint RefPrefixCore(T* context, void* prefix, nuint length);
+        protected abstract nuint FreeContext(T* context);
     }
 
     /// <summary>
     /// Safely wraps an unmanaged Zstd compression context.
     /// </summary>
-    internal sealed unsafe class SafeCctxHandle : SafeZstdHandle
+    internal sealed unsafe class SafeCctxHandle : SafeZstdHandle<ZSTD_CCtx_s>
     {
         /// <inheritdoc/>
         private SafeCctxHandle()
@@ -64,25 +108,16 @@ namespace ZstdSharp
             return safeHandle;
         }
 
-        /// <summary>
-        /// Acquires a reference to the safe handle.
-        /// </summary>
-        /// <returns>
-        /// A <see cref="SafeHandleHolder{T}"/> instance that can be implicitly converted to a pointer
-        /// to <see cref="ZSTD_CCtx_s"/>.
-        /// </returns>
-        public SafeHandleHolder<ZSTD_CCtx_s> Acquire() => new(this);
+        protected override nuint RefPrefixCore(ZSTD_CCtx_s* context, void* prefix, nuint length)
+            => Methods.ZSTD_CCtx_refPrefix(context, prefix, length);
 
-        protected override bool ReleaseHandle()
-        {
-            return Methods.ZSTD_freeCCtx((ZSTD_CCtx_s*)handle) == 0;
-        }
+        protected override nuint FreeContext(ZSTD_CCtx_s* context) => Methods.ZSTD_freeCCtx(context);
     }
 
     /// <summary>
-    /// Safely wraps an unmanaged Zstd compression context.
+    /// Safely wraps an unmanaged Zstd decompression context.
     /// </summary>
-    internal sealed unsafe class SafeDctxHandle : SafeZstdHandle
+    internal sealed unsafe class SafeDctxHandle : SafeZstdHandle<ZSTD_DCtx_s>
     {
         /// <inheritdoc/>
         private SafeDctxHandle()
@@ -116,19 +151,10 @@ namespace ZstdSharp
             return safeHandle;
         }
 
-        /// <summary>
-        /// Acquires a reference to the safe handle.
-        /// </summary>
-        /// <returns>
-        /// A <see cref="SafeHandleHolder{T}"/> instance that can be implicitly converted to a pointer
-        /// to <see cref="ZSTD_DCtx_s"/>.
-        /// </returns>
-        public SafeHandleHolder<ZSTD_DCtx_s> Acquire() => new(this);
+        protected override nuint RefPrefixCore(ZSTD_DCtx_s* context, void* prefix, nuint length)
+            => Methods.ZSTD_DCtx_refPrefix(context, prefix, length);
 
-        protected override bool ReleaseHandle()
-        {
-            return Methods.ZSTD_freeDCtx((ZSTD_DCtx_s*)handle) == 0;
-        }
+        protected override nuint FreeContext(ZSTD_DCtx_s* context) => Methods.ZSTD_freeDCtx(context);
     }
 
     /// <summary>

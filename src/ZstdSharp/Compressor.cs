@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers;
-using System.Runtime.InteropServices;
 using ZstdSharp.Unsafe;
 
 namespace ZstdSharp
@@ -26,8 +25,6 @@ namespace ZstdSharp
         private int level = DefaultCompressionLevel;
 
         private readonly SafeCctxHandle handle;
-
-        private GCHandle prefixHandle;
 
         public int Level
         {
@@ -67,50 +64,22 @@ namespace ZstdSharp
             using var cctx = handle.Acquire();
             fixed (byte* dictPtr = dict)
                 Methods.ZSTD_CCtx_loadDictionary(cctx, dictPtr, (nuint)dict.Length).EnsureZstdSuccess();
+            handle.FreePinnedPrefix();
         }
 
         /// <summary>
         /// References a prefix for the next compressed frame (ZSTD_CCtx_refPrefix), enabling
         /// delta compression ("patch-from"). Native semantics: the prefix applies to the next
         /// frame only and is referenced, not copied — re-reference before each frame. The
-        /// supplied array is pinned and retained by the compressor until replaced, cleared, or
-        /// disposal, and must not be modified while in use.
+        /// supplied array stays pinned until a successful RefPrefix or LoadDictionary call
+        /// replaces it, or until the context is released. Keep its contents unchanged while in use.
         /// Decompression must reference the same prefix (<see cref="Decompressor.RefPrefix(byte[])"/>).
-        /// Pass null to clear.
+        /// Pass null or an empty array to clear.
         /// </summary>
         /// <param name="prefix">Reference content (for delta compression, the previous version of the data), or null to clear.</param>
 #nullable enable
-        public void RefPrefix(byte[]? prefix)
-        {
-            using var cctx = handle.Acquire();
-            FreePinnedPrefix();
-            if (prefix == null || prefix.Length == 0)
-            {
-                Methods.ZSTD_CCtx_refPrefix(cctx, null, 0).EnsureZstdSuccess();
-                return;
-            }
-
-            prefixHandle = GCHandle.Alloc(prefix, GCHandleType.Pinned);
-            try
-            {
-                Methods.ZSTD_CCtx_refPrefix(cctx, (byte*)prefixHandle.AddrOfPinnedObject(), (nuint)prefix.Length)
-                    .EnsureZstdSuccess();
-            }
-            catch
-            {
-                FreePinnedPrefix();
-                throw;
-            }
-        }
+        public void RefPrefix(byte[]? prefix) => handle.RefPrefix(prefix);
 #nullable restore
-
-        private void FreePinnedPrefix()
-        {
-            if (prefixHandle.IsAllocated)
-            {
-                prefixHandle.Free();
-            }
-        }
 
         public Compressor(int level = DefaultCompressionLevel)
         {
@@ -187,7 +156,6 @@ namespace ZstdSharp
         public void Dispose()
         {
             handle.Dispose();
-            FreePinnedPrefix();
             GC.SuppressFinalize(this);
         }
 

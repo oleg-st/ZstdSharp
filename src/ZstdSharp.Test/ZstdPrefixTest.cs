@@ -1,4 +1,6 @@
 using System;
+using System.Buffers;
+using System.Runtime.CompilerServices;
 using ZstdSharp.Unsafe;
 using Xunit;
 
@@ -23,6 +25,99 @@ namespace ZstdSharp.Test
             while (windowLog < 31 && (1L << windowLog) < totalSize)
                 windowLog++;
             return windowLog;
+        }
+
+        // Leave the context as the only strong owner when the helper returns, even in Debug.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static WeakReference InstallPrefix(Action<byte[]> setPrefix)
+        {
+            var prefix = new byte[1024];
+            setPrefix(prefix);
+            return new WeakReference(prefix);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static WeakReference RejectPrefixChange(Action<byte[]> setPrefix, bool clear)
+        {
+            var replacement = clear ? null : new byte[1024];
+            var error = Assert.Throws<ZstdException>(() => setPrefix(replacement));
+            Assert.Equal(ZSTD_ErrorCode.ZSTD_error_stage_wrong, error.Code);
+            return new WeakReference(replacement);
+        }
+
+        private static void AssertOriginalPrefixRetained(WeakReference original, WeakReference rejected)
+        {
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true);
+            Assert.True(original.IsAlive);
+            Assert.False(rejected.IsAlive);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void RefPrefix_CompressorKeepsOriginalOnRejectedChange(bool clear)
+        {
+            using var compressor = new Compressor();
+            var original = InstallPrefix(compressor.RefPrefix);
+            Assert.Equal(OperationStatus.Done,
+                compressor.WrapStream(new byte[1], new byte[64], out _, out _, isFinalBlock: false));
+
+            var rejected = RejectPrefixChange(compressor.RefPrefix, clear);
+            AssertOriginalPrefixRetained(original, rejected);
+            GC.KeepAlive(compressor);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void RefPrefix_DecompressorKeepsOriginalOnRejectedChange(bool clear)
+        {
+            using var compressor = new Compressor();
+            var frame = compressor.Wrap(new byte[1]);
+            using var decompressor = new Decompressor();
+            var original = InstallPrefix(decompressor.RefPrefix);
+            Assert.Equal(OperationStatus.NeedMoreData,
+                decompressor.UnwrapStream(frame.Slice(0, 1), new byte[1], out _, out _));
+
+            var rejected = RejectPrefixChange(decompressor.RefPrefix, clear);
+            AssertOriginalPrefixRetained(original, rejected);
+            GC.KeepAlive(decompressor);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void AbandonContexts(out WeakReference compressionPrefix, out WeakReference decompressionPrefix)
+        {
+            compressionPrefix = InstallPrefix(new Compressor().RefPrefix);
+            decompressionPrefix = InstallPrefix(new Decompressor().RefPrefix);
+        }
+
+        [Fact]
+        public void RefPrefix_FinalizationReleasesPrefixes()
+        {
+            AbandonContexts(out var compressionPrefix, out var decompressionPrefix);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            Assert.False(compressionPrefix.IsAlive);
+            Assert.False(decompressionPrefix.IsAlive);
+        }
+
+        [Fact]
+        public void RefPrefix_LoadDictionaryReleasesPrefixes()
+        {
+            using var compressor = new Compressor();
+            using var decompressor = new Decompressor();
+            var compressionPrefix = InstallPrefix(compressor.RefPrefix);
+            var decompressionPrefix = InstallPrefix(decompressor.RefPrefix);
+
+            var dictionary = CreateRandom(1024);
+            compressor.LoadDictionary(dictionary);
+            decompressor.LoadDictionary(dictionary);
+            GC.Collect();
+            Assert.False(compressionPrefix.IsAlive);
+            Assert.False(decompressionPrefix.IsAlive);
+            GC.KeepAlive(compressor);
+            GC.KeepAlive(decompressor);
         }
 
         [Fact]
