@@ -783,6 +783,15 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static uint ZSTD_row_nextIndex(byte* tagRow, uint rowMask)
         {
+#if NETCOREAPP3_0_OR_GREATER
+            if (Bmi2.X64.IsSupported && rowMask == 15)
+            {
+                uint next4 = (uint)(0xEDCBA987654321FFUL >> (*tagRow << 2)) & 15;
+                *tagRow = (byte)next4;
+                return next4;
+            }
+#endif
+
             uint next = (uint)(*tagRow - 1) & rowMask;
             next |= (uint)((int)(next - 1) >> 31) & rowMask;
             *tagRow = (byte)next;
@@ -1172,7 +1181,14 @@ namespace ZstdSharp.Unsafe
         [InlineMethod.Inline]
         private static nuint ZSTD_RowFindBestMatch(ZSTD_MatchState_t* ms, byte* ip, byte* iLimit, nuint* offsetPtr, uint mls, ZSTD_dictMode_e dictMode, uint rowLog)
         {
+            RowMatchBuffer16 buffer16;
+            RowMatchBuffer32 buffer32;
+            RowMatchBuffer64 buffer64;
+            uint* matchBuffer = rowLog == 4 ? buffer16.Indices : rowLog == 5 ? buffer32.Indices : buffer64.Indices;
             int rowShift = 56 - (int)ms->rowHashLog;
+            bool useCache = ms->lazySkipping == 0;
+            if (useCache)
+                ZSTD_row_update_internal(ms, ip, mls, rowLog, (1U << (int)rowLog) - 1, 1, rowShift);
             uint* hashTable = ms->hashTable;
             byte* tagTable = ms->tagTable;
             uint* hashCache = ms->hashCache;
@@ -1235,9 +1251,8 @@ namespace ZstdSharp.Unsafe
                 ZSTD_row_prefetch(dmsHashTable, dmsTagTable, dmsRelRow, rowLog);
             }
 
-            if (ms->lazySkipping == 0)
+            if (useCache)
             {
-                ZSTD_row_update_internal(ms, ip, mls, rowLog, rowMask, 1, rowShift);
                 hash = ZSTD_row_nextCachedHash(hashCache, hashTable, tagTable, @base, curr, rowShift, rowLog, mls, hashSalt);
             }
             else
@@ -1253,7 +1268,6 @@ namespace ZstdSharp.Unsafe
                 uint* row = hashTable + relRow;
                 byte* tagRow = tagTable + relRow;
                 uint headGrouped = (*tagRow & rowMask) * groupWidth;
-                uint* matchBuffer = stackalloc uint[64];
                 nuint numMatches = 0;
                 ulong matches = ZSTD_row_getMatchMask(tagRow, (byte)tag, headGrouped, rowEntries);
                 for (; matches > 0 && nbAttempts > 0; matches &= matches - 1)
@@ -1344,7 +1358,6 @@ namespace ZstdSharp.Unsafe
                 uint dmsIndexDelta = dictLimit - dmsSize;
                 {
                     uint headGrouped = (*dmsTagRow & rowMask) * groupWidth;
-                    uint* matchBuffer = stackalloc uint[64];
                     nuint numMatches = 0;
                     ulong matches = ZSTD_row_getMatchMask(dmsTagRow, (byte)dmsTag, headGrouped, rowEntries);
                     for (; matches > 0 && nbAttempts > 0; matches &= matches - 1)
@@ -2699,6 +2712,21 @@ namespace ZstdSharp.Unsafe
             if (mls == 6)
                 return (uint)((MEM_readLE64(src) * (prime6bytes << 64 - 48) ^ salt) >> rowShift);
             return (uint)ZSTD_hashPtrSalted(src, (uint)(64 - rowShift), mls, salt);
+        }
+
+        private struct RowMatchBuffer16
+        {
+            public fixed uint Indices[16];
+        }
+
+        private struct RowMatchBuffer32
+        {
+            public fixed uint Indices[32];
+        }
+
+        private struct RowMatchBuffer64
+        {
+            public fixed uint Indices[64];
         }
     }
 }
