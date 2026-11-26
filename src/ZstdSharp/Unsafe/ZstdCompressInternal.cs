@@ -559,7 +559,7 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_hash3(uint u, uint h, uint s)
         {
             assert(h <= 32);
-            return (u * (prime3bytes << 32 - 24) ^ s) >> (int)(32 - h);
+            return (u * (prime3bytes << 32 - 24) ^ s) >> -(int)h;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -580,7 +580,7 @@ namespace ZstdSharp.Unsafe
         private static uint ZSTD_hash4(uint u, uint h, uint s)
         {
             assert(h <= 32);
-            return (u * prime4bytes ^ s) >> (int)(32 - h);
+            return (u * prime4bytes ^ s) >> -(int)h;
         }
 
         [InlineMethod.Inline]
@@ -600,7 +600,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_hash5(ulong u, uint h, ulong s)
         {
             assert(h <= 64);
-            return (nuint)((u * (prime5bytes << 64 - 40) ^ s) >> (int)(64 - h));
+            return (nuint)((u * (prime5bytes << 64 - 40) ^ s) >> -(int)h);
         }
 
         [InlineMethod.Inline]
@@ -620,7 +620,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_hash6(ulong u, uint h, ulong s)
         {
             assert(h <= 64);
-            return (nuint)((u * (prime6bytes << 64 - 48) ^ s) >> (int)(64 - h));
+            return (nuint)((u * (prime6bytes << 64 - 48) ^ s) >> -(int)h);
         }
 
         [InlineMethod.Inline]
@@ -640,7 +640,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_hash7(ulong u, uint h, ulong s)
         {
             assert(h <= 64);
-            return (nuint)((u * (prime7bytes << 64 - 56) ^ s) >> (int)(64 - h));
+            return (nuint)((u * (prime7bytes << 64 - 56) ^ s) >> -(int)h);
         }
 
         [InlineMethod.Inline]
@@ -660,7 +660,7 @@ namespace ZstdSharp.Unsafe
         private static nuint ZSTD_hash8(ulong u, uint h, ulong s)
         {
             assert(h <= 64);
-            return (nuint)((u * prime8bytes ^ s) >> (int)(64 - h));
+            return (nuint)((u * prime8bytes ^ s) >> -(int)h);
         }
 
         [InlineMethod.Inline]
