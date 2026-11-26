@@ -78,6 +78,14 @@ namespace ZstdSharp.Unsafe
             for (; nbCompares != 0 && matchIndex > windowLow; --nbCompares)
             {
                 uint* nextPtr = bt + 2 * (matchIndex & btMask);
+#if NETCOREAPP3_0_OR_GREATER
+                if (Sse.IsSupported)
+                {
+                    Sse.Prefetch0((byte*)(bt + 2 * (nextPtr[0] & btMask)));
+                    Sse.Prefetch0((byte*)(bt + 2 * (nextPtr[1] & btMask)));
+                }
+#endif
+
                 /* guaranteed minimum nb of common bytes */
                 nuint matchLength = commonLengthSmaller < commonLengthLarger ? commonLengthSmaller : commonLengthLarger;
                 assert(matchIndex < curr);
@@ -274,6 +282,14 @@ namespace ZstdSharp.Unsafe
                 for (; nbCompares != 0 && matchIndex > windowLow; --nbCompares)
                 {
                     uint* nextPtr = bt + 2 * (matchIndex & btMask);
+#if NETCOREAPP3_0_OR_GREATER
+                    if (Sse.IsSupported)
+                    {
+                        Sse.Prefetch0((byte*)(bt + 2 * (nextPtr[0] & btMask)));
+                        Sse.Prefetch0((byte*)(bt + 2 * (nextPtr[1] & btMask)));
+                    }
+#endif
+
                     /* guaranteed minimum nb of common bytes */
                     nuint matchLength = commonLengthSmaller < commonLengthLarger ? commonLengthSmaller : commonLengthLarger;
                     byte* match;
