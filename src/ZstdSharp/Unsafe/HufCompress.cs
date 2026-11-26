@@ -819,6 +819,7 @@ namespace ZstdSharp.Unsafe
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [InlineMethod.Inline]
         private static void HUF_compress1X_usingCTable_internal_body_loop(ref HUF_CStream_t bitC, byte* ip, nuint srcSize, nuint* ct, int kUnroll, int kFastFlush, int kLastFast)
         {
             byte* bitC_ptr = bitC.ptr;
