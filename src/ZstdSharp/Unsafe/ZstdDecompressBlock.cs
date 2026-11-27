@@ -1167,6 +1167,7 @@ namespace ZstdSharp.Unsafe
             return sequenceLength;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_initFseState(ZSTD_fseState* DStatePtr, BIT_DStream_t* bitD, ZSTD_seqSymbol* dt)
         {
             void* ptr = dt;
@@ -1468,14 +1469,17 @@ namespace ZstdSharp.Unsafe
                 sbyte* seqState_DStream_ptr = seqState.DStream.ptr;
                 sbyte* seqState_DStream_start = seqState.DStream.start;
                 sbyte* seqState_DStream_limitPtr = seqState.DStream.limitPtr;
+                ZSTD_seqSymbol* stateLLPtr = seqState.stateLL.table + seqState.stateLL.state;
+                ZSTD_seqSymbol* stateMLPtr = seqState.stateML.table + seqState.stateML.state;
+                ZSTD_seqSymbol* stateOffbPtr = seqState.stateOffb.table + seqState.stateOffb.state;
                 for (; nbSeq != 0; nbSeq--)
                 {
                     nuint sequence_litLength;
                     nuint sequence_matchLength;
                     nuint sequence_offset;
-                    ZSTD_seqSymbol* llDInfo = seqState.stateLL.table + seqState.stateLL.state;
-                    ZSTD_seqSymbol* mlDInfo = seqState.stateML.table + seqState.stateML.state;
-                    ZSTD_seqSymbol* ofDInfo = seqState.stateOffb.table + seqState.stateOffb.state;
+                    ZSTD_seqSymbol* llDInfo = stateLLPtr;
+                    ZSTD_seqSymbol* mlDInfo = stateMLPtr;
+                    ZSTD_seqSymbol* ofDInfo = stateOffbPtr;
                     sequence_matchLength = mlDInfo->baseValue;
                     sequence_litLength = llDInfo->baseValue;
                     {
@@ -1550,11 +1554,11 @@ namespace ZstdSharp.Unsafe
                             BIT_reloadDStream(ref seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, ref seqState_DStream_ptr, seqState_DStream_start, seqState_DStream_limitPtr);
                         if ((nbSeq == 1 ? 1 : 0) == 0)
                         {
-                            ZSTD_updateFseStateWithDInfo(ref seqState.stateLL, seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, llDInfo->nextState, llDInfo->nbBits);
-                            ZSTD_updateFseStateWithDInfo(ref seqState.stateML, seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, mlDInfo->nextState, mlDInfo->nbBits);
+                            stateLLPtr = seqState.stateLL.table + llDInfo->nextState + BIT_readBits(seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, llDInfo->nbBits);
+                            stateMLPtr = seqState.stateML.table + mlDInfo->nextState + BIT_readBits(seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, mlDInfo->nbBits);
                             if (MEM_32bits)
                                 BIT_reloadDStream(ref seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, ref seqState_DStream_ptr, seqState_DStream_start, seqState_DStream_limitPtr);
-                            ZSTD_updateFseStateWithDInfo(ref seqState.stateOffb, seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, ofDInfo->nextState, ofDInfo->nbBits);
+                            stateOffbPtr = seqState.stateOffb.table + ofDInfo->nextState + BIT_readBits(seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, ofDInfo->nbBits);
                             BIT_reloadDStream(ref seqState_DStream_bitContainer, ref seqState_DStream_bitsConsumed, ref seqState_DStream_ptr, seqState_DStream_start, seqState_DStream_limitPtr);
                         }
                     }
@@ -2114,6 +2118,7 @@ namespace ZstdSharp.Unsafe
             return ZSTD_decompressBlock_deprecated(dctx, dst, dstCapacity, src, srcSize);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ZSTD_initFseState(ref ZSTD_fseState DStatePtr, ref BIT_DStream_t bitD, ZSTD_seqSymbol* dt)
         {
             void* ptr = dt;

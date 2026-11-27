@@ -1202,7 +1202,8 @@ namespace ZstdSharp.Unsafe
          *         It's intended for a dictionary used only once.
          *  Note : When `dict == NULL || dictSize < 8` no dictionary is used.
          *  Note : The streaming session of @dctx is reset first, as with
-         *         ZSTD_DCtx_reset(dctx, ZSTD_reset_session_only). */
+         *         ZSTD_DCtx_reset(dctx, ZSTD_reset_session_only).
+         *  Note : like ZSTD_decompress(), the whole `dst` buffer may be used as workspace. */
         public static nuint ZSTD_decompress_usingDict(ZSTD_DCtx_s* dctx, void* dst, nuint dstCapacity, void* src, nuint srcSize, void* dict, nuint dictSize)
         {
             ZSTD_DCtx_resetSession(dctx);
@@ -1251,6 +1252,8 @@ namespace ZstdSharp.Unsafe
          * `dstCapacity` is an upper bound of originalSize to regenerate.
          *  First frame's decompressed size can be extracted using ZSTD_getFrameContentSize().
          *  If maximum upper bound isn't known, prefer using streaming mode to decompress data.
+         *  Note : the whole `dst` buffer, up to `dstCapacity`, may be used as workspace.
+         *         Bytes beyond the returned size can be overwritten: their content is unspecified.
          * @return : the number of bytes decompressed into `dst` (<= `dstCapacity`),
          *           or an errorCode if it fails (which can be tested using ZSTD_isError()). */
         public static nuint ZSTD_decompress(void* dst, nuint dstCapacity, void* src, nuint srcSize)
@@ -2606,6 +2609,8 @@ namespace ZstdSharp.Unsafe
          *   check ZSTD_decompressStream() @return value,
          *   if > 0, invoke it again to flush remaining data to output.
          * Note : with no additional input, amount of data flushed <= ZSTD_BLOCKSIZE_MAX.
+         * Note : the whole output buffer, from `output.pos` to `output.size`, may be used as workspace.
+         *        Bytes beyond the updated `output.pos` can be overwritten: their content is unspecified.
          *
          * @return : 0 when a frame is completely decoded and fully flushed,
          *           or an error code, which can be tested using ZSTD_isError(),
