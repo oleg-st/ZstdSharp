@@ -279,7 +279,7 @@ namespace ZstdSharp.Unsafe
         {
             uint regMask = (uint)(sizeof(nuint) * 8 - 1);
             assert(nbBits >= 1);
-            return bitD->bitContainer << (int)(bitD->bitsConsumed & regMask) >> (int)(regMask + 1 - nbBits & regMask);
+            return bitD->bitContainer << (int)(bitD->bitsConsumed & regMask) >> (int)(unchecked(0U - nbBits) & regMask);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -505,7 +505,7 @@ namespace ZstdSharp.Unsafe
         {
             uint regMask = (uint)(sizeof(nuint) * 8 - 1);
             assert(nbBits >= 1);
-            return bitD_bitContainer << (int)(bitD_bitsConsumed & regMask) >> (int)(regMask + 1 - nbBits & regMask);
+            return bitD_bitContainer << (int)(bitD_bitsConsumed & regMask) >> (int)(unchecked(0U - nbBits) & regMask);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -522,9 +522,8 @@ namespace ZstdSharp.Unsafe
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint BIT_readBits(nuint bitD_bitContainer, ref uint bitD_bitsConsumed, uint nbBits)
         {
-            nuint value = BIT_lookBits(bitD_bitContainer, bitD_bitsConsumed, nbBits);
-            BIT_skipBits(ref bitD_bitsConsumed, nbBits);
-            return value;
+            bitD_bitsConsumed += nbBits;
+            return BIT_getMiddleBits(bitD_bitContainer, unchecked(0U - bitD_bitsConsumed), nbBits);
         }
 
         /*! BIT_readBitsFast() :
